@@ -28,7 +28,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             <Timer className="w-3.5 h-3.5 text-[#2D5BFF]" />
             <span className="font-semibold tracking-wide text-gray-700">Chronos Desktop</span>
             <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded-full text-gray-600 font-mono">
-              v1.2.0
+              v{__APP_VERSION__}
             </span>
           </div>
 

@@ -1,6 +1,10 @@
 [package]
 name = "chronos-desktop"
-version = "0.1.1"
+# Cargo requires a version, but this is NOT the app version: tauri.conf.json
+# points at ../package.json, which is the single source for the installer, the
+# executable's version resource and the badge in the header. Leave this alone
+# when bumping a release.
+version = "0.0.0"
 description = "Precision stopwatch and time tracker"
 edition = "2021"
 rust-version = "1.77.2"
