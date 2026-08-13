@@ -5,6 +5,10 @@ node_modules/
 build/
 dist/
 
+# Tauri: Rust build artefacts and the schemas/bindings Tauri regenerates
+src-tauri/target/
+src-tauri/gen/
+
 # Test and coverage artifacts
 coverage/
 test-results/
