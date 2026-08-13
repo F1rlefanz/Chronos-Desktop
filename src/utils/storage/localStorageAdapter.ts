@@ -1,3 +1,4 @@
+import { logError, logWarn } from '../logging/logger';
 import { StorageAdapter, WriteResult } from './types';
 
 /** Legacy numeric codes browsers used before `QuotaExceededError` was named. */
@@ -38,7 +39,7 @@ export const localStorageAdapter: StorageAdapter = {
     try {
       return Promise.resolve(store.getItem(key));
     } catch (error) {
-      console.warn(`[Storage] Error reading key "${key}" from localStorage:`, error);
+      logWarn(`[Storage] Error reading key "${key}" from localStorage:`, error);
       return Promise.resolve(null);
     }
   },
@@ -57,7 +58,7 @@ export const localStorageAdapter: StorageAdapter = {
       store.setItem(key, value);
       return Promise.resolve({ ok: true });
     } catch (error) {
-      console.error(`[Storage] Error writing key "${key}" to localStorage:`, error);
+      logError(`[Storage] Error writing key "${key}" to localStorage:`, error);
 
       if (isQuotaError(error)) {
         return Promise.resolve({

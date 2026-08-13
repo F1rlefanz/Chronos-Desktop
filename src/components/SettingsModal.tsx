@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { AppSettings, Project } from '../types';
 import { importFromJsonFile, ImportedData } from '../utils/dataExporter';
 import { TIMER_INTERVAL_OPTIONS } from '../constants/defaultConfig';
-import { Settings, Plus, Trash2, Upload, X, FolderOpen } from 'lucide-react';
+import { Settings, Plus, Trash2, Upload, X, FolderOpen, FileWarning } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,6 +14,8 @@ interface SettingsModalProps {
   onImportData: (data: ImportedData) => void;
   /** Absent when the backend keeps no snapshots, which hides the row. */
   onRevealBackups?: () => void;
+  /** Absent when logs only go to the console, which hides the row. */
+  onRevealLogs?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -25,6 +27,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateProjects,
   onImportData,
   onRevealBackups,
+  onRevealLogs,
 }) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
@@ -275,6 +278,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
                 >
                   <FolderOpen className="w-3.5 h-3.5 text-[#2D5BFF]" />
+                  <span>Open Folder</span>
+                </button>
+              </div>
+            )}
+
+            {onRevealLogs && (
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+                <div>
+                  <span className="text-xs font-semibold text-gray-800 block">Application Log</span>
+                  <span className="text-[11px] text-gray-400">
+                    What the app recorded about failed saves and other errors.
+                  </span>
+                </div>
+                <button
+                  onClick={onRevealLogs}
+                  className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
+                >
+                  <FileWarning className="w-3.5 h-3.5 text-[#2D5BFF]" />
                   <span>Open Folder</span>
                 </button>
               </div>

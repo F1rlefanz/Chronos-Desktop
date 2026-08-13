@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { logError, logWarn } from '../logging/logger';
 import { BackupSupport, StorageAdapter, WriteFailureReason, WriteResult } from './types';
 
 /**
@@ -42,7 +43,7 @@ const backups: BackupSupport = {
     } catch (error) {
       // Not knowing what is there is not a reason to stop; the caller treats an
       // empty list as "no snapshot today yet" and writes one.
-      console.warn('[Backup] Could not list backups:', error);
+      logWarn('[Backup] Could not list backups:', error);
       return [];
     }
   },
@@ -52,13 +53,13 @@ const backups: BackupSupport = {
       await invoke('backup_write', { name, contents });
       return { ok: true };
     } catch (error) {
-      console.error(`[Backup] Error writing "${name}":`, error);
+      logError(`[Backup] Error writing "${name}":`, error);
       return toWriteResult(error);
     }
   },
 
   async reveal(): Promise<void> {
-    await invoke('backup_reveal');
+    await invoke('reveal_folder', { target: 'backups' });
   },
 };
 
@@ -78,7 +79,7 @@ export const tauriAdapter: StorageAdapter = {
     } catch (error) {
       // A read that fails must not stop the app from starting; the caller
       // falls back to the default for this key.
-      console.warn(`[Storage] Error reading key "${key}" from disk:`, error);
+      logWarn(`[Storage] Error reading key "${key}" from disk:`, error);
       return null;
     }
   },
@@ -88,7 +89,7 @@ export const tauriAdapter: StorageAdapter = {
       await invoke('storage_write', { key, value });
       return { ok: true };
     } catch (error) {
-      console.error(`[Storage] Error writing key "${key}" to disk:`, error);
+      logError(`[Storage] Error writing key "${key}" to disk:`, error);
       return toWriteResult(error);
     }
   },

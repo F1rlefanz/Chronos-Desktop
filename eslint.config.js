@@ -7,8 +7,11 @@ import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   // src-tauri/target holds Rust build output, including generated .js assets
-  // that ESLint would try — and fail — to parse.
-  { ignores: ['dist', 'coverage', 'node_modules', 'src-tauri/target', 'src-tauri/gen'] },
+  // that ESLint would try — and fail — to parse. The dot-prefixed folder is a
+  // local scratch area for third-party material, ignored by git as well.
+  {
+    ignores: ['dist', 'coverage', 'node_modules', 'src-tauri/target', 'src-tauri/gen', '.0*/**'],
+  },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

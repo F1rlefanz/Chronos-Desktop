@@ -4,6 +4,7 @@ import {
   DEFAULT_PROJECTS,
 } from '../../constants/defaultConfig';
 import { AppSettings, Project, TimeEntry } from '../../types';
+import { logWarn } from '../logging/logger';
 import { localStorageAdapter } from './localStorageAdapter';
 import { StorageAdapter, WriteResult } from './types';
 
@@ -48,7 +49,7 @@ async function readJson<T>(key: string, defaultValue: T): Promise<T> {
   try {
     return JSON.parse(raw) as T;
   } catch (error) {
-    console.warn(`[Storage] Ignoring unparseable value for key "${key}":`, error);
+    logWarn(`[Storage] Ignoring unparseable value for key "${key}":`, error);
     return defaultValue;
   }
 }
@@ -182,7 +183,7 @@ export async function loadPersistedState(): Promise<PersistedState> {
   if (JSON.stringify(storedSettings) !== JSON.stringify(settings)) {
     const result = await saveSettings(settings);
     if (!result.ok) {
-      console.warn(`[Storage] Could not write back migrated settings: ${result.message}`);
+      logWarn(`[Storage] Could not write back migrated settings: ${result.message}`);
     }
   }
 
