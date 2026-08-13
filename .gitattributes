@@ -1,0 +1,11 @@
+# Normalize line endings so a Windows checkout does not rewrite the whole tree.
+* text=auto eol=lf
+
+# Generated lockfile: keep it out of diffs and out of language statistics.
+bun.lock linguist-generated -diff
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary

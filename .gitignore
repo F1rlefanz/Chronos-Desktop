@@ -1,8 +1,37 @@
+# Dependencies
 node_modules/
+
+# Build output
 build/
 dist/
+
+# Test and coverage artifacts
 coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Caches
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Local environment files (bun.lock is committed on purpose — it is the
+# project's lockfile and the SessionStart hook installs from it)
+.env
+.env.*
+*.local
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
-.env*
-!.env.example
+npm-debug.log*
+yarn-error.log*

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Chronos Desktop">
+  <rect width="32" height="32" rx="8" fill="#2D5BFF" />
+  <circle cx="16" cy="17.5" r="9" fill="none" stroke="#ffffff" stroke-width="2.5" />
+  <path d="M16 12.5v5.5l3.5 2.5" fill="none" stroke="#ffffff" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M13 4.5h6" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M16 4.5v3" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+</svg>
