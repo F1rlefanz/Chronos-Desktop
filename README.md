@@ -70,6 +70,11 @@ Two things worth knowing before changing code here:
 - **The timer never trusts React state for measurement.** Elapsed time accumulates in refs at
   full animation-frame resolution; `timerIntervalMs` only throttles how often that value is
   pushed into state. Changing the setting changes render frequency, never accuracy.
+- **A failed write has to be visible.** `localStorage` is the only copy of the data, so when a
+  write is rejected — a full quota, or storage disabled — the change is gone on the next reload.
+  Every save in `App.tsx` routes its result through `persist()`, which raises a banner. Adding a
+  new save means routing it the same way. An `ErrorBoundary` around the app covers the other
+  failure mode, so a render error shows a recovery screen rather than a white page.
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
   it reaches the app, because the import is persisted to `localStorage` immediately — a malformed
   entry would otherwise break the app on every subsequent reload.
@@ -96,4 +101,6 @@ _Require status checks to pass_, selecting the `Typecheck, lint, test, build` ch
 
 ## License
 
-Not yet specified.
+Proprietary — copyright the repository owner, all rights reserved. This is private software; no
+license to use, copy or distribute it is granted. There is deliberately no `LICENSE` file: absent
+one, default copyright already reserves every right, which is the intent here.
