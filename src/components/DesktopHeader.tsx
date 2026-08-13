@@ -27,13 +27,24 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <div className="flex items-center gap-2">
             <Timer className="w-3.5 h-3.5 text-[#2D5BFF]" />
             <span className="font-semibold tracking-wide text-gray-700">Chronos Desktop</span>
-            <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded-full text-gray-600 font-mono">v1.2.0</span>
+            <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded-full text-gray-600 font-mono">
+              v1.2.0
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[#FF5F57] hover:opacity-80 transition-opacity cursor-pointer" title="Close" />
-            <div className="w-3 h-3 rounded-full bg-[#FEBC2E] hover:opacity-80 transition-opacity cursor-pointer" title="Minimize" />
-            <div className="w-3 h-3 rounded-full bg-[#28C840] hover:opacity-80 transition-opacity cursor-pointer" title="Maximize" />
+            <div
+              className="w-3 h-3 rounded-full bg-[#FF5F57] hover:opacity-80 transition-opacity cursor-pointer"
+              title="Close"
+            />
+            <div
+              className="w-3 h-3 rounded-full bg-[#FEBC2E] hover:opacity-80 transition-opacity cursor-pointer"
+              title="Minimize"
+            />
+            <div
+              className="w-3 h-3 rounded-full bg-[#28C840] hover:opacity-80 transition-opacity cursor-pointer"
+              title="Maximize"
+            />
           </div>
         </div>
       )}
@@ -85,7 +96,11 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             }`}
             title={settings.soundEnabled ? 'Audio cues enabled' : 'Audio cues muted'}
           >
-            {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            {settings.soundEnabled ? (
+              <Volume2 className="w-4 h-4" />
+            ) : (
+              <VolumeX className="w-4 h-4" />
+            )}
           </button>
 
           <button

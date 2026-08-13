@@ -26,12 +26,24 @@ function downloadBlob(blob: Blob, filename: string): void {
 export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
   const projectMap = new Map<string, Project>(projects.map((p) => [p.id, p]));
 
-  const headers = ['ID', 'Title', 'Project', 'Start Time', 'End Time', 'Duration (HH:MM:SS.ms)', 'Duration (Seconds)', 'Laps Count', 'Notes'];
+  const headers = [
+    'ID',
+    'Title',
+    'Project',
+    'Start Time',
+    'End Time',
+    'Duration (HH:MM:SS.ms)',
+    'Duration (Seconds)',
+    'Laps Count',
+    'Notes',
+  ];
 
   const rows = entries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
-    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, { includeMilliseconds: true });
+    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+      includeMilliseconds: true,
+    });
     const durationSeconds = (entry.durationMs / 1000).toFixed(2);
 
     const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
@@ -60,7 +72,11 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
 /**
  * Exports complete app state as JSON for backup and portability across PCs.
  */
-export function exportToJsonBackup(entries: TimeEntry[], projects: Project[], settings: unknown): void {
+export function exportToJsonBackup(
+  entries: TimeEntry[],
+  projects: Project[],
+  settings: unknown
+): void {
   const exportPayload = {
     version: '1.0.0',
     exportTimestamp: Date.now(),
@@ -154,7 +170,11 @@ export interface ImportedData {
   settings?: unknown;
 }
 
-function normalizeImportPayload(rawEntries: unknown[], rawProjects: unknown[], settings: unknown): ImportedData {
+function normalizeImportPayload(
+  rawEntries: unknown[],
+  rawProjects: unknown[],
+  settings: unknown
+): ImportedData {
   const entries = rawEntries.map(normalizeTimeEntry).filter((e): e is TimeEntry => e !== null);
 
   if (rawEntries.length > 0 && entries.length === 0) {

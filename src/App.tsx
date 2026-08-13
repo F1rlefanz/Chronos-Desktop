@@ -47,17 +47,8 @@ export default function App() {
   } | null>(null);
 
   // High-Precision Stopwatch Hook
-  const {
-    elapsedTimeMs,
-    timerState,
-    laps,
-    start,
-    pause,
-    resume,
-    recordLap,
-    stop,
-    reset,
-  } = useStopwatch(settings.timerIntervalMs);
+  const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
+    useStopwatch(settings.timerIntervalMs);
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
@@ -275,7 +266,16 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [timerState, settings.keyShortcutsEnabled, handleStart, handlePause, handleResume, handleLap, handleStopAndOpenSaver, reset]);
+  }, [
+    timerState,
+    settings.keyShortcutsEnabled,
+    handleStart,
+    handlePause,
+    handleResume,
+    handleLap,
+    handleStopAndOpenSaver,
+    reset,
+  ]);
 
   return (
     <div className="min-h-screen bg-[#F4F7F9] text-[#1A1C1E] font-sans antialiased flex flex-col selection:bg-blue-500 selection:text-white">
@@ -389,10 +389,7 @@ export default function App() {
         onImportData={handleImportData}
       />
 
-      <ArchitectureModal
-        isOpen={isArchitectureOpen}
-        onClose={() => setIsArchitectureOpen(false)}
-      />
+      <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />
     </div>
   );
 }

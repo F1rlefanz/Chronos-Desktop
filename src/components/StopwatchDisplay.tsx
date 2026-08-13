@@ -89,11 +89,17 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
         {/* Secondary Detailed Readouts */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6">
           <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-            Total: <strong className="text-gray-900">{totalMinutes}m {seconds}s</strong>
+            Total:{' '}
+            <strong className="text-gray-900">
+              {totalMinutes}m {seconds}s
+            </strong>
           </span>
           {hours > 0 && (
             <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-              Hours: <strong className="text-gray-900">{(elapsedTimeMs / (1000 * 60 * 60)).toFixed(2)}h</strong>
+              Hours:{' '}
+              <strong className="text-gray-900">
+                {(elapsedTimeMs / (1000 * 60 * 60)).toFixed(2)}h
+              </strong>
             </span>
           )}
           {lapCount > 0 && (

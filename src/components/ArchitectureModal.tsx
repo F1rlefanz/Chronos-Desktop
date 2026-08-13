@@ -32,9 +32,13 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
           <div className="bg-blue-50/80 border border-blue-200 p-4 rounded-2xl flex items-start gap-3">
             <Sparkles className="w-5 h-5 text-[#2D5BFF] shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-bold text-gray-900 text-sm">State-of-the-Art & Zero Magic Numbers</h3>
+              <h3 className="font-bold text-gray-900 text-sm">
+                State-of-the-Art & Zero Magic Numbers
+              </h3>
               <p className="text-gray-600 mt-1">
-                Built strictly following modern clean software architecture guidelines: complete modularity, custom hooks, typed schemas, decoupled exporters, and zero hardcoded magic numbers.
+                Built strictly following modern clean software architecture guidelines: complete
+                modularity, custom hooks, typed schemas, decoupled exporters, and zero hardcoded
+                magic numbers.
               </p>
             </div>
           </div>
@@ -48,20 +52,32 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-[11px]">
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
-                <span className="text-[#2D5BFF] font-bold block mb-1">/src/constants/defaultConfig.ts</span>
-                Central configuration repository. All timing thresholds, default options, and storage keys defined as immutable constants.
+                <span className="text-[#2D5BFF] font-bold block mb-1">
+                  /src/constants/defaultConfig.ts
+                </span>
+                Central configuration repository. All timing thresholds, default options, and
+                storage keys defined as immutable constants.
               </div>
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
-                <span className="text-[#2D5BFF] font-bold block mb-1">/src/hooks/useStopwatch.ts</span>
-                Drift-free timing engine utilizing high-resolution performance.now() deltas with requestAnimationFrame.
+                <span className="text-[#2D5BFF] font-bold block mb-1">
+                  /src/hooks/useStopwatch.ts
+                </span>
+                Drift-free timing engine utilizing high-resolution performance.now() deltas with
+                requestAnimationFrame.
               </div>
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
-                <span className="text-purple-600 font-bold block mb-1">/src/utils/pdfExporter.ts</span>
-                Dedicated report generator combining jsPDF and autoTable for formatted A4 document export.
+                <span className="text-purple-600 font-bold block mb-1">
+                  /src/utils/pdfExporter.ts
+                </span>
+                Dedicated report generator combining jsPDF and autoTable for formatted A4 document
+                export.
               </div>
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
-                <span className="text-amber-600 font-bold block mb-1">/src/utils/dataExporter.ts</span>
-                Pure helper module for RFC-compliant CSV string building and JSON backup state serialization.
+                <span className="text-amber-600 font-bold block mb-1">
+                  /src/utils/dataExporter.ts
+                </span>
+                Pure helper module for RFC-compliant CSV string building and JSON backup state
+                serialization.
               </div>
             </div>
           </div>
@@ -77,9 +93,13 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               <li className="flex items-start gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-200/80">
                 <CheckCircle2 className="w-4 h-4 text-[#2D5BFF] shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-gray-900 block">Zero Hardcoded Constants / Magic Numbers</strong>
+                  <strong className="text-gray-900 block">
+                    Zero Hardcoded Constants / Magic Numbers
+                  </strong>
                   <p className="text-gray-500">
-                    No raw numeric multipliers or magic string keys scattered in components. Every constant is imported from <code>TIME_CONSTANTS</code> or <code>DEFAULT_APP_SETTINGS</code>.
+                    No raw numeric multipliers or magic string keys scattered in components. Every
+                    constant is imported from <code>TIME_CONSTANTS</code> or{' '}
+                    <code>DEFAULT_APP_SETTINGS</code>.
                   </p>
                 </div>
               </li>
@@ -89,7 +109,9 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
                 <div>
                   <strong className="text-gray-900 block">Drift-Free Precision Engine</strong>
                   <p className="text-gray-500">
-                    Standard <code>setInterval</code> drifts when tabs are minimized or CPU throttles. Chronos calculates delta time against monotonic <code>performance.now()</code>.
+                    Standard <code>setInterval</code> drifts when tabs are minimized or CPU
+                    throttles. Chronos calculates delta time against monotonic{' '}
+                    <code>performance.now()</code>.
                   </p>
                 </div>
               </li>
@@ -97,9 +119,13 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               <li className="flex items-start gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-200/80">
                 <CheckCircle2 className="w-4 h-4 text-[#2D5BFF] shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-gray-900 block">Universal Shareability & Portability</strong>
+                  <strong className="text-gray-900 block">
+                    Universal Shareability & Portability
+                  </strong>
                   <p className="text-gray-500">
-                    Runs on any modern browser or PC out-of-the-box, or can be wrapped into Electron / Tauri for native Windows/Mac/Linux deployment. Complete state import/export JSON backup included.
+                    Runs on any modern browser or PC out-of-the-box, or can be wrapped into Electron
+                    / Tauri for native Windows/Mac/Linux deployment. Complete state import/export
+                    JSON backup included.
                   </p>
                 </div>
               </li>

@@ -105,7 +105,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'pdf' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Report Title</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Report Title
+                </label>
                 <input
                   type="text"
                   value={pdfOptions.title}
@@ -116,10 +118,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Project Filter</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Project Filter
+                  </label>
                   <select
                     value={pdfOptions.selectedProject}
-                    onChange={(e) => setPdfOptions({ ...pdfOptions, selectedProject: e.target.value })}
+                    onChange={(e) =>
+                      setPdfOptions({ ...pdfOptions, selectedProject: e.target.value })
+                    }
                     className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF]"
                   >
                     <option value="all">All Projects</option>
@@ -132,11 +138,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Date Range</label>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Date Range
+                  </label>
                   <select
                     value={pdfOptions.dateRange}
                     onChange={(e) =>
-                      setPdfOptions({ ...pdfOptions, dateRange: e.target.value as PdfExportOptions['dateRange'] })
+                      setPdfOptions({
+                        ...pdfOptions,
+                        dateRange: e.target.value as PdfExportOptions['dateRange'],
+                      })
                     }
                     className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF]"
                   >
@@ -153,7 +164,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <input
                     type="checkbox"
                     checked={pdfOptions.includeSummary}
-                    onChange={(e) => setPdfOptions({ ...pdfOptions, includeSummary: e.target.checked })}
+                    onChange={(e) =>
+                      setPdfOptions({ ...pdfOptions, includeSummary: e.target.checked })
+                    }
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
                   />
                   <span>Include Summary Statistics Card</span>
@@ -163,7 +176,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <input
                     type="checkbox"
                     checked={pdfOptions.includeLaps}
-                    onChange={(e) => setPdfOptions({ ...pdfOptions, includeLaps: e.target.checked })}
+                    onChange={(e) =>
+                      setPdfOptions({ ...pdfOptions, includeLaps: e.target.checked })
+                    }
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
                   />
                   <span>Include Lap Count Column</span>
@@ -173,7 +188,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <input
                     type="checkbox"
                     checked={pdfOptions.includeNotes}
-                    onChange={(e) => setPdfOptions({ ...pdfOptions, includeNotes: e.target.checked })}
+                    onChange={(e) =>
+                      setPdfOptions({ ...pdfOptions, includeNotes: e.target.checked })
+                    }
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
                   />
                   <span>Include Session Notes Column</span>
@@ -193,7 +210,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'csv' && (
             <div className="space-y-4 text-center py-4">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs">
-                Export all session records to an editable <strong>.CSV file</strong> compatible with Microsoft Excel, Google Sheets, or custom data processing software.
+                Export all session records to an editable <strong>.CSV file</strong> compatible with
+                Microsoft Excel, Google Sheets, or custom data processing software.
               </div>
               <button
                 onClick={handleExportCsv}
@@ -208,7 +226,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'json' && (
             <div className="space-y-4 text-center py-4">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs">
-                Export your complete app state (settings, custom projects, time logs, and laps) to a portable <strong>.JSON file</strong> to share or move between PCs without losing data.
+                Export your complete app state (settings, custom projects, time logs, and laps) to a
+                portable <strong>.JSON file</strong> to share or move between PCs without losing
+                data.
               </div>
               <button
                 onClick={handleExportJson}

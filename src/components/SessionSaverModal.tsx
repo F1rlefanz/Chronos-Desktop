@@ -27,7 +27,9 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
   defaultProjectId,
 }) => {
   const [title, setTitle] = useState<string>('Recorded Time Session');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjectId || projects[0]?.id || 'proj-work');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    defaultProjectId || projects[0]?.id || 'proj-work'
+  );
   const [tagInput, setTagInput] = useState<string>('work, focused');
   const [notes, setNotes] = useState<string>('');
 

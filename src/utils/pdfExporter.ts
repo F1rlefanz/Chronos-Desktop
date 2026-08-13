@@ -1,7 +1,12 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TimeEntry, Project, PdfExportOptions } from '../types';
-import { formatTimeDisplay, formatDateTime, formatDateOnly, formatDurationHuman } from './timeFormatters';
+import {
+  formatTimeDisplay,
+  formatDateTime,
+  formatDateOnly,
+  formatDurationHuman,
+} from './timeFormatters';
 
 /**
  * Generates and downloads a clean, professional PDF report of tracked time sessions.
@@ -50,7 +55,11 @@ export function generatePdfReport(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(203, 213, 225); // slate-300
-  doc.text(`Generated: ${formatDateTime(now)} | Author: ${options.author || 'Stopwatch App'}`, 14, 28);
+  doc.text(
+    `Generated: ${formatDateTime(now)} | Author: ${options.author || 'Stopwatch App'}`,
+    14,
+    28
+  );
   doc.text(`Total Records: ${filteredEntries.length}`, 196, 28, { align: 'right' });
 
   let currentY = 44;
@@ -72,7 +81,11 @@ export function generatePdfReport(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Total Duration: ${formatDurationHuman(totalMs)} (${totalHoursFormatted} hours)`, 20, currentY + 16);
+    doc.text(
+      `Total Duration: ${formatDurationHuman(totalMs)} (${totalHoursFormatted} hours)`,
+      20,
+      currentY + 16
+    );
     doc.text(`Filter Period: ${options.dateRange.toUpperCase()}`, 110, currentY + 16);
 
     currentY += 32;
@@ -86,7 +99,9 @@ export function generatePdfReport(
   const tableData = filteredEntries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
-    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, { includeMilliseconds: true });
+    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+      includeMilliseconds: true,
+    });
 
     const row = [
       entry.title || 'Untitled Session',
@@ -99,7 +114,9 @@ export function generatePdfReport(
       row.push(entry.laps.length > 0 ? `${entry.laps.length} laps` : '-');
     }
     if (options.includeNotes) {
-      row.push(entry.notes ? entry.notes.substring(0, 35) + (entry.notes.length > 35 ? '...' : '') : '-');
+      row.push(
+        entry.notes ? entry.notes.substring(0, 35) + (entry.notes.length > 35 ? '...' : '') : '-'
+      );
     }
 
     return row;
@@ -127,17 +144,14 @@ export function generatePdfReport(
   });
 
   // Footer on each page
-  const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
+  const pageCount = (
+    doc as unknown as { internal: { getNumberOfPages: () => number } }
+  ).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text(
-      `Stopwatch & Time Tracker — Page ${i} of ${pageCount}`,
-      105,
-      287,
-      { align: 'center' }
-    );
+    doc.text(`Stopwatch & Time Tracker — Page ${i} of ${pageCount}`, 105, 287, { align: 'center' });
   }
 
   // Trigger download

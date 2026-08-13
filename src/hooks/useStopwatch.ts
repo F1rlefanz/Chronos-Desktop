@@ -15,7 +15,9 @@ export interface UseStopwatchReturn {
   reset: () => void;
 }
 
-export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_UPDATE_INTERVAL_MS): UseStopwatchReturn {
+export function useStopwatch(
+  intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_UPDATE_INTERVAL_MS
+): UseStopwatchReturn {
   const [elapsedTimeMs, setElapsedTimeMs] = useState<number>(0);
   const [timerState, setTimerState] = useState<TimerState>('IDLE');
   const [laps, setLaps] = useState<Lap[]>([]);

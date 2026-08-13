@@ -95,8 +95,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
-                <span className="text-xs font-semibold text-gray-800 block">Show Milliseconds (.00)</span>
-                <span className="text-[11px] text-gray-400">Display high-precision hundredths of a second readout</span>
+                <span className="text-xs font-semibold text-gray-800 block">
+                  Show Milliseconds (.00)
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  Display high-precision hundredths of a second readout
+                </span>
               </div>
               <input
                 type="checkbox"
@@ -108,8 +112,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
-                <span className="text-xs font-semibold text-gray-800 block">Desktop Window Frame</span>
-                <span className="text-[11px] text-gray-400">Render top desktop title bar for standalone window feel</span>
+                <span className="text-xs font-semibold text-gray-800 block">
+                  Desktop Window Frame
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  Render top desktop title bar for standalone window feel
+                </span>
               </div>
               <input
                 type="checkbox"
@@ -121,8 +129,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
-                <span className="text-xs font-semibold text-gray-800 block">Keyboard Shortcuts</span>
-                <span className="text-[11px] text-gray-400">Enable Space (Start/Pause), L (Lap), S (Save), R (Reset)</span>
+                <span className="text-xs font-semibold text-gray-800 block">
+                  Keyboard Shortcuts
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  Enable Space (Start/Pause), L (Lap), S (Save), R (Reset)
+                </span>
               </div>
               <input
                 type="checkbox"
@@ -141,9 +153,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div className="space-y-2">
               {projects.map((proj) => (
-                <div key={proj.id} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
+                <div
+                  key={proj.id}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 border border-gray-200/80"
+                >
                   <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: proj.color }} />
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: proj.color }}
+                    />
                     <span className="text-xs font-semibold text-gray-800">{proj.name}</span>
                   </div>
                   <button
@@ -190,8 +208,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
               <div>
-                <span className="text-xs font-semibold text-gray-800 block">Restore from JSON Backup</span>
-                <span className="text-[11px] text-gray-400">Import previously exported stopwatch data</span>
+                <span className="text-xs font-semibold text-gray-800 block">
+                  Restore from JSON Backup
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  Import previously exported stopwatch data
+                </span>
               </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
