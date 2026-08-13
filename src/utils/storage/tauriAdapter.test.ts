@@ -68,3 +68,54 @@ describe('tauriAdapter', () => {
     });
   });
 });
+
+describe('tauriAdapter backups', () => {
+  beforeEach(() => {
+    invoke.mockReset();
+  });
+
+  it('offers backup support, unlike the browser backend', () => {
+    expect(tauriAdapter.backups).toBeDefined();
+  });
+
+  it('lists through the backup_list command', async () => {
+    invoke.mockResolvedValue(['chronos-backup-2026-08-13-090000-daily.json']);
+
+    expect(await tauriAdapter.backups?.list()).toEqual([
+      'chronos-backup-2026-08-13-090000-daily.json',
+    ]);
+    expect(invoke).toHaveBeenCalledWith('backup_list');
+  });
+
+  it('treats an unreadable folder as no backups rather than an error', async () => {
+    // The caller uses an empty list to decide "no snapshot today yet"; throwing
+    // here would break startup over something recoverable.
+    invoke.mockRejectedValue({ reason: 'io', message: 'Cannot read directory.' });
+
+    expect(await tauriAdapter.backups?.list()).toEqual([]);
+  });
+
+  it('writes through the backup_write command', async () => {
+    invoke.mockResolvedValue(null);
+
+    expect(await tauriAdapter.backups?.write('snap.json', '{}')).toEqual({ ok: true });
+    expect(invoke).toHaveBeenCalledWith('backup_write', { name: 'snap.json', contents: '{}' });
+  });
+
+  it("keeps the Rust side's reason when a snapshot is rejected", async () => {
+    invoke.mockRejectedValue({ reason: 'quota', message: 'The disk is full.' });
+
+    expect(await tauriAdapter.backups?.write('snap.json', '{}')).toEqual({
+      ok: false,
+      reason: 'quota',
+      message: 'The disk is full.',
+    });
+  });
+
+  it('reveals through the backup_reveal command', async () => {
+    invoke.mockResolvedValue(null);
+
+    await tauriAdapter.backups?.reveal();
+    expect(invoke).toHaveBeenCalledWith('backup_reveal');
+  });
+});

@@ -22,10 +22,29 @@ export type WriteFailureReason =
  */
 export type WriteResult = { ok: true } | { ok: false; reason: WriteFailureReason; message: string };
 
+/**
+ * Rotating snapshots kept beside the live data.
+ *
+ * Optional on purpose: the browser backend has no room for a second copy — the
+ * quota that raises the persistence banner is the same one backups would eat —
+ * so `localStorage` simply does not offer this, and the UI hides what it cannot
+ * do rather than pretending the app is protected when it is not.
+ */
+export interface BackupSupport {
+  /** Existing backup file names, oldest first. */
+  list(): Promise<string[]>;
+  /** Writes one snapshot and prunes the oldest beyond the retention limit. */
+  write(name: string, contents: string): Promise<WriteResult>;
+  /** Shows the folder to the user in their file manager. */
+  reveal(): Promise<void>;
+}
+
 export interface StorageAdapter {
   /** Identifies the backend in log output. */
   readonly name: string;
   /** Resolves to `null` when the key was never written or cannot be read. */
   read(key: string): Promise<string | null>;
   write(key: string, value: string): Promise<WriteResult>;
+  /** Absent when the backend cannot keep snapshots. */
+  readonly backups?: BackupSupport;
 }

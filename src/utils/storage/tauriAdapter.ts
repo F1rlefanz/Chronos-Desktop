@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { StorageAdapter, WriteFailureReason, WriteResult } from './types';
+import { BackupSupport, StorageAdapter, WriteFailureReason, WriteResult } from './types';
 
 /**
  * The shape `StorageError` in `src-tauri/src/lib.rs` serialises to. Errors
@@ -35,12 +35,41 @@ function toWriteResult(error: unknown): WriteResult {
   };
 }
 
+const backups: BackupSupport = {
+  async list(): Promise<string[]> {
+    try {
+      return await invoke<string[]>('backup_list');
+    } catch (error) {
+      // Not knowing what is there is not a reason to stop; the caller treats an
+      // empty list as "no snapshot today yet" and writes one.
+      console.warn('[Backup] Could not list backups:', error);
+      return [];
+    }
+  },
+
+  async write(name: string, contents: string): Promise<WriteResult> {
+    try {
+      await invoke('backup_write', { name, contents });
+      return { ok: true };
+    } catch (error) {
+      console.error(`[Backup] Error writing "${name}":`, error);
+      return toWriteResult(error);
+    }
+  },
+
+  async reveal(): Promise<void> {
+    await invoke('backup_reveal');
+  },
+};
+
 /**
  * Persists through the Rust side, which writes to
  * `%LOCALAPPDATA%\Chronos Desktop\data\<key>.json` via a temporary file and a
  * rename, so a crash cannot leave a half-written file behind.
  */
 export const tauriAdapter: StorageAdapter = {
+  backups,
+
   name: 'tauri',
 
   async read(key: string): Promise<string | null> {

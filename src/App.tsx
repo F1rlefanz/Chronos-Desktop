@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
-import { ImportedData } from './utils/dataExporter';
+import { ImportedData, buildBackupPayload } from './utils/dataExporter';
 import {
   saveSettings,
   saveTimeEntries,
   saveProjects,
   migrateSettings,
+  backupsAvailable,
+  ensureDailyBackup,
+  writeBackup,
+  revealBackups,
+  BackupReason,
   PersistedState,
   WriteResult,
 } from './utils/storage';
@@ -64,6 +69,25 @@ export default function App({ initialState }: AppProps) {
   // High-Precision Stopwatch Hook
   const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
     useStopwatch(settings.timerIntervalMs);
+
+  // One snapshot per day, of the state as it was found on disk — the slow
+  // counterpart to the snapshots taken before a destructive action. It is
+  // deliberately quiet: a missing daily backup loses nothing the user just did,
+  // so a banner on startup would only alarm without offering an action.
+  const dailyBackupRef = useRef(false);
+
+  useEffect(() => {
+    if (dailyBackupRef.current || !backupsAvailable()) return;
+    dailyBackupRef.current = true;
+
+    void ensureDailyBackup(() =>
+      buildBackupPayload(initialState.entries, initialState.projects, initialState.settings)
+    ).then((result) => {
+      if (result && !result.ok) {
+        console.warn(`[Backup] Daily snapshot failed: ${result.message}`);
+      }
+    });
+  }, [initialState]);
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
@@ -219,7 +243,27 @@ export default function App({ initialState }: AppProps) {
     void persist(saveTimeEntries(updated), 'the updated history');
   };
 
-  const handleClearAllHistory = () => {
+  /**
+   * Snapshots the current state before something that replaces or destroys it.
+   *
+   * A failed backup does not veto the user's request, but it is not swallowed
+   * either: this is the one moment where knowing there is no safety net can
+   * change the decision, so it asks rather than warning afterwards.
+   */
+  const backupBefore = async (reason: BackupReason, action: string): Promise<boolean> => {
+    if (!backupsAvailable()) return true;
+
+    const result = await writeBackup(reason, buildBackupPayload(timeEntries, projects, settings));
+    if (result.ok) return true;
+
+    return window.confirm(
+      `Could not write a safety backup: ${result.message}\n\nContinue ${action} anyway?`
+    );
+  };
+
+  const handleClearAllHistory = async () => {
+    if (!(await backupBefore('before-clear', 'clearing the history'))) return;
+
     setTimeEntries([]);
     void persist(saveTimeEntries([]), 'the cleared history');
   };
@@ -235,8 +279,12 @@ export default function App({ initialState }: AppProps) {
     void persist(saveProjects(updatedProjects), 'your projects');
   };
 
-  const handleImportData = (data: ImportedData) => {
-    // An import is the most likely way to hit the quota, and it replaces
+  const handleImportData = async (data: ImportedData) => {
+    // An import overwrites everything at once, so the state it replaces is
+    // snapshotted first — this is the accident a backup exists for.
+    if (!(await backupBefore('before-import', 'importing'))) return;
+
+    // An import is also the most likely way to hit the quota, and it replaces
     // everything at once — so all three writes are reported together rather
     // than letting a later success clear an earlier failure's warning.
     const writes: Promise<WriteResult>[] = [];
@@ -459,6 +507,7 @@ export default function App({ initialState }: AppProps) {
         projects={projects}
         onUpdateProjects={handleUpdateProjects}
         onImportData={handleImportData}
+        onRevealBackups={backupsAvailable() ? () => void revealBackups() : undefined}
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />
