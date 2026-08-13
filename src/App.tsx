@@ -39,6 +39,11 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
 
+  // Set when a write to localStorage failed — usually the 5 MB quota, which a
+  // long history plus a large import can reach. The write is the only copy of
+  // the data, so failing silently means the entry is gone on the next reload.
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+
   // Stopped Session Pending Save State
   const [pendingSaveData, setPendingSaveData] = useState<{
     recordedMs: number;
@@ -168,6 +173,13 @@ export default function App() {
     setIsSaverOpen(true);
   }, [playAudioCue, stop]);
 
+  // Every persisting handler routes its result through here, so a rejected
+  // write surfaces in the UI instead of only in the console. A later successful
+  // write clears the warning again.
+  const persist = (succeeded: boolean, what: string): void => {
+    setPersistenceError(succeeded ? null : what);
+  };
+
   const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
     const newEntry: TimeEntry = {
       ...entryData,
@@ -177,7 +189,7 @@ export default function App() {
 
     const updated = [newEntry, ...timeEntries];
     setTimeEntries(updated);
-    saveTimeEntries(updated);
+    persist(saveTimeEntries(updated), 'this session');
     setPendingSaveData(null);
     reset();
   };
@@ -185,33 +197,38 @@ export default function App() {
   const handleDeleteEntry = (id: string) => {
     const updated = timeEntries.filter((e) => e.id !== id);
     setTimeEntries(updated);
-    saveTimeEntries(updated);
+    persist(saveTimeEntries(updated), 'the updated history');
   };
 
   const handleClearAllHistory = () => {
     setTimeEntries([]);
-    saveTimeEntries([]);
+    persist(saveTimeEntries([]), 'the cleared history');
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
-    saveSettings(updated);
+    persist(saveSettings(updated), 'your settings');
   };
 
   const handleUpdateProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
-    saveProjects(updatedProjects);
+    persist(saveProjects(updatedProjects), 'your projects');
   };
 
   const handleImportData = (data: ImportedData) => {
+    // An import is the most likely way to hit the quota, and it replaces
+    // everything at once — so all three writes are reported together rather
+    // than letting a later success clear an earlier failure's warning.
+    let allWritesSucceeded = true;
+
     if (Array.isArray(data.entries) && data.entries.length > 0) {
       setTimeEntries(data.entries);
-      saveTimeEntries(data.entries);
+      allWritesSucceeded = saveTimeEntries(data.entries) && allWritesSucceeded;
     }
     if (Array.isArray(data.projects) && data.projects.length > 0) {
       setProjects(data.projects);
-      saveProjects(data.projects);
+      allWritesSucceeded = saveProjects(data.projects) && allWritesSucceeded;
     }
     if (data.settings) {
       // Imported settings run through the same migration as stored ones, so a
@@ -219,8 +236,10 @@ export default function App() {
       // keys back into state.
       const updated = migrateSettings(data.settings);
       setSettings(updated);
-      saveSettings(updated);
+      allWritesSucceeded = saveSettings(updated) && allWritesSucceeded;
     }
+
+    persist(allWritesSucceeded, 'the imported data');
   };
 
   // The active project is derived, not stored a second time: deleting the
@@ -297,6 +316,29 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:py-8 space-y-6">
+        {/* Failed write warning — the only copy of the data is the one that
+            just failed to save, so this cannot be a console message. */}
+        {persistenceError && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 px-5 text-sm text-red-800"
+          >
+            <p>
+              <strong className="font-semibold">Could not save {persistenceError}.</strong> Local
+              storage is full or unavailable, so this change will be gone after a reload. Export a
+              JSON backup, then clear old sessions to free space.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPersistenceError(null)}
+              aria-label="Dismiss warning"
+              className="shrink-0 rounded-full px-2 text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Project Selector Bar */}
         <div className="flex items-center justify-between bg-white p-3 px-5 rounded-2xl border border-gray-200/80 shadow-2xs">
           <div className="flex items-center gap-2">
