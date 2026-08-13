@@ -56,7 +56,7 @@ describe('tauriAdapter', () => {
     expect(await tauriAdapter.write('settings_v1', '{}')).toEqual({
       ok: false,
       reason: 'unavailable',
-      message: 'The desktop backend did not respond to the save.',
+      message: 'Die Desktop-Ablage hat auf das Speichern nicht reagiert.',
     });
   });
 

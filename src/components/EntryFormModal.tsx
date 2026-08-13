@@ -93,7 +93,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
     }
 
     onSave({
-      title: title.trim() || 'Untitled Session',
+      title: title.trim() || 'Ohne Titel',
       project: projectId,
       tags: tagInput
         .split(',')
@@ -114,12 +114,12 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-200">
           <div className="flex items-center gap-2 text-[#2D5BFF] font-semibold text-base">
             <Clock className="w-5 h-5" />
-            <span>{isEditing ? 'Edit Entry' : 'Add Entry'}</span>
+            <span>{isEditing ? 'Eintrag bearbeiten' : 'Eintrag hinzufügen'}</span>
           </div>
           <button
             onClick={onClose}
             className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
+            aria-label="Schließen"
           >
             <X className="w-5 h-5" />
           </button>
@@ -134,7 +134,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 htmlFor="entry-start"
                 className="block text-xs font-semibold text-gray-700 mb-1"
               >
-                Start
+                Beginn
               </label>
               <input
                 id="entry-start"
@@ -147,7 +147,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
             </div>
             <div>
               <label htmlFor="entry-end" className="block text-xs font-semibold text-gray-700 mb-1">
-                End
+                Ende
               </label>
               <input
                 id="entry-end"
@@ -172,9 +172,9 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
               />
               <span>
-                Keep this entry running
+                Erfassung weiterlaufen lassen
                 {!keepRunning && (
-                  <strong className="text-rose-600"> — saving will stop the measurement</strong>
+                  <strong className="text-rose-600"> — Speichern beendet die Erfassung</strong>
                 )}
               </span>
             </label>
@@ -185,10 +185,10 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-gray-700">
-                Breaks{' '}
+                Pausen{' '}
                 {breaks.length > 0 && (
                   <span className="font-normal text-gray-400">
-                    ({formatDurationHuman(breakMs(draft))} total)
+                    (zusammen {formatDurationHuman(breakMs(draft))})
                   </span>
                 )}
               </span>
@@ -198,19 +198,19 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 className="flex items-center gap-1 text-[11px] font-semibold text-[#2D5BFF] hover:text-blue-700 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add break</span>
+                <span>Pause hinzufügen</span>
               </button>
             </div>
 
             {breaks.length === 0 ? (
-              <p className="text-[11px] text-gray-400">No breaks recorded.</p>
+              <p className="text-[11px] text-gray-400">Keine Pausen erfasst.</p>
             ) : (
               <div className="space-y-2">
                 {breaks.map((pause) => (
                   <div key={pause.id} className="flex items-center gap-2">
                     <input
                       type="datetime-local"
-                      aria-label="Break start"
+                      aria-label="Pausenbeginn"
                       value={toDateTimeInputValue(pause.startTime)}
                       onChange={(e) =>
                         updateBreak(pause.id, {
@@ -222,7 +222,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                     <span className="text-gray-300 text-xs">–</span>
                     <input
                       type="datetime-local"
-                      aria-label="Break end"
+                      aria-label="Pausenende"
                       value={pause.endTime === null ? '' : toDateTimeInputValue(pause.endTime)}
                       onChange={(e) =>
                         updateBreak(pause.id, {
@@ -234,7 +234,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                     <button
                       type="button"
                       onClick={() => removeBreak(pause.id)}
-                      aria-label="Remove break"
+                      aria-label="Pause entfernen"
                       className="p-1.5 shrink-0 rounded-full text-gray-400 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -247,14 +247,14 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
 
           <div>
             <label htmlFor="entry-title" className="block text-xs font-semibold text-gray-700 mb-1">
-              Title
+              Titel
             </label>
             <input
               id="entry-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Feature Implementation"
+              placeholder="z. B. Unterricht vorbereitet"
               className={FIELD}
             />
           </div>
@@ -266,7 +266,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1"
               >
                 <Folder className="w-3.5 h-3.5 text-[#2D5BFF]" />
-                <span>Project</span>
+                <span>Projekt</span>
               </label>
               <select
                 id="entry-project"
@@ -287,14 +287,14 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
                 className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1"
               >
                 <Tag className="w-3.5 h-3.5 text-purple-500" />
-                <span>Tags</span>
+                <span>Schlagwörter</span>
               </label>
               <input
                 id="entry-tags"
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                placeholder="coding, meeting"
+                placeholder="Besprechung, Vorbereitung"
                 className={FIELD}
               />
             </div>
@@ -306,7 +306,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
               className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1"
             >
               <FileText className="w-3.5 h-3.5 text-amber-500" />
-              <span>Notes</span>
+              <span>Notiz</span>
             </label>
             <textarea
               id="entry-notes"
@@ -329,9 +329,9 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
             </ul>
           ) : (
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-              Net time:{' '}
+              Arbeitszeit:{' '}
               <strong className="text-[#2D5BFF]">{formatDurationHuman(preview ?? 0)}</strong>
-              {keepRunning && <span className="text-gray-400"> — still counting</span>}
+              {keepRunning && <span className="text-gray-400"> — läuft weiter</span>}
             </div>
           )}
 
@@ -341,7 +341,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
               onClick={onClose}
               className="px-4 py-2.5 rounded-full text-xs font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
             >
-              Cancel
+              Abbrechen
             </button>
             <button
               type="submit"
@@ -349,7 +349,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
               className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-md shadow-blue-500/20 transition-all cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>{isEditing ? 'Save Changes' : 'Add Entry'}</span>
+              <span>{isEditing ? 'Änderungen speichern' : 'Eintrag anlegen'}</span>
             </button>
           </div>
         </form>

@@ -28,13 +28,13 @@ export const BreakList: React.FC<BreakListProps> = ({ breaks, now }) => {
       <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
         <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
           <Coffee className="w-4 h-4 text-amber-500" />
-          <span>Breaks</span>
+          <span>Pausen</span>
           <span className="text-xs bg-gray-100 text-gray-600 font-normal px-2.5 py-0.5 rounded-full">
-            {breaks.length} {breaks.length === 1 ? 'break' : 'breaks'}
+            {breaks.length} {breaks.length === 1 ? 'Pause' : 'Pausen'}
           </span>
         </h3>
         <span className="text-[11px] text-gray-500">
-          Not counted as work:{' '}
+          Nicht als Arbeitszeit:{' '}
           <strong className="text-gray-800">{formatDurationHuman(total)}</strong>
         </span>
       </div>
@@ -59,7 +59,7 @@ export const BreakList: React.FC<BreakListProps> = ({ breaks, now }) => {
                 </span>
                 {running && (
                   <span className="flex items-center gap-1 text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-medium">
-                    <Pause className="w-3 h-3 fill-white" /> Ongoing
+                    <Pause className="w-3 h-3 fill-white" /> läuft
                   </span>
                 )}
               </div>

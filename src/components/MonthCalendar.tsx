@@ -77,14 +77,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
         <div className="flex items-center gap-1">
           <button
             onClick={() => step(-1)}
-            aria-label="Previous month"
+            aria-label="Vorheriger Monat"
             className="p-1.5 rounded-full text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => step(1)}
-            aria-label="Next month"
+            aria-label="Nächster Monat"
             className="p-1.5 rounded-full text-gray-400 hover:text-gray-800 hover:bg-gray-100 transition-colors cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
@@ -117,9 +117,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
               key={key}
               type="button"
               onClick={() => setSelectedKey(isSelected ? null : key)}
-              title={total > 0 ? formatDurationHuman(total) : 'Nothing recorded'}
+              title={total > 0 ? formatDurationHuman(total) : 'Nichts erfasst'}
               aria-label={`${date.getDate()} ${MONTH_LABELS[viewMonth]}: ${
-                total > 0 ? formatDurationHuman(total) : 'nothing recorded'
+                total > 0 ? formatDurationHuman(total) : 'nichts erfasst'
               }`}
               className={`aspect-square rounded-lg flex flex-col items-center justify-center transition-all cursor-pointer border ${
                 isSelected
@@ -144,14 +144,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
 
       {/* The rule stated where it can actually mislead someone. */}
       <p className="mt-3 text-[10px] text-gray-400">
-        An entry counts towards the day it started on, so work past midnight stays on the earlier
-        day.
+        Ein Eintrag zählt zu dem Tag, an dem er begonnen hat — Arbeit über Mitternacht bleibt beim
+        früheren Tag.
       </p>
 
       {selectedKey && (
         <div className="mt-4 pt-4 border-t border-gray-100">
           {selectedEntries.length === 0 ? (
-            <p className="text-xs text-gray-400">Nothing recorded on this day.</p>
+            <p className="text-xs text-gray-400">An diesem Tag wurde nichts erfasst.</p>
           ) : (
             <ul className="space-y-1.5">
               {selectedEntries.map((entry) => (
@@ -162,7 +162,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
                     className="w-full flex items-center justify-between gap-3 text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <span className="text-xs text-gray-800 truncate">
-                      {entry.title || 'Untitled Session'}
+                      {entry.title || 'Ohne Titel'}
                     </span>
                     <span className="text-xs font-semibold text-gray-900 tabular-nums shrink-0">
                       {formatDurationHuman(netMs(entry, now))}

@@ -98,7 +98,7 @@ export default function App({ initialState }: AppProps) {
   const currentProject = useMemo(() => {
     return (
       projects.find((p) => p.id === selectedProjectId) ||
-      projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' }
+      projects[0] || { id: 'proj-work', name: 'Allgemein', color: '#10b981' }
     );
   }, [projects, selectedProjectId]);
 
@@ -270,7 +270,7 @@ export default function App({ initialState }: AppProps) {
   const handleDeleteEntry = (id: string) => {
     const updated = timeEntries.filter((e) => e.id !== id);
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'the updated history');
+    void persist(saveTimeEntries(updated), 'die Änderung');
   };
 
   const openEntryForm = (entry: TimeEntry | null) => {
@@ -302,7 +302,7 @@ export default function App({ initialState }: AppProps) {
         ];
 
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), entryUnderEdit ? 'this change' : 'the new entry');
+    void persist(saveTimeEntries(updated), entryUnderEdit ? 'die Änderung' : 'den neuen Eintrag');
     setEntryUnderEdit(null);
   };
 
@@ -348,7 +348,7 @@ export default function App({ initialState }: AppProps) {
 
     setTimeEntries((current) => {
       const updated = [entry, ...current];
-      void persist(saveTimeEntries(updated), 'the started measurement');
+      void persist(saveTimeEntries(updated), 'die gestartete Erfassung');
       return updated;
     });
   }, [playAudioCue, persist, activeProjectId]);
@@ -367,16 +367,13 @@ export default function App({ initialState }: AppProps) {
           },
         ],
       }),
-      'this break'
+      'die Pause'
     );
   }, [playAudioCue, patchRunningEntry]);
 
   const handleResume = useCallback(() => {
     playAudioCue('start');
-    patchRunningEntry(
-      (entry) => ({ ...entry, breaks: closeOpenBreak(entry.breaks) }),
-      'this break'
-    );
+    patchRunningEntry((entry) => ({ ...entry, breaks: closeOpenBreak(entry.breaks) }), 'die Pause');
   }, [playAudioCue, patchRunningEntry]);
 
   /**
@@ -398,7 +395,7 @@ export default function App({ initialState }: AppProps) {
         stoppedId = entry.id;
         return { ...entry, endTime: stoppedAt, breaks: closeOpenBreak(entry.breaks, stoppedAt) };
       });
-      void persist(saveTimeEntries(updated), 'the finished measurement');
+      void persist(saveTimeEntries(updated), 'die beendete Erfassung');
       return updated;
     });
 
@@ -428,17 +425,17 @@ export default function App({ initialState }: AppProps) {
       entry.id === pendingSaveEntryId ? { ...entry, ...patch } : entry
     );
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'this session');
+    void persist(saveTimeEntries(updated), 'diesen Eintrag');
     closeSaver();
   };
 
   /** Deletes the entry the dialog is about — an explicit "that was not work". */
   const handleDiscardPendingEntry = () => {
-    if (!window.confirm('Discard this session? The recorded time will be deleted.')) return;
+    if (!window.confirm('Diesen Eintrag löschen? Die erfasste Zeit geht verloren.')) return;
 
     const updated = timeEntries.filter((entry) => entry.id !== pendingSaveEntryId);
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'the discarded session');
+    void persist(saveTimeEntries(updated), 'das Löschen');
     closeSaver();
   };
 
@@ -459,7 +456,7 @@ export default function App({ initialState }: AppProps) {
         : entry
     );
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'the recovered measurement');
+    void persist(saveTimeEntries(updated), 'die wiederhergestellte Erfassung');
     setRecoveryEntryId(null);
   };
 
@@ -471,13 +468,13 @@ export default function App({ initialState }: AppProps) {
   /** Throws away the running measurement — the only destructive timer action. */
   const handleDiscardRunning = useCallback(() => {
     const confirmed = window.confirm(
-      'Discard the running measurement? The time recorded so far will be deleted.'
+      'Laufende Erfassung verwerfen? Die bisher erfasste Zeit wird gelöscht.'
     );
     if (!confirmed) return;
 
     setTimeEntries((current) => {
       const updated = current.filter((entry) => !isRunning(entry));
-      void persist(saveTimeEntries(updated), 'the discarded measurement');
+      void persist(saveTimeEntries(updated), 'das Verwerfen');
       return updated;
     });
   }, [persist]);
@@ -499,32 +496,32 @@ export default function App({ initialState }: AppProps) {
     }
 
     return window.confirm(
-      `Could not write a safety backup: ${result.message}\n\nContinue ${action} anyway?`
+      `Es konnte keine Sicherung angelegt werden: ${result.message}\n\n${action} trotzdem fortsetzen?`
     );
   };
 
   const handleClearAllHistory = async () => {
-    if (!(await backupBefore('before-clear', 'clearing the history'))) return;
+    if (!(await backupBefore('before-clear', 'Das Löschen aller Einträge'))) return;
 
     setTimeEntries([]);
-    void persist(saveTimeEntries([]), 'the cleared history');
+    void persist(saveTimeEntries([]), 'das Leeren der Liste');
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
-    void persist(saveSettings(updated), 'your settings');
+    void persist(saveSettings(updated), 'die Einstellungen');
   };
 
   const handleUpdateProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
-    void persist(saveProjects(updatedProjects), 'your projects');
+    void persist(saveProjects(updatedProjects), 'die Projekte');
   };
 
   const handleImportData = async (data: ImportedData) => {
     // An import overwrites everything at once, so the state it replaces is
     // snapshotted first — this is the accident a backup exists for.
-    if (!(await backupBefore('before-import', 'importing'))) return;
+    if (!(await backupBefore('before-import', 'Den Import'))) return;
 
     // An import is also the most likely way to hit the quota, and it replaces
     // everything at once — so all three writes are reported together rather
@@ -552,7 +549,7 @@ export default function App({ initialState }: AppProps) {
       (results): WriteResult => results.find((result) => !result.ok) ?? { ok: true }
     );
 
-    void persist(combined, 'the imported data');
+    void persist(combined, 'die importierten Daten');
   };
 
   // Global Keyboard Shortcuts Listener
@@ -619,14 +616,16 @@ export default function App({ initialState }: AppProps) {
             className="flex items-start justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 px-5 text-sm text-red-800"
           >
             <p>
-              <strong className="font-semibold">Could not save {persistenceError.what}.</strong>{' '}
+              <strong className="font-semibold">
+                {persistenceError.what} konnte nicht gespeichert werden.
+              </strong>{' '}
               {persistenceError.detail} This change will be gone after a reload — export a JSON
               backup while it is still on screen.
             </p>
             <button
               type="button"
               onClick={() => setPersistenceError(null)}
-              aria-label="Dismiss warning"
+              aria-label="Hinweis schließen"
               className="shrink-0 rounded-full px-2 text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
             >
               ✕
@@ -637,7 +636,7 @@ export default function App({ initialState }: AppProps) {
         {/* Project Selector Bar */}
         <div className="flex items-center justify-between bg-white p-3 px-5 rounded-2xl border border-gray-200/80 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Tracking Category:</span>
+            <span className="text-xs text-gray-500 font-medium">Projekt:</span>
             <select
               value={activeProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
@@ -652,7 +651,7 @@ export default function App({ initialState }: AppProps) {
           </div>
 
           <div className="text-xs text-gray-400 hidden sm:block">
-            Precision: <strong className="text-[#2D5BFF]">10ms (0.01s)</strong>
+            Wird lokal gespeichert — <strong className="text-[#2D5BFF]">ohne Cloud</strong>
           </div>
         </div>
 
@@ -686,11 +685,11 @@ export default function App({ initialState }: AppProps) {
         <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TimeBarChart title="Last 12 weeks" points={lastTwelveWeeks} />
-          <TimeBarChart title="By weekday" points={weekdaySeries} />
+          <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
+          <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
         </div>
 
-        <TimeBarChart title={`Months of ${new Date(now).getFullYear()}`} points={thisYearByMonth} />
+        <TimeBarChart title={`Monate ${new Date(now).getFullYear()}`} points={thisYearByMonth} />
 
         {/* Session History Log & Export Table */}
         <SessionHistory
@@ -706,7 +705,7 @@ export default function App({ initialState }: AppProps) {
 
       {/* Footer */}
       <footer className="border-t border-gray-200/80 bg-white py-4 text-center text-xs text-gray-400">
-        <p>Chronos Desktop • Modular Desktop Time Engine • High Precision</p>
+        <p>Chronos Desktop • Zeiterfassung • lokal gespeichert, ohne Cloud</p>
       </footer>
 
       {/* Modals */}

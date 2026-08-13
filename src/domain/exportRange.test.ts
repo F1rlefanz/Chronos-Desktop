@@ -45,7 +45,7 @@ describe('resolveExportRange', () => {
       NOW
     );
 
-    expect(resolved.label).toBe('Dec 2025');
+    expect(resolved.label).toBe('Dezember 2025');
     expect(resolved.slug).toBe('2025-12');
     expect(new Date(resolved.range!.from).getDate()).toBe(1);
     expect(new Date(resolved.range!.from).getMonth()).toBe(11);
@@ -84,7 +84,7 @@ describe('resolveExportRange', () => {
       selection({ kind: 'custom', from: '2026-01-10', to: '2026-01-01' }),
       NOW
     );
-    expect(resolved.error).toMatch(/must not be before/i);
+    expect(resolved.error).toMatch(/darf nicht vor dem Beginn liegen/i);
   });
 
   it('starts this week on Monday', () => {

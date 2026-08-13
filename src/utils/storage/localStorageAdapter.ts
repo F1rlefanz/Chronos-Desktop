@@ -50,7 +50,7 @@ export const localStorageAdapter: StorageAdapter = {
       return Promise.resolve({
         ok: false,
         reason: 'unavailable',
-        message: 'Browser storage is disabled for this site.',
+        message: 'Der Browser-Speicher ist für diese Seite deaktiviert.',
       });
     }
 
@@ -64,14 +64,15 @@ export const localStorageAdapter: StorageAdapter = {
         return Promise.resolve({
           ok: false,
           reason: 'quota',
-          message: 'Browser storage is full — export a backup and clear old sessions.',
+          message:
+            'Der Browser-Speicher ist voll — Sicherung exportieren und alte Einträge löschen.',
         });
       }
 
       return Promise.resolve({
         ok: false,
         reason: 'io',
-        message: 'Browser storage rejected the write.',
+        message: 'Der Browser-Speicher hat das Schreiben abgelehnt.',
       });
     }
   },

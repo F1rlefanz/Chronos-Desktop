@@ -141,7 +141,7 @@ describe('importFromJsonFile', () => {
     );
 
     const entry = result.entries[0];
-    expect(entry.title).toBe('Untitled Session');
+    expect(entry.title).toBe('Ohne Titel');
     expect(entry.tags).toEqual(['keep']);
     expect(entry.startTime).toBe(0);
     expect(entry.breaks).toEqual([]);

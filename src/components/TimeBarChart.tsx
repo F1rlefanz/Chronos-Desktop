@@ -42,7 +42,7 @@ export const TimeBarChart: React.FC<TimeBarChartProps> = ({ title, points, empty
 
       {!hasData ? (
         <p className="text-xs text-gray-400 py-8 text-center">
-          {emptyHint ?? 'Nothing recorded in this period yet.'}
+          {emptyHint ?? 'In diesem Zeitraum wurde noch nichts erfasst.'}
         </p>
       ) : (
         <div className="relative">

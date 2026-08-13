@@ -29,14 +29,14 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[], slug: str
 
   const headers = [
     'ID',
-    'Title',
-    'Project',
-    'Start Time',
-    'End Time',
-    'Break (HH:MM:SS)',
-    'Duration (HH:MM:SS.ms)',
-    'Duration (Seconds)',
-    'Notes',
+    'Titel',
+    'Projekt',
+    'Beginn',
+    'Ende',
+    'Pause',
+    'Arbeitszeit',
+    'Arbeitszeit (Minuten)',
+    'Notiz',
   ];
 
   // One clock for the whole file, so a running entry cannot be counted with a
@@ -45,31 +45,35 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[], slug: str
 
   const rows = entries.map((entry) => {
     const proj = projectMap.get(entry.project);
-    const projName = proj ? proj.name : entry.project || 'General';
+    const projName = proj ? proj.name : entry.project || 'Allgemein';
     const net = netMs(entry, now);
     const { mainTime, subTime } = formatTimeDisplay(net, {
       includeMilliseconds: true,
     });
-    const durationSeconds = (net / 1000).toFixed(2);
+    // Minutes rather than seconds: this column exists to be summed in a
+    // spreadsheet, and nobody adds up a timesheet in seconds.
+    const durationMinutes = (net / 60_000).toFixed(2);
     const pause = formatTimeDisplay(breakMs(entry, now), { alwaysShowHours: true }).mainTime;
 
     const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
 
     return [
       escapeCsv(entry.id),
-      escapeCsv(entry.title || 'Untitled Session'),
+      escapeCsv(entry.title || 'Ohne Titel'),
       escapeCsv(projName),
       escapeCsv(formatDateTime(entry.startTime)),
-      escapeCsv(entry.endTime === null ? 'running' : formatDateTime(entry.endTime)),
+      escapeCsv(entry.endTime === null ? 'läuft' : formatDateTime(entry.endTime)),
       escapeCsv(pause),
       escapeCsv(`${mainTime}${subTime}`),
-      durationSeconds,
+      durationMinutes.replace('.', ','),
       escapeCsv(entry.notes || ''),
-    ].join(',');
+    ].join(';');
   });
 
-  // Leading BOM so Excel picks up UTF-8 for umlauts and other non-ASCII text.
-  const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  // Semicolon-separated, with a leading BOM. Excel in a German locale reads a
+  // comma as the decimal separator, so a comma-delimited file lands entirely in
+  // column A; the BOM is what makes it read the umlauts as UTF-8.
+  const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
   downloadBlob(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }), `chronos_${slug}.csv`);
 }
 
@@ -231,7 +235,7 @@ export function normalizeTimeEntry(raw: unknown): TimeEntry | null {
 
   return {
     id: asString(raw.id) || generateId('entry-imported'),
-    title: asString(raw.title) || 'Untitled Session',
+    title: asString(raw.title) || 'Ohne Titel',
     project: asString(raw.project),
     tags: Array.isArray(raw.tags) ? raw.tags.filter((t): t is string => typeof t === 'string') : [],
     startTime,

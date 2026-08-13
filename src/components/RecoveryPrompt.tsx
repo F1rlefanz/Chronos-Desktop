@@ -41,22 +41,22 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({
         <div className="flex items-center gap-2 px-6 py-4 bg-amber-50 border-b border-amber-200 text-amber-800">
           <AlertTriangle className="w-5 h-5" />
           <h2 id="recovery-title" className="font-semibold text-base">
-            A measurement was still running
+            Eine Erfassung lief noch
           </h2>
         </div>
 
         <div className="p-6 space-y-4">
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-1">
-            <p className="text-sm font-bold text-gray-900">{entry.title || 'Untitled Session'}</p>
-            <p className="text-xs text-gray-500">Started {formatDateTime(entry.startTime)}</p>
+            <p className="text-sm font-bold text-gray-900">{entry.title || 'Ohne Titel'}</p>
+            <p className="text-xs text-gray-500">Gestartet am {formatDateTime(entry.startTime)}</p>
             <p className="text-xs text-gray-500">
-              Counted so far:{' '}
+              Bisher gezählt:{' '}
               <strong className="text-[#2D5BFF]">{formatDurationHuman(elapsed)}</strong>
             </p>
           </div>
 
           <p className="text-xs text-gray-500">
-            Nothing has been lost. Decide what this time should count as.
+            Es ist nichts verloren gegangen. Entscheide, was diese Zeit zählen soll.
           </p>
 
           <div className="flex flex-col gap-2">
@@ -65,7 +65,7 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({
               className="flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-semibold text-sm shadow-md shadow-blue-500/20 transition-colors cursor-pointer"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>Keep it running</span>
+              <span>Weiterlaufen lassen</span>
             </button>
 
             <div className="flex gap-2">
@@ -74,14 +74,14 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-semibold text-xs transition-colors cursor-pointer"
               >
                 <Square className="w-3.5 h-3.5" />
-                <span>Stop now</span>
+                <span>Jetzt beenden</span>
               </button>
               <button
                 onClick={onEdit}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-semibold text-xs transition-colors cursor-pointer"
               >
                 <Pencil className="w-3.5 h-3.5" />
-                <span>Correct the times</span>
+                <span>Zeiten korrigieren</span>
               </button>
             </div>
           </div>

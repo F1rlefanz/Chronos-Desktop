@@ -32,7 +32,7 @@ function toWriteResult(error: unknown): WriteResult {
   return {
     ok: false,
     reason: 'unavailable',
-    message: 'The desktop backend did not respond to the save.',
+    message: 'Die Desktop-Ablage hat auf das Speichern nicht reagiert.',
   };
 }
 

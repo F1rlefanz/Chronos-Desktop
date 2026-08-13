@@ -7,11 +7,11 @@ interface StatCardsProps {
 }
 
 const CARDS: { key: keyof Summary; label: string }[] = [
-  { key: 'today', label: 'Today' },
-  { key: 'week', label: 'This Week' },
-  { key: 'month', label: 'This Month' },
-  { key: 'year', label: 'This Year' },
-  { key: 'allTime', label: 'All Time' },
+  { key: 'today', label: 'Heute' },
+  { key: 'week', label: 'Diese Woche' },
+  { key: 'month', label: 'Dieser Monat' },
+  { key: 'year', label: 'Dieses Jahr' },
+  { key: 'allTime', label: 'Gesamt' },
 ];
 
 /**

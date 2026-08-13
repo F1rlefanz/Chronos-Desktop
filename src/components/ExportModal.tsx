@@ -85,7 +85,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-200">
           <div className="flex items-center gap-2 text-[#2D5BFF] font-semibold text-base">
             <Download className="w-5 h-5" />
-            <span>Export & Data Reports</span>
+            <span>Export & Berichte</span>
           </div>
           <button
             onClick={onClose}
@@ -106,7 +106,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>PDF Document</span>
+            <span>PDF</span>
           </button>
           <button
             onClick={() => setActiveTab('csv')}
@@ -117,7 +117,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>CSV Spreadsheet</span>
+            <span>CSV</span>
           </button>
           <button
             onClick={() => setActiveTab('json')}
@@ -128,7 +128,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             }`}
           >
             <FileCode className="w-4 h-4" />
-            <span>JSON Backup</span>
+            <span>JSON-Sicherung</span>
           </button>
         </div>
 
@@ -146,7 +146,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   htmlFor="export-project"
                   className="block text-xs font-semibold text-gray-700"
                 >
-                  Project
+                  Projekt
                 </label>
                 <select
                   id="export-project"
@@ -154,7 +154,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   onChange={(e) => setProjectId(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF] focus:bg-white cursor-pointer"
                 >
-                  <option value="all">All Projects</option>
+                  <option value="all">Alle Projekte</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
@@ -172,11 +172,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             ) : (
               <p className="text-xs text-gray-500">
                 {selection.entries.length === 0 ? (
-                  'No finished entries in this period.'
+                  'In diesem Zeitraum gibt es keine abgeschlossenen Einträge.'
                 ) : (
                   <>
                     <strong className="text-gray-800">{selection.entries.length}</strong>{' '}
-                    {selection.entries.length === 1 ? 'entry' : 'entries'} ·{' '}
+                    {selection.entries.length === 1 ? 'Eintrag' : 'Einträge'} ·{' '}
                     <strong className="text-[#2D5BFF]">
                       {formatDurationHuman(totalNetMs(selection.entries))}
                     </strong>{' '}
@@ -190,9 +190,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 match what the file contains, or the export is not a record. */}
             {selection.skippedRunning > 0 && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                {selection.skippedRunning} running{' '}
-                {selection.skippedRunning === 1 ? 'measurement is' : 'measurements are'} left out —
-                a duration that is still growing would make this report different every time.
+                {selection.skippedRunning} running laufende{' '}
+                {selection.skippedRunning === 1 ? 'Erfassung' : 'Erfassungen'} nicht enthalten —
+                eine noch wachsende Dauer würde diesen Bericht bei jedem Export anders machen.
               </p>
             )}
           </div>
@@ -204,7 +204,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Report Title
+                  Berichtstitel
                 </label>
                 <input
                   type="text"
@@ -224,7 +224,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     }
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
                   />
-                  <span>Include Summary Statistics Card</span>
+                  <span>Zusammenfassung anzeigen</span>
                 </label>
 
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
@@ -236,7 +236,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     }
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
                   />
-                  <span>Include Session Notes Column</span>
+                  <span>Spalte mit Notizen</span>
                 </label>
               </div>
 
@@ -246,7 +246,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileText className="w-4 h-4" />
-                <span>Generate PDF Report Download</span>
+                <span>PDF erzeugen</span>
               </button>
             </div>
           )}
@@ -254,8 +254,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'csv' && (
             <div className="space-y-4 text-center py-4">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs">
-                Export all session records to an editable <strong>.CSV file</strong> compatible with
-                Microsoft Excel, Google Sheets, or custom data processing software.
+                Der gewählte Zeitraum als <strong>.CSV-Datei</strong> — lesbar in Excel, LibreOffice
+                Calc oder Google Tabellen.
               </div>
               <button
                 onClick={handleExportCsv}
@@ -263,7 +263,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>Download CSV File</span>
+                <span>CSV herunterladen</span>
               </button>
             </div>
           )}
@@ -271,16 +271,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'json' && (
             <div className="space-y-4 text-center py-4">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs">
-                Export your complete app state (settings, custom projects, time entries and their
-                breaks) to a portable <strong>.JSON file</strong> to share or move between PCs
-                without losing data.
+                Der <strong>vollständige</strong> Datenbestand — Einstellungen, Projekte, Einträge
+                samt Pausen — als <strong>.JSON-Datei</strong>, zum Umziehen auf einen anderen
+                Rechner. Zeitraum und Projektfilter gelten hier bewusst nicht: eine unvollständige
+                Sicherung ist keine Sicherung.
               </div>
               <button
                 onClick={handleExportJson}
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileCode className="w-4 h-4" />
-                <span>Download Portable JSON State</span>
+                <span>JSON-Sicherung herunterladen</span>
               </button>
             </div>
           )}

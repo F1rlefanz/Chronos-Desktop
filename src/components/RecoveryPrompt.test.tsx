@@ -35,25 +35,25 @@ describe('RecoveryPrompt', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Interrupted work')).toBeInTheDocument();
-    expect(screen.getByText(/1h 30m/)).toBeInTheDocument();
+    expect(screen.getByText(/1 Std\. 30 Min\./)).toBeInTheDocument();
   });
 
   it('offers all three answers, because none of them is the safe default', async () => {
     const user = userEvent.setup();
     const handlers = renderPrompt();
 
-    await user.click(screen.getByRole('button', { name: /keep it running/i }));
+    await user.click(screen.getByRole('button', { name: /weiterlaufen lassen/i }));
     expect(handlers.onContinue).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole('button', { name: /stop now/i }));
+    await user.click(screen.getByRole('button', { name: /jetzt beenden/i }));
     expect(handlers.onStopNow).toHaveBeenCalledOnce();
 
-    await user.click(screen.getByRole('button', { name: /correct the times/i }));
+    await user.click(screen.getByRole('button', { name: /zeiten korrigieren/i }));
     expect(handlers.onEdit).toHaveBeenCalledOnce();
   });
 
   it('reassures that nothing was lost — the entry was stored on start', () => {
     renderPrompt();
-    expect(screen.getByText(/nothing has been lost/i)).toBeInTheDocument();
+    expect(screen.getByText(/nichts verloren gegangen/i)).toBeInTheDocument();
   });
 });

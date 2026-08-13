@@ -31,7 +31,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             className="flex-1 max-w-xs flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-semibold text-lg shadow-xl shadow-blue-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <Play className="w-5 h-5 fill-white" />
-            <span>START</span>
+            <span>STARTEN</span>
             {shortcutsEnabled && (
               <kbd className="hidden sm:inline-block ml-2 text-[10px] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Space
@@ -63,7 +63,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             className="flex-1 max-w-xs flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-semibold text-lg shadow-xl shadow-blue-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <Play className="w-5 h-5 fill-white" />
-            <span>RESUME</span>
+            <span>WEITER</span>
             {shortcutsEnabled && (
               <kbd className="hidden sm:inline-block ml-2 text-[10px] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Space
@@ -79,7 +79,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm shadow-md shadow-rose-500/20 transition-all transform active:scale-95 cursor-pointer"
           >
             <Save className="w-4 h-4" />
-            <span>STOP & SAVE</span>
+            <span>BEENDEN</span>
             {shortcutsEnabled && (
               <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-white/20 text-white px-1.5 py-0.5 rounded-full">
                 S
@@ -94,10 +94,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           <button
             onClick={onDiscard}
             className="flex items-center justify-center gap-2 px-5 py-4 rounded-full bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 border border-gray-200 transition-all cursor-pointer text-sm font-semibold"
-            title="Discard the running measurement"
+            title="Laufende Erfassung verwerfen"
           >
             <Trash2 className="w-4 h-4" />
-            <span>DISCARD</span>
+            <span>VERWERFEN</span>
             {shortcutsEnabled && (
               <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-white text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
                 R

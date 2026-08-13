@@ -65,7 +65,7 @@ function renderApp(state: PersistedState = initialState) {
 
 /** The header's audio toggle is the shortest path to a settings write. */
 function toggleAudioCues() {
-  return screen.getByTitle(/Audio cues (enabled|muted)/);
+  return screen.getByTitle(/Signaltöne (an|aus)/);
 }
 
 describe('App persistence warnings', () => {
@@ -87,7 +87,7 @@ describe('App persistence warnings', () => {
 
     await user.click(toggleAudioCues());
 
-    expect(screen.queryByText(/Could not save/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/konnte nicht gespeichert werden/)).not.toBeInTheDocument();
   });
 
   it('warns when a write is rejected', async () => {
@@ -97,7 +97,9 @@ describe('App persistence warnings', () => {
 
     await user.click(toggleAudioCues());
 
-    expect(await screen.findByText(/Could not save your settings/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Einstellungen konnte nicht gespeichert werden/)
+    ).toBeInTheDocument();
     expect(screen.getByText(/gone after a reload/)).toBeInTheDocument();
   });
 
@@ -117,12 +119,16 @@ describe('App persistence warnings', () => {
     renderApp();
 
     await user.click(toggleAudioCues());
-    expect(await screen.findByText(/Could not save your settings/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Einstellungen konnte nicht gespeichert werden/)
+    ).toBeInTheDocument();
 
     saveSettings.mockResolvedValue(ok);
     await user.click(toggleAudioCues());
 
-    expect(screen.queryByText(/Could not save your settings/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Einstellungen konnte nicht gespeichert werden/)
+    ).not.toBeInTheDocument();
   });
 
   it('can be dismissed by the user', async () => {
@@ -131,10 +137,12 @@ describe('App persistence warnings', () => {
     renderApp();
 
     await user.click(toggleAudioCues());
-    await screen.findByText(/Could not save your settings/);
-    await user.click(screen.getByRole('button', { name: 'Dismiss warning' }));
+    await screen.findByText(/Einstellungen konnte nicht gespeichert werden/);
+    await user.click(screen.getByRole('button', { name: 'Hinweis schließen' }));
 
-    expect(screen.queryByText(/Could not save your settings/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Einstellungen konnte nicht gespeichert werden/)
+    ).not.toBeInTheDocument();
   });
 
   it('ignores a stale failure that resolves after a later write succeeded', async () => {
@@ -163,7 +171,7 @@ describe('App persistence warnings', () => {
       failFirstWrite();
     });
 
-    expect(screen.queryByText(/Could not save/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/konnte nicht gespeichert werden/)).not.toBeInTheDocument();
   });
 });
 
@@ -182,7 +190,7 @@ describe('App backups before destructive actions', () => {
 
   async function clearHistory() {
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Clear History' }));
+    await user.click(screen.getByRole('button', { name: 'Alle löschen' }));
   }
 
   it('snapshots the history before clearing it', async () => {

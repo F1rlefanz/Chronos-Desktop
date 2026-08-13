@@ -63,30 +63,52 @@ export function formatTimeDisplay(
 }
 
 /**
- * Formats duration into human readable string (e.g., "1h 24m 12s").
+ * A duration in words, e.g. "1 Std. 24 Min.".
+ *
+ * Rounded to the minute: seconds are noise in a record of worked time, and a
+ * timesheet that reads "2 Std. 35 Min. 12 Sek." is harder to scan for no gain.
+ * Anything under a minute says so rather than rounding down to nothing, so a
+ * short break never looks like no break at all.
  */
 export function formatDurationHuman(totalMs: number): string {
-  const { hours, minutes, seconds } = parseMsToComponents(totalMs);
-  const parts: string[] = [];
+  const totalMinutes = Math.floor(Math.max(0, totalMs) / TIME_CONSTANTS.MS_PER_MINUTE);
 
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
-  parts.push(`${seconds}s`);
+  if (totalMinutes === 0) {
+    return totalMs > 0 ? 'unter 1 Min.' : '0 Min.';
+  }
 
-  return parts.join(' ');
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes} Min.`;
+  return `${hours} Std. ${minutes} Min.`;
 }
 
 /**
- * Formats timestamp to localized date & time string.
+ * The one place the app's locale is decided.
+ *
+ * Fixed rather than following the host: the interface is written in German
+ * throughout, and a date rendered as "1/15/2026" next to a label reading
+ * "Zeitraum" is worse than one that simply matches.
  */
+const LOCALE = 'de-DE';
+
+/** Date and time, e.g. "15.01.2026, 09:30". */
 export function formatDateTime(timestamp: number): string {
-  return new Date(timestamp).toLocaleString(undefined, {
+  return new Date(timestamp).toLocaleString(LOCALE, {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
+  });
+}
+
+/** Time of day alone, e.g. "09:30". */
+export function formatTimeOfDay(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString(LOCALE, {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -115,13 +137,11 @@ export function fromDateTimeInputValue(value: string): number {
   return new Date(value).getTime();
 }
 
-/**
- * Formats timestamp to simple date string.
- */
+/** Date alone, e.g. "15.01.2026". */
 export function formatDateOnly(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString(undefined, {
+  return new Date(timestamp).toLocaleDateString(LOCALE, {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   });
 }

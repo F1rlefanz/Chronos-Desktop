@@ -167,7 +167,7 @@ describe('series', () => {
     const points = monthlySeries([entry(at(2026, 2, 3, 9), 5)], 2026, NOW);
 
     expect(points).toHaveLength(12);
-    expect(points[2]).toEqual({ label: 'Mar', value: 5 * HOUR });
+    expect(points[2]).toEqual({ label: 'Mär', value: 5 * HOUR });
     expect(points[0].value).toBe(0);
   });
 

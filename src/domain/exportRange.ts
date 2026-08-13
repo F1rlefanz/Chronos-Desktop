@@ -22,6 +22,7 @@ import {
   yearRange,
 } from './stats';
 import { isRunning } from './timeEntry';
+import { formatDateOnly } from '../utils/timeFormatters';
 
 export type ExportRangeKind =
   | 'all'
@@ -45,14 +46,14 @@ export interface ExportRangeSelection {
 }
 
 export const EXPORT_RANGE_LABELS: Record<ExportRangeKind, string> = {
-  all: 'All time',
-  today: 'Today',
-  'this-week': 'This week',
-  'this-month': 'This month',
-  'this-year': 'This year',
-  'specific-month': 'A specific month',
-  'specific-year': 'A specific year',
-  custom: 'Custom range',
+  all: 'Alle Daten',
+  today: 'Heute',
+  'this-week': 'Diese Woche',
+  'this-month': 'Dieser Monat',
+  'this-year': 'Dieses Jahr',
+  'specific-month': 'Bestimmter Monat',
+  'specific-year': 'Bestimmtes Jahr',
+  custom: 'Freier Zeitraum',
 };
 
 export function defaultExportRange(now: number): ExportRangeSelection {
@@ -87,12 +88,12 @@ export function resolveExportRange(selection: ExportRangeSelection, now: number)
 
   switch (selection.kind) {
     case 'all':
-      return { range: null, label: 'All time', slug: 'all-time', error: null };
+      return { range: null, label: 'Alle Daten', slug: 'alle-daten', error: null };
 
     case 'today':
       return {
         range: { from: startOfDay(today), to: endOfDay(today) },
-        label: today.toLocaleDateString(),
+        label: formatDateOnly(today.getTime()),
         slug: `day-${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`,
         error: null,
       };
@@ -102,7 +103,7 @@ export function resolveExportRange(selection: ExportRangeSelection, now: number)
       const monday = new Date(range.from);
       return {
         range,
-        label: `Week of ${monday.toLocaleDateString()}`,
+        label: `Woche ab ${formatDateOnly(monday.getTime())}`,
         slug: `week-${monday.getFullYear()}-${pad(monday.getMonth() + 1)}-${pad(monday.getDate())}`,
         error: null,
       };
@@ -125,14 +126,14 @@ export function resolveExportRange(selection: ExportRangeSelection, now: number)
       const to = new Date(`${selection.to}T00:00`);
 
       if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-        return { range: null, label: '', slug: '', error: 'Pick both a start and an end date.' };
+        return { range: null, label: '', slug: '', error: 'Bitte Beginn und Ende wählen.' };
       }
       if (startOfDay(to) < startOfDay(from)) {
         return {
           range: null,
           label: '',
           slug: '',
-          error: 'The end date must not be before the start date.',
+          error: 'Das Ende darf nicht vor dem Beginn liegen.',
         };
       }
 
@@ -140,7 +141,7 @@ export function resolveExportRange(selection: ExportRangeSelection, now: number)
         // Inclusive of the whole final day, which is what a person picking a
         // date on a form means by "to".
         range: { from: startOfDay(from), to: endOfDay(to) },
-        label: `${from.toLocaleDateString()} – ${to.toLocaleDateString()}`,
+        label: `${formatDateOnly(from.getTime())} – ${formatDateOnly(to.getTime())}`,
         slug: `${selection.from}_to_${selection.to}`,
         error: null,
       };

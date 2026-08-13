@@ -41,9 +41,9 @@ function renderForm(props: Partial<React.ComponentProps<typeof EntryFormModal>> 
   return { onSave, onClose };
 }
 
-const start = () => screen.getByLabelText('Start') as HTMLInputElement;
-const end = () => screen.getByLabelText('End') as HTMLInputElement;
-const submit = () => screen.getByRole('button', { name: /add entry|save changes/i });
+const start = () => screen.getByLabelText('Beginn') as HTMLInputElement;
+const end = () => screen.getByLabelText('Ende') as HTMLInputElement;
+const submit = () => screen.getByRole('button', { name: /eintrag anlegen|änderungen speichern/i });
 
 beforeEach(() => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -125,7 +125,7 @@ describe('EntryFormModal', () => {
     });
     const { onSave } = renderForm({ entry: withBreaks });
 
-    expect(screen.getAllByLabelText('Break start')).toHaveLength(2);
+    expect(screen.getAllByLabelText('Pausenbeginn')).toHaveLength(2);
 
     await user.click(submit());
 
@@ -140,7 +140,7 @@ describe('EntryFormModal', () => {
     const running = entry({ endTime: null });
     const { onSave } = renderForm({ entry: running });
 
-    const keepRunning = screen.getByRole('checkbox', { name: /keep this entry running/i });
+    const keepRunning = screen.getByRole('checkbox', { name: /erfassung weiterlaufen lassen/i });
     expect(keepRunning).toBeChecked();
     expect(end()).toBeDisabled();
 
@@ -153,14 +153,14 @@ describe('EntryFormModal', () => {
     const running = entry({ endTime: null });
     renderForm({ entry: running });
 
-    await user.click(screen.getByRole('checkbox', { name: /keep this entry running/i }));
+    await user.click(screen.getByRole('checkbox', { name: /erfassung weiterlaufen lassen/i }));
 
-    expect(screen.getByText(/saving will stop the measurement/i)).toBeInTheDocument();
+    expect(screen.getByText(/speichern beendet die erfassung/i)).toBeInTheDocument();
     expect(end()).toBeEnabled();
   });
 
   it('does not offer the running switch for an entry that already ended', () => {
     renderForm({ entry: entry() });
-    expect(screen.queryByRole('checkbox', { name: /keep this entry running/i })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /erfassung weiterlaufen lassen/i })).toBeNull();
   });
 });

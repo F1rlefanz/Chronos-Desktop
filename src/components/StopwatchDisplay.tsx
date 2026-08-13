@@ -50,18 +50,18 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
           {timerState === 'RUNNING' && (
             <span className="inline-flex items-center gap-1.5 bg-blue-50 text-[#2D5BFF] border border-blue-200/80 text-xs font-semibold px-3.5 py-1 rounded-full animate-pulse">
               <span className="w-2 h-2 rounded-full bg-[#2D5BFF]"></span>
-              TRACKING ACTIVE
+              ERFASSUNG LÄUFT
             </span>
           )}
           {timerState === 'PAUSED' && (
             <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 border border-amber-200 text-xs font-semibold px-3.5 py-1 rounded-full">
               <Pause className="w-3 h-3 fill-amber-500" />
-              PAUSED
+              PAUSIERT
             </span>
           )}
           {timerState === 'IDLE' && (
             <span className="text-xs font-medium text-gray-500 bg-gray-50 px-3.5 py-1 rounded-full border border-gray-200">
-              READY
+              BEREIT
             </span>
           )}
         </div>
@@ -82,21 +82,21 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
         {/* Labels below time */}
         <div className="mt-3 text-gray-400 uppercase tracking-[0.25em] text-[11px] font-semibold">
-          {mainTime.split(':').length > 2 ? 'Hours : Minutes : Seconds' : 'Minutes : Seconds'}
+          {mainTime.split(':').length > 2 ? 'Stunden : Minuten : Sekunden' : 'Minuten : Sekunden'}
           {showMilliseconds && <span className="text-[#2D5BFF] font-bold"> : MS</span>}
         </div>
 
         {/* Secondary Detailed Readouts */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6">
           <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-            Total:{' '}
+            Gesamt:{' '}
             <strong className="text-gray-900">
               {totalMinutes}m {seconds}s
             </strong>
           </span>
           {hours > 0 && (
             <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-              Hours:{' '}
+              Stunden:{' '}
               <strong className="text-gray-900">
                 {(elapsedTimeMs / (1000 * 60 * 60)).toFixed(2)}h
               </strong>
@@ -104,7 +104,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
           )}
           {breakCount > 0 && (
             <span className="bg-amber-50 text-amber-700 border border-amber-200/80 px-3.5 py-1.5 rounded-full font-semibold">
-              Breaks: {breakCount}
+              Pausen: {breakCount}
             </span>
           )}
         </div>

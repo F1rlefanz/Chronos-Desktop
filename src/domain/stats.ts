@@ -15,21 +15,37 @@
 import { TimeEntry } from '../types';
 import { dayKeyFor, dayKeyOf, netMs, totalNetMs } from './timeEntry';
 
-export const WEEKDAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] as const;
+export const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 
 export const MONTH_LABELS = [
+  'Januar',
+  'Februar',
+  'März',
+  'April',
+  'Mai',
+  'Juni',
+  'Juli',
+  'August',
+  'September',
+  'Oktober',
+  'November',
+  'Dezember',
+] as const;
+
+/** Three-letter forms, for chart axes where the full name will not fit. */
+export const MONTH_LABELS_SHORT = [
   'Jan',
   'Feb',
-  'Mar',
+  'Mär',
   'Apr',
-  'May',
+  'Mai',
   'Jun',
   'Jul',
   'Aug',
   'Sep',
-  'Oct',
+  'Okt',
   'Nov',
-  'Dec',
+  'Dez',
 ] as const;
 
 /** A half-open interval `[from, to)` in epoch milliseconds. */
@@ -170,7 +186,7 @@ export function weeklySeries(entries: TimeEntry[], weeks: number, now: number): 
 
 /** All twelve months of a year, oldest first. */
 export function monthlySeries(entries: TimeEntry[], year: number, now: number): SeriesPoint[] {
-  return MONTH_LABELS.map((label, month) => ({
+  return MONTH_LABELS_SHORT.map((label, month) => ({
     label,
     value: totalInRange(entries, monthRange(year, month), now),
   }));

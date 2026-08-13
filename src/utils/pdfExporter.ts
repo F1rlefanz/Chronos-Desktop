@@ -40,13 +40,13 @@ export function generatePdfReport(
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(options.title || 'Time Tracking Report', 14, 18);
+  doc.text(options.title || 'Zeiterfassung', 14, 18);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(203, 213, 225); // slate-300
-  doc.text(`Generated: ${formatDateTime(now)} | Author: ${options.author || 'Chronos'}`, 14, 28);
-  doc.text(`Total Records: ${entries.length}`, 196, 28, { align: 'right' });
+  doc.text(`Erstellt: ${formatDateTime(now)} | ${options.author || 'Chronos'}`, 14, 28);
+  doc.text(`Einträge: ${entries.length}`, 196, 28, { align: 'right' });
 
   let currentY = 44;
 
@@ -62,34 +62,34 @@ export function generatePdfReport(
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('REPORT SUMMARY', 20, currentY + 8);
+    doc.text('ZUSAMMENFASSUNG', 20, currentY + 8);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
     doc.text(
-      `Total Duration: ${formatDurationHuman(totalMs)} (${totalHoursFormatted} hours)`,
+      `Gesamt: ${formatDurationHuman(totalMs)} (${totalHoursFormatted} Stunden)`,
       20,
       currentY + 16
     );
-    doc.text(`Period: ${period.label}`, 110, currentY + 16);
+    doc.text(`Zeitraum: ${period.label}`, 110, currentY + 16);
 
     currentY += 32;
   }
 
   // Sessions Table — the Notes column is opt-out via export options.
-  const tableHead = ['Session Title', 'Project', 'Date', 'Duration'];
-  if (options.includeNotes) tableHead.push('Notes');
+  const tableHead = ['Titel', 'Projekt', 'Datum', 'Arbeitszeit'];
+  if (options.includeNotes) tableHead.push('Notiz');
 
   const tableData = entries.map((entry) => {
     const proj = projectMap.get(entry.project);
-    const projName = proj ? proj.name : entry.project || 'General';
+    const projName = proj ? proj.name : entry.project || 'Allgemein';
     const { mainTime, subTime } = formatTimeDisplay(netMs(entry, now), {
       includeMilliseconds: true,
     });
 
     const row = [
-      entry.title || 'Untitled Session',
+      entry.title || 'Ohne Titel',
       projName,
       formatDateOnly(entry.startTime),
       `${mainTime}${subTime}`,
@@ -133,12 +133,14 @@ export function generatePdfReport(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Chronos — ${period.label} — Page ${i} of ${pageCount}`, 105, 287, {
+    doc.text(`Chronos — ${period.label} — Seite ${i} von ${pageCount}`, 105, 287, {
       align: 'center',
     });
   }
 
   // Trigger download
-  const sanitizedTitle = (options.title || 'time_report').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const sanitizedTitle = (options.title || 'zeiterfassung')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_');
   doc.save(`${sanitizedTitle}_${period.slug}.pdf`);
 }

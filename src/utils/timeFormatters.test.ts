@@ -65,15 +65,29 @@ describe('formatTimeDisplay', () => {
 });
 
 describe('formatDurationHuman', () => {
-  it('shows seconds only for short durations', () => {
-    expect(formatDurationHuman(9_000)).toBe('9s');
+  it('rounds down to whole minutes', () => {
+    // Seconds are noise in a record of worked time; the live readout is where
+    // second-by-second precision belongs.
+    expect(formatDurationHuman(125_000)).toBe('2 Min.');
   });
 
-  it('adds minutes once they exist', () => {
-    expect(formatDurationHuman(125_000)).toBe('2m 5s');
+  it('says so rather than rounding a short break down to nothing', () => {
+    expect(formatDurationHuman(9_000)).toBe('unter 1 Min.');
+  });
+
+  it('distinguishes no time at all from a very short time', () => {
+    expect(formatDurationHuman(0)).toBe('0 Min.');
   });
 
   it('keeps a zero minutes segment when hours are present', () => {
-    expect(formatDurationHuman(3_605_000)).toBe('1h 0m 5s');
+    expect(formatDurationHuman(3_605_000)).toBe('1 Std. 0 Min.');
+  });
+
+  it('formats hours and minutes together', () => {
+    expect(formatDurationHuman(2 * 3_600_000 + 35 * 60_000)).toBe('2 Std. 35 Min.');
+  });
+
+  it('never reports a negative duration', () => {
+    expect(formatDurationHuman(-5_000)).toBe('0 Min.');
   });
 });
