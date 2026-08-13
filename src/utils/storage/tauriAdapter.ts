@@ -64,8 +64,8 @@ const backups: BackupSupport = {
 
 /**
  * Persists through the Rust side, which writes to
- * `%LOCALAPPDATA%\Chronos Desktop\data\<key>.json` via a temporary file and a
- * rename, so a crash cannot leave a half-written file behind.
+ * `%LOCALAPPDATA%\Chronos\data\<key>.json` via a temporary file and a rename,
+ * so a crash cannot leave a half-written file behind.
  */
 export const tauriAdapter: StorageAdapter = {
   backups,
