@@ -70,7 +70,8 @@ describe('exportToCsv', () => {
         makeEntry({ id: 'entry-1', title: 'Ticket #42 rollout' }),
         makeEntry({ id: 'entry-2', title: 'Second session' }),
       ],
-      PROJECTS
+      PROJECTS,
+      'test'
     );
 
     const csv = await download.text();
@@ -83,7 +84,7 @@ describe('exportToCsv', () => {
   it('escapes quotes and keeps commas inside a single field', async () => {
     const download = captureDownload();
 
-    exportToCsv([makeEntry({ title: 'He said "go", then left' })], PROJECTS);
+    exportToCsv([makeEntry({ title: 'He said "go", then left' })], PROJECTS, 'test');
 
     const csv = await download.text();
     expect(csv).toContain('"He said ""go"", then left"');
@@ -92,7 +93,7 @@ describe('exportToCsv', () => {
   it('starts with a UTF-8 BOM so Excel reads non-ASCII text correctly', async () => {
     const download = captureDownload();
 
-    exportToCsv([makeEntry({ title: 'Übung' })], PROJECTS);
+    exportToCsv([makeEntry({ title: 'Übung' })], PROJECTS, 'test');
 
     // Blob.text() decodes UTF-8 and strips a leading BOM per spec, so the BOM
     // has to be asserted on the raw bytes.

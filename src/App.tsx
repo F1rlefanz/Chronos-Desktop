@@ -744,6 +744,7 @@ export default function App({ initialState }: AppProps) {
         entries={timeEntries}
         projects={projects}
         settings={settings}
+        now={now}
       />
 
       <SettingsModal

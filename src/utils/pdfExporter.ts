@@ -10,12 +10,18 @@ import {
 } from './timeFormatters';
 
 /**
- * Generates and downloads a clean, professional PDF report of tracked time sessions.
+ * Generates and downloads a clean, professional PDF report of tracked time.
+ *
+ * `entries` arrive already filtered by `selectEntriesForExport`, so the report
+ * and every other export answer the same question about the same period —
+ * this function used to re-derive its own rolling windows, which is how "past
+ * 30 days" ended up meaning something different here than anywhere else.
  */
 export function generatePdfReport(
   entries: TimeEntry[],
   projects: Project[],
-  options: PdfExportOptions
+  options: PdfExportOptions,
+  period: { label: string; slug: string }
 ): void {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -25,24 +31,7 @@ export function generatePdfReport(
 
   const projectMap = new Map<string, Project>(projects.map((p) => [p.id, p]));
 
-  // Filter entries according to dateRange and selectedProject
   const now = Date.now();
-  let filteredEntries = [...entries];
-
-  if (options.selectedProject !== 'all') {
-    filteredEntries = filteredEntries.filter((e) => e.project === options.selectedProject);
-  }
-
-  if (options.dateRange === 'today') {
-    const todayStart = new Date().setHours(0, 0, 0, 0);
-    filteredEntries = filteredEntries.filter((e) => e.startTime >= todayStart);
-  } else if (options.dateRange === 'week') {
-    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-    filteredEntries = filteredEntries.filter((e) => e.startTime >= weekAgo);
-  } else if (options.dateRange === 'month') {
-    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
-    filteredEntries = filteredEntries.filter((e) => e.startTime >= monthAgo);
-  }
 
   // Document Header
   doc.setFillColor(15, 23, 42); // slate-900
@@ -51,22 +40,18 @@ export function generatePdfReport(
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(options.title || 'Time Tracking & Stopwatch Report', 14, 18);
+  doc.text(options.title || 'Time Tracking Report', 14, 18);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(203, 213, 225); // slate-300
-  doc.text(
-    `Generated: ${formatDateTime(now)} | Author: ${options.author || 'Stopwatch App'}`,
-    14,
-    28
-  );
-  doc.text(`Total Records: ${filteredEntries.length}`, 196, 28, { align: 'right' });
+  doc.text(`Generated: ${formatDateTime(now)} | Author: ${options.author || 'Chronos'}`, 14, 28);
+  doc.text(`Total Records: ${entries.length}`, 196, 28, { align: 'right' });
 
   let currentY = 44;
 
   // Summary Card Section
-  const totalMs = totalNetMs(filteredEntries, now);
+  const totalMs = totalNetMs(entries, now);
   const totalHoursFormatted = (totalMs / (1000 * 60 * 60)).toFixed(2);
 
   if (options.includeSummary) {
@@ -87,7 +72,7 @@ export function generatePdfReport(
       20,
       currentY + 16
     );
-    doc.text(`Filter Period: ${options.dateRange.toUpperCase()}`, 110, currentY + 16);
+    doc.text(`Period: ${period.label}`, 110, currentY + 16);
 
     currentY += 32;
   }
@@ -96,7 +81,7 @@ export function generatePdfReport(
   const tableHead = ['Session Title', 'Project', 'Date', 'Duration'];
   if (options.includeNotes) tableHead.push('Notes');
 
-  const tableData = filteredEntries.map((entry) => {
+  const tableData = entries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
     const { mainTime, subTime } = formatTimeDisplay(netMs(entry, now), {
@@ -148,12 +133,12 @@ export function generatePdfReport(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
-    doc.text(`Stopwatch & Time Tracker — Page ${i} of ${pageCount}`, 105, 287, { align: 'center' });
+    doc.text(`Chronos — ${period.label} — Page ${i} of ${pageCount}`, 105, 287, {
+      align: 'center',
+    });
   }
 
   // Trigger download
-  const sanitizedTitle = (options.title || 'time_tracking_report')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '_');
-  doc.save(`${sanitizedTitle}_${Date.now()}.pdf`);
+  const sanitizedTitle = (options.title || 'time_report').toLowerCase().replace(/[^a-z0-9]/g, '_');
+  doc.save(`${sanitizedTitle}_${period.slug}.pdf`);
 }

@@ -59,13 +59,15 @@ export interface AppSettings {
   timerIntervalMs: number;
 }
 
+/**
+ * How the PDF should look. What it *contains* is decided before it gets here,
+ * by `selectEntriesForExport`, so that every format covers the same period.
+ */
 export interface PdfExportOptions {
   title: string;
   author: string;
   includeNotes: boolean;
   includeSummary: boolean;
-  dateRange: 'all' | 'today' | 'week' | 'month';
-  selectedProject: string; // 'all' or project ID
 }
 
 export type ExportFormat = 'pdf' | 'csv' | 'json';

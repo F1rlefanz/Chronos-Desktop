@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TimeEntry, Project, PdfExportOptions, AppSettings } from '../types';
 import { generatePdfReport } from '../utils/pdfExporter';
 import { exportToCsv, exportToJsonBackup } from '../utils/dataExporter';
-import { FileText, FileSpreadsheet, FileCode, Download, X } from 'lucide-react';
+import {
+  defaultExportRange,
+  resolveExportRange,
+  selectEntriesForExport,
+} from '../domain/exportRange';
+import { formatDurationHuman } from '../utils/timeFormatters';
+import { totalNetMs } from '../domain/timeEntry';
+import { ExportRangePicker } from './ExportRangePicker';
+import { FileText, FileSpreadsheet, FileCode, Download, X, AlertCircle } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -10,6 +18,9 @@ interface ExportModalProps {
   entries: TimeEntry[];
   projects: Project[];
   settings: AppSettings;
+  /** Passed in rather than read here, so "this month" means the same thing
+      everywhere on screen and the component stays pure. */
+  now: number;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -18,27 +29,49 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   entries,
   projects,
   settings,
+  now,
 }) => {
   const [activeTab, setActiveTab] = useState<'pdf' | 'csv' | 'json'>('pdf');
 
-  // PDF Export Customization Form State
+  // The period and project apply to the PDF and the CSV alike: the same
+  // question, asked once, however the answer is formatted. Only the JSON
+  // backup ignores them, because a partial backup is not a backup.
+  const [range, setRange] = useState(() => defaultExportRange(now));
+  const [projectId, setProjectId] = useState('all');
+
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
     title: 'Time Tracking Report',
-    author: 'ChronoCraft User',
+    author: 'Chronos',
     includeNotes: true,
     includeSummary: true,
-    dateRange: 'all',
-    selectedProject: 'all',
   });
+
+  const resolved = useMemo(() => resolveExportRange(range, now), [range, now]);
+
+  const selection = useMemo(
+    () =>
+      resolved.error
+        ? { entries: [], skippedRunning: 0 }
+        : selectEntriesForExport(entries, resolved.range, projectId),
+    [entries, resolved, projectId]
+  );
+
+  const availableYears = useMemo(() => {
+    const years = new Set(entries.map((e) => new Date(e.startTime).getFullYear()));
+    years.add(new Date(now).getFullYear());
+    return [...years].sort((a, b) => b - a);
+  }, [entries, now]);
 
   if (!isOpen) return null;
 
+  const blocked = resolved.error !== null || selection.entries.length === 0;
+
   const handleGeneratePdf = () => {
-    generatePdfReport(entries, projects, pdfOptions);
+    generatePdfReport(selection.entries, projects, pdfOptions, resolved);
   };
 
   const handleExportCsv = () => {
-    exportToCsv(entries, projects);
+    exportToCsv(selection.entries, projects, resolved.slug);
   };
 
   const handleExportJson = () => {
@@ -99,6 +132,72 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </button>
         </div>
 
+        {/* What goes in, chosen once for every format that respects it. */}
+        {activeTab !== 'json' && (
+          <div className="px-6 pt-5 space-y-3 border-b border-gray-100 pb-5">
+            <div className="grid grid-cols-2 gap-3">
+              <ExportRangePicker
+                value={range}
+                onChange={setRange}
+                availableYears={availableYears}
+              />
+              <div className="space-y-2">
+                <label
+                  htmlFor="export-project"
+                  className="block text-xs font-semibold text-gray-700"
+                >
+                  Project
+                </label>
+                <select
+                  id="export-project"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF] focus:bg-white cursor-pointer"
+                >
+                  <option value="all">All Projects</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {resolved.error ? (
+              <p role="alert" className="flex items-center gap-1.5 text-xs text-red-700">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {resolved.error}
+              </p>
+            ) : (
+              <p className="text-xs text-gray-500">
+                {selection.entries.length === 0 ? (
+                  'No finished entries in this period.'
+                ) : (
+                  <>
+                    <strong className="text-gray-800">{selection.entries.length}</strong>{' '}
+                    {selection.entries.length === 1 ? 'entry' : 'entries'} ·{' '}
+                    <strong className="text-[#2D5BFF]">
+                      {formatDurationHuman(totalNetMs(selection.entries))}
+                    </strong>{' '}
+                    · {resolved.label}
+                  </>
+                )}
+              </p>
+            )}
+
+            {/* Said out loud rather than quietly dropped: the number has to
+                match what the file contains, or the export is not a record. */}
+            {selection.skippedRunning > 0 && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                {selection.skippedRunning} running{' '}
+                {selection.skippedRunning === 1 ? 'measurement is' : 'measurements are'} left out —
+                a duration that is still growing would make this report different every time.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Tab Body */}
         <div className="p-6 space-y-4">
           {activeTab === 'pdf' && (
@@ -113,49 +212,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   onChange={(e) => setPdfOptions({ ...pdfOptions, title: e.target.value })}
                   className="w-full bg-gray-50 border border-gray-200 rounded-full px-4 py-2 text-xs text-gray-800 focus:outline-none focus:border-[#2D5BFF] focus:bg-white"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Project Filter
-                  </label>
-                  <select
-                    value={pdfOptions.selectedProject}
-                    onChange={(e) =>
-                      setPdfOptions({ ...pdfOptions, selectedProject: e.target.value })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF]"
-                  >
-                    <option value="all">All Projects</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Date Range
-                  </label>
-                  <select
-                    value={pdfOptions.dateRange}
-                    onChange={(e) =>
-                      setPdfOptions({
-                        ...pdfOptions,
-                        dateRange: e.target.value as PdfExportOptions['dateRange'],
-                      })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF]"
-                  >
-                    <option value="all">All Time History</option>
-                    <option value="today">Today Only</option>
-                    <option value="week">Past 7 Days</option>
-                    <option value="month">Past 30 Days</option>
-                  </select>
-                </div>
               </div>
 
               <div className="space-y-2 pt-2 border-t border-gray-100">
@@ -186,7 +242,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
               <button
                 onClick={handleGeneratePdf}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+                disabled={blocked}
+                className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileText className="w-4 h-4" />
                 <span>Generate PDF Report Download</span>
@@ -202,7 +259,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
               <button
                 onClick={handleExportCsv}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+                disabled={blocked}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 <span>Download CSV File</span>

@@ -24,7 +24,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Converts time entries into CSV format and triggers browser download.
  */
-export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
+export function exportToCsv(entries: TimeEntry[], projects: Project[], slug: string): void {
   const projectMap = new Map<string, Project>(projects.map((p) => [p.id, p]));
 
   const headers = [
@@ -70,10 +70,7 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
 
   // Leading BOM so Excel picks up UTF-8 for umlauts and other non-ASCII text.
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-  downloadBlob(
-    new Blob([csvContent], { type: 'text/csv;charset=utf-8' }),
-    `stopwatch_export_${Date.now()}.csv`
-  );
+  downloadBlob(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }), `chronos_${slug}.csv`);
 }
 
 /**
@@ -119,7 +116,7 @@ export function exportToJsonBackup(
     new Blob([buildBackupPayload(entries, projects, settings)], {
       type: 'application/json;charset=utf-8',
     }),
-    `stopwatch_backup_${Date.now()}.json`
+    `chronos_backup_${Date.now()}.json`
   );
 }
 
