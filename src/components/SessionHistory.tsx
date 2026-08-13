@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TimeEntry, Project } from '../types';
+import { breakMs, isRunning, netMs, totalNetMs } from '../domain/timeEntry';
+import { useNow } from '../hooks/useNow';
 import { formatTimeDisplay, formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
 import { Clock, Search, Trash2, Download, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -40,9 +42,13 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     });
   }, [entries, searchTerm, selectedProjectId]);
 
-  const totalCalculatedMs = useMemo(() => {
-    return filteredEntries.reduce((sum, e) => sum + e.durationMs, 0);
-  }, [filteredEntries]);
+  // One clock for the whole list: a running entry must not be counted with a
+  // different "now" in the total than in its own row. It only ticks while
+  // something is actually running.
+  const anyRunning = useMemo(() => entries.some(isRunning), [entries]);
+  const now = useNow(anyRunning ? 1000 : null);
+
+  const totalCalculatedMs = useMemo(() => totalNetMs(filteredEntries, now), [filteredEntries, now]);
 
   if (entries.length === 0) {
     return (
@@ -133,8 +139,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           const projectColor = project ? project.color : '#2D5BFF';
           const projectName = project ? project.name : 'General';
           const isExpanded = expandedEntryId === entry.id;
+          const entryNetMs = netMs(entry, now);
+          const entryBreakMs = breakMs(entry, now);
+          const running = isRunning(entry);
 
-          const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+          const { mainTime, subTime } = formatTimeDisplay(entryNetMs, {
             includeMilliseconds: true,
           });
 
@@ -158,6 +167,12 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       <span className="font-semibold text-gray-600">{projectName}</span>
                       <span>•</span>
                       <span>{formatDateTime(entry.startTime)}</span>
+                      {running && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-[#2D5BFF]">running</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -169,7 +184,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       <span className="text-xs text-[#2D5BFF]">{subTime}</span>
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      {formatDurationHuman(entry.durationMs)}
+                      {formatDurationHuman(entryNetMs)}
                     </span>
                   </div>
 
@@ -221,29 +236,24 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     </div>
                   )}
 
-                  {entry.laps.length > 0 && (
+                  {entry.breaks.length > 0 && (
                     <div>
                       <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
-                        Recorded Laps ({entry.laps.length})
+                        Breaks ({entry.breaks.length}) — {formatDurationHuman(entryBreakMs)} total
                       </strong>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 font-mono text-[11px]">
-                        {entry.laps.map((lap) => {
-                          const lapDisp = formatTimeDisplay(lap.lapTimeMs, {
-                            includeMilliseconds: true,
-                          });
-                          return (
-                            <div
-                              key={lap.id}
-                              className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between"
-                            >
-                              <span className="text-gray-400">Lap {lap.lapNumber}:</span>
-                              <span className="text-gray-800 font-semibold">
-                                {lapDisp.mainTime}
-                                <span className="text-[#2D5BFF]">{lapDisp.subTime}</span>
-                              </span>
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[11px]">
+                        {entry.breaks.map((pause, i) => (
+                          <div
+                            key={pause.id}
+                            className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between gap-2"
+                          >
+                            <span className="text-gray-400">#{i + 1}</span>
+                            <span className="text-gray-800 font-semibold">
+                              {formatDateTime(pause.startTime)} —{' '}
+                              {pause.endTime === null ? 'running' : formatDateTime(pause.endTime)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

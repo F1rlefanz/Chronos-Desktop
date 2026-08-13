@@ -1,25 +1,42 @@
 export type TimerState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'STOPPED';
 
-export interface Lap {
+/**
+ * A pause inside an entry, as two points on the wall clock.
+ *
+ * Stored as events rather than as one summed `pauseDurationMs`, because the
+ * summary cannot answer "when": a pause that has to be corrected afterwards,
+ * or one that is still running, needs its own start and end.
+ */
+export interface Break {
   id: string;
-  lapNumber: number;
-  lapTimeMs: number;
-  splitTimeMs: number;
-  timestamp: number;
+  startTime: number;
+  /** `null` while the pause is still running. */
+  endTime: number | null;
 }
 
+/**
+ * One recorded stretch of work.
+ *
+ * The entry stores *when* work happened and derives *how long* it took; there
+ * is deliberately no `durationMs` field. Storing both invites the two to
+ * disagree — the previous model kept a duration accumulated from animation
+ * frames next to wall-clock timestamps, so a minimised window made them drift
+ * apart and the JSON import had to guess which one to believe. Every duration
+ * in the app now comes from `src/domain/timeEntry.ts`.
+ */
 export interface TimeEntry {
   id: string;
   title: string;
   project: string;
   tags: string[];
   startTime: number;
-  endTime: number;
-  durationMs: number;
-  pauseDurationMs: number;
+  /** `null` while the entry is still running — the crash-safe open session. */
+  endTime: number | null;
+  breaks: Break[];
   notes?: string;
-  laps: Lap[];
   createdAt: number;
+  /** How the entry came into being; a manual entry never saw a stopwatch. */
+  source: 'stopwatch' | 'manual';
 }
 
 export interface Project {
@@ -45,9 +62,10 @@ export interface AppSettings {
 export interface PdfExportOptions {
   title: string;
   author: string;
-  includeLaps: boolean;
   includeNotes: boolean;
   includeSummary: boolean;
   dateRange: 'all' | 'today' | 'week' | 'month';
   selectedProject: string; // 'all' or project ID
 }
+
+export type ExportFormat = 'pdf' | 'csv' | 'json';

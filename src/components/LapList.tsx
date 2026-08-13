@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lap } from '../types';
+import { Lap } from '../hooks/useStopwatch';
 import { formatTimeDisplay } from '../utils/timeFormatters';
 import { Flag, Trophy, Flame } from 'lucide-react';
 

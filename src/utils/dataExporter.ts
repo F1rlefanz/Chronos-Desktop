@@ -1,4 +1,5 @@
-import { TimeEntry, Project, Lap } from '../types';
+import { TimeEntry, Project, Break } from '../types';
+import { breakMs, netMs } from '../domain/timeEntry';
 import { formatTimeDisplay, formatDateTime } from './timeFormatters';
 
 /**
@@ -32,19 +33,25 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
     'Project',
     'Start Time',
     'End Time',
+    'Break (HH:MM:SS)',
     'Duration (HH:MM:SS.ms)',
     'Duration (Seconds)',
-    'Laps Count',
     'Notes',
   ];
+
+  // One clock for the whole file, so a running entry cannot be counted with a
+  // slightly different "now" on every row.
+  const now = Date.now();
 
   const rows = entries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
-    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+    const net = netMs(entry, now);
+    const { mainTime, subTime } = formatTimeDisplay(net, {
       includeMilliseconds: true,
     });
-    const durationSeconds = (entry.durationMs / 1000).toFixed(2);
+    const durationSeconds = (net / 1000).toFixed(2);
+    const pause = formatTimeDisplay(breakMs(entry, now), { alwaysShowHours: true }).mainTime;
 
     const escapeCsv = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
 
@@ -53,10 +60,10 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
       escapeCsv(entry.title || 'Untitled Session'),
       escapeCsv(projName),
       escapeCsv(formatDateTime(entry.startTime)),
-      escapeCsv(formatDateTime(entry.endTime)),
+      escapeCsv(entry.endTime === null ? 'running' : formatDateTime(entry.endTime)),
+      escapeCsv(pause),
       escapeCsv(`${mainTime}${subTime}`),
       durationSeconds,
-      entry.laps.length,
       escapeCsv(entry.notes || ''),
     ].join(',');
   });
@@ -85,7 +92,10 @@ export function buildBackupPayload(
 
   return JSON.stringify(
     {
-      version: '1.0.0',
+      // Bumped when an entry stopped being a stopwatch readout (stored
+      // duration, laps) and became start/end plus pauses. `normalizeTimeEntry`
+      // still reads a `1.x` file, so this marks the shape rather than gating it.
+      version: '2.0.0',
       exportTimestamp: timestamp,
       exportDateFormatted: formatDateTime(timestamp),
       settings,
@@ -140,23 +150,87 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 }
 
-function normalizeLap(raw: unknown, index: number): Lap {
-  const lap = isRecord(raw) ? raw : {};
+/** A finite number, or `null` — the shape of an open end. */
+function asOptionalTimestamp(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function normalizeBreak(raw: unknown): Break | null {
+  if (!isRecord(raw)) return null;
+
+  const startTime = asOptionalTimestamp(raw.startTime);
+  if (startTime === null) return null;
+
   return {
-    id: asString(lap.id) || generateId('lap-imported'),
-    lapNumber: asNumber(lap.lapNumber, index + 1),
-    lapTimeMs: asNumber(lap.lapTimeMs),
-    splitTimeMs: asNumber(lap.splitTimeMs),
-    timestamp: asNumber(lap.timestamp),
+    id: asString(raw.id) || generateId('break-imported'),
+    startTime,
+    endTime: asOptionalTimestamp(raw.endTime),
   };
 }
 
-function normalizeTimeEntry(raw: unknown): TimeEntry | null {
+/**
+ * Rebuilds the pauses of a record written before pauses were events.
+ *
+ * The old model stored `durationMs` (time the stopwatch actually ran, so
+ * already net of pauses) beside wall-clock timestamps. Reconstructing the
+ * pause from `span - durationMs` therefore preserves the net time exactly,
+ * which `pauseDurationMs` — measured on a different clock — only approximates;
+ * it is the fallback for records that lack a usable duration. The result is one
+ * pause anchored at the end of the entry: the old record never knew *when* the
+ * breaks were, and inventing plausible positions would be worse than admitting
+ * that.
+ */
+function breaksFromLegacy(raw: Record<string, unknown>, span: number): Break[] {
+  const legacyDuration = raw.durationMs;
+  const legacyPause = raw.pauseDurationMs;
+
+  let pauseTotal: number;
+  if (typeof legacyDuration === 'number' && Number.isFinite(legacyDuration)) {
+    pauseTotal = span - Math.max(0, legacyDuration);
+  } else if (typeof legacyPause === 'number' && Number.isFinite(legacyPause)) {
+    pauseTotal = legacyPause;
+  } else {
+    return [];
+  }
+
+  const clamped = Math.min(Math.max(0, pauseTotal), span);
+  if (clamped <= 0) return [];
+
+  return [{ id: generateId('break-migrated'), startTime: -clamped, endTime: 0 }];
+}
+
+/**
+ * Coerces one record — from a file or from storage — into a complete entry.
+ *
+ * Exported because stored data deserves the same suspicion as an imported
+ * file: it was written by an older build, possibly a different model, and it
+ * is read straight into state on every start.
+ */
+export function normalizeTimeEntry(raw: unknown): TimeEntry | null {
   if (!isRecord(raw)) return null;
 
   const startTime = asNumber(raw.startTime);
-  const endTime = asNumber(raw.endTime);
-  const laps = Array.isArray(raw.laps) ? raw.laps.map(normalizeLap) : [];
+
+  // `null` is a real value now — a running entry — so an absent or unusable
+  // end falls back to the legacy duration before giving up and calling it open.
+  let endTime = asOptionalTimestamp(raw.endTime);
+  if (endTime === null && raw.endTime !== null) {
+    const legacyDuration = raw.durationMs;
+    endTime =
+      typeof legacyDuration === 'number' && Number.isFinite(legacyDuration)
+        ? startTime + Math.max(0, legacyDuration)
+        : null;
+  }
+
+  const span = endTime === null ? 0 : Math.max(0, endTime - startTime);
+  const breaks = Array.isArray(raw.breaks)
+    ? raw.breaks.map(normalizeBreak).filter((b): b is Break => b !== null)
+    : // Offsets from the entry's end, resolved here where `endTime` is known.
+      breaksFromLegacy(raw, span).map((pause) => ({
+        ...pause,
+        startTime: (endTime ?? startTime) + pause.startTime,
+        endTime: (endTime ?? startTime) + (pause.endTime ?? 0),
+      }));
 
   return {
     id: asString(raw.id) || generateId('entry-imported'),
@@ -165,11 +239,10 @@ function normalizeTimeEntry(raw: unknown): TimeEntry | null {
     tags: Array.isArray(raw.tags) ? raw.tags.filter((t): t is string => typeof t === 'string') : [],
     startTime,
     endTime,
-    durationMs: asNumber(raw.durationMs, Math.max(0, endTime - startTime)),
-    pauseDurationMs: asNumber(raw.pauseDurationMs),
+    breaks,
     notes: typeof raw.notes === 'string' ? raw.notes : undefined,
-    laps,
     createdAt: asNumber(raw.createdAt, Date.now()),
+    source: raw.source === 'manual' ? 'manual' : 'stopwatch',
   };
 }
 

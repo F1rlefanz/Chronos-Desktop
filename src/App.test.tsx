@@ -52,10 +52,9 @@ const withOneEntry: PersistedState = {
       tags: [],
       startTime: 1,
       endTime: 2,
-      durationMs: 1,
-      pauseDurationMs: 0,
-      laps: [],
+      breaks: [],
       createdAt: 1,
+      source: 'stopwatch',
     },
   ],
 };

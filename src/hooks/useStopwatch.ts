@@ -1,6 +1,36 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { TimerState, Lap } from '../types';
+import { Break, TimerState } from '../types';
 import { TIME_CONSTANTS } from '../constants/defaultConfig';
+
+/**
+ * A split time, shown while the stopwatch runs and never stored.
+ *
+ * It lives here rather than in `../types` because it is not part of the data
+ * model: a lap says something about a stopwatch run, not about worked time, and
+ * an entry that was typed in by hand can never have one.
+ */
+export interface Lap {
+  id: string;
+  lapNumber: number;
+  lapTimeMs: number;
+  splitTimeMs: number;
+  timestamp: number;
+}
+
+/**
+ * What a finished run contributes to an entry: the facts, not the arithmetic.
+ *
+ * Deliberately no total — the duration is derived from these three by
+ * `netMs`, so there is no second number that could disagree with them. The
+ * accumulator behind `elapsedTimeMs` drives the live display only; it stops
+ * advancing when the window stops receiving animation frames, which makes it
+ * the wrong thing to persist.
+ */
+export interface StopwatchResult {
+  startTime: number;
+  endTime: number;
+  breaks: Break[];
+}
 
 export interface UseStopwatchReturn {
   elapsedTimeMs: number;
@@ -11,13 +41,7 @@ export interface UseStopwatchReturn {
   pause: () => void;
   resume: () => void;
   recordLap: () => Lap | null;
-  stop: () => {
-    totalMs: number;
-    pauseDurationMs: number;
-    laps: Lap[];
-    startTime: number;
-    endTime: number;
-  };
+  stop: () => StopwatchResult;
   reset: () => void;
 }
 
@@ -36,11 +60,11 @@ export function useStopwatch(
   const lastLapTotalMsRef = useRef<number>(0);
   const lastRenderTimeRef = useRef<number>(0);
 
-  // Time spent in PAUSED, measured on the wall clock: the accumulator above
-  // deliberately does not advance while paused, so the gap has to be tracked
-  // separately for the saved entry to report it.
-  const pausedTotalMsRef = useRef<number>(0);
-  const pauseStartedAtRef = useRef<number | null>(null);
+  // Pauses, recorded on the wall clock as they happen. The accumulator above
+  // deliberately does not advance while paused; keeping the gaps as timestamped
+  // events rather than one running total is what lets a pause be corrected
+  // afterwards, and what survives being written to disk mid-run.
+  const breaksRef = useRef<Break[]>([]);
 
   const start = useCallback(() => {
     const nowTimestamp = Date.now();
@@ -48,8 +72,7 @@ export function useStopwatch(
 
     accumulatedTimeRef.current = 0;
     lastLapTotalMsRef.current = 0;
-    pausedTotalMsRef.current = 0;
-    pauseStartedAtRef.current = null;
+    breaksRef.current = [];
     startTimeRef.current = nowTimestamp;
     lastTickTimeRef.current = perfNow;
     lastRenderTimeRef.current = perfNow;
@@ -64,22 +87,32 @@ export function useStopwatch(
   // stop it, so pause/stop/reset only settle their own bookkeeping.
   const pause = useCallback(() => {
     lastTickTimeRef.current = null;
-    pauseStartedAtRef.current = performance.now();
+    breaksRef.current = [
+      ...breaksRef.current,
+      {
+        id: `break-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        startTime: Date.now(),
+        endTime: null,
+      },
+    ];
     // Flush the throttled value so the display shows the exact pause instant.
     setElapsedTimeMs(accumulatedTimeRef.current);
     setTimerState('PAUSED');
   }, []);
 
-  const settlePause = useCallback((perfNow: number) => {
-    if (pauseStartedAtRef.current !== null) {
-      pausedTotalMsRef.current += perfNow - pauseStartedAtRef.current;
-      pauseStartedAtRef.current = null;
-    }
+  /** Closes an open pause, if there is one. Idempotent: stop after pause. */
+  const settlePause = useCallback(() => {
+    const open = breaksRef.current.findIndex((pause) => pause.endTime === null);
+    if (open === -1) return;
+
+    const settled = [...breaksRef.current];
+    settled[open] = { ...settled[open], endTime: Date.now() };
+    breaksRef.current = settled;
   }, []);
 
   const resume = useCallback(() => {
     const perfNow = performance.now();
-    settlePause(perfNow);
+    settlePause();
     lastTickTimeRef.current = perfNow;
     lastRenderTimeRef.current = perfNow;
     setTimerState('RUNNING');
@@ -104,26 +137,24 @@ export function useStopwatch(
     return newLap;
   }, [timerState, laps.length]);
 
-  const stop = useCallback(() => {
+  const stop = useCallback((): StopwatchResult => {
     lastTickTimeRef.current = null;
     // Stopping straight out of PAUSED still closes that pause.
-    settlePause(performance.now());
+    settlePause();
 
     const finalMs = accumulatedTimeRef.current;
     const endTime = Date.now();
-    const recordedStartTime = startTimeRef.current || endTime - finalMs;
+    const recordedStartTime = startTimeRef.current ?? endTime - finalMs;
 
     setElapsedTimeMs(finalMs);
     setTimerState('STOPPED');
 
     return {
-      totalMs: finalMs,
-      pauseDurationMs: pausedTotalMsRef.current,
-      laps: [...laps],
       startTime: recordedStartTime,
       endTime,
+      breaks: breaksRef.current,
     };
-  }, [laps, settlePause]);
+  }, [settlePause]);
 
   const reset = useCallback(() => {
     lastTickTimeRef.current = null;
@@ -131,8 +162,7 @@ export function useStopwatch(
     accumulatedTimeRef.current = 0;
     lastLapTotalMsRef.current = 0;
     lastRenderTimeRef.current = 0;
-    pausedTotalMsRef.current = 0;
-    pauseStartedAtRef.current = null;
+    breaksRef.current = [];
 
     setElapsedTimeMs(0);
     setLaps([]);

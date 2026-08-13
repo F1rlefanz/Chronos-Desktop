@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TimeEntry, Project, PdfExportOptions } from '../types';
+import { netMs, totalNetMs } from '../domain/timeEntry';
 import {
   formatTimeDisplay,
   formatDateTime,
@@ -65,7 +66,7 @@ export function generatePdfReport(
   let currentY = 44;
 
   // Summary Card Section
-  const totalMs = filteredEntries.reduce((sum, e) => sum + e.durationMs, 0);
+  const totalMs = totalNetMs(filteredEntries, now);
   const totalHoursFormatted = (totalMs / (1000 * 60 * 60)).toFixed(2);
 
   if (options.includeSummary) {
@@ -91,15 +92,14 @@ export function generatePdfReport(
     currentY += 32;
   }
 
-  // Sessions Table — the Laps and Notes columns are opt-out via export options.
+  // Sessions Table — the Notes column is opt-out via export options.
   const tableHead = ['Session Title', 'Project', 'Date', 'Duration'];
-  if (options.includeLaps) tableHead.push('Laps');
   if (options.includeNotes) tableHead.push('Notes');
 
   const tableData = filteredEntries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
-    const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+    const { mainTime, subTime } = formatTimeDisplay(netMs(entry, now), {
       includeMilliseconds: true,
     });
 
@@ -110,9 +110,6 @@ export function generatePdfReport(
       `${mainTime}${subTime}`,
     ];
 
-    if (options.includeLaps) {
-      row.push(entry.laps.length > 0 ? `${entry.laps.length} laps` : '-');
-    }
     if (options.includeNotes) {
       row.push(
         entry.notes ? entry.notes.substring(0, 35) + (entry.notes.length > 35 ? '...' : '') : '-'

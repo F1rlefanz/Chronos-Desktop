@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { LapList } from './LapList';
-import type { Lap } from '../types';
+import type { Lap } from '../hooks/useStopwatch';
 
 function makeLap(lapNumber: number, lapTimeMs: number): Lap {
   return {

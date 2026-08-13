@@ -25,7 +25,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
     title: 'Time Tracking Report',
     author: 'ChronoCraft User',
-    includeLaps: true,
     includeNotes: true,
     includeSummary: true,
     dateRange: 'all',
@@ -175,18 +174,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={pdfOptions.includeLaps}
-                    onChange={(e) =>
-                      setPdfOptions({ ...pdfOptions, includeLaps: e.target.checked })
-                    }
-                    className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
-                  />
-                  <span>Include Lap Count Column</span>
-                </label>
-
-                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
-                  <input
-                    type="checkbox"
                     checked={pdfOptions.includeNotes}
                     onChange={(e) =>
                       setPdfOptions({ ...pdfOptions, includeNotes: e.target.checked })
@@ -226,9 +213,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           {activeTab === 'json' && (
             <div className="space-y-4 text-center py-4">
               <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs">
-                Export your complete app state (settings, custom projects, time logs, and laps) to a
-                portable <strong>.JSON file</strong> to share or move between PCs without losing
-                data.
+                Export your complete app state (settings, custom projects, time entries and their
+                breaks) to a portable <strong>.JSON file</strong> to share or move between PCs
+                without losing data.
               </div>
               <button
                 onClick={handleExportJson}

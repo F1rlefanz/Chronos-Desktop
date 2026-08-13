@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { Project, TimeEntry, Lap } from '../types';
+import { Project, TimeEntry } from '../types';
+import { StopwatchResult } from '../hooks/useStopwatch';
+import { breakMs, netMs } from '../domain/timeEntry';
 import { formatTimeDisplay, formatDurationHuman } from '../utils/timeFormatters';
 import { Save, Tag, Folder, FileText, Check, X } from 'lucide-react';
 
 interface SessionSaverModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => void;
-  recordedMs: number;
-  pauseDurationMs: number;
-  recordedLaps: Lap[];
-  startTime: number;
-  endTime: number;
+  onSave: (entryData: Omit<TimeEntry, 'id' | 'createdAt' | 'source'>) => void;
+  /** The finished run: start, end and pauses. The duration is derived. */
+  recorded: StopwatchResult;
   projects: Project[];
   defaultProjectId: string;
 }
@@ -20,11 +19,7 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  recordedMs,
-  pauseDurationMs,
-  recordedLaps,
-  startTime,
-  endTime,
+  recorded,
   projects,
   defaultProjectId,
 }) => {
@@ -49,17 +44,17 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
       title: title.trim() || 'Untitled Session',
       project: selectedProjectId,
       tags,
-      startTime,
-      endTime,
-      durationMs: recordedMs,
-      pauseDurationMs,
+      startTime: recorded.startTime,
+      endTime: recorded.endTime,
+      breaks: recorded.breaks,
       notes: notes.trim(),
-      laps: recordedLaps,
     });
 
     onClose();
   };
 
+  const recordedMs = netMs(recorded);
+  const pausedMs = breakMs(recorded);
   const { mainTime, subTime } = formatTimeDisplay(recordedMs, { includeMilliseconds: true });
 
   return (
@@ -95,6 +90,11 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
               <span className="text-sm font-semibold text-[#2D5BFF]">
                 {formatDurationHuman(recordedMs)}
               </span>
+              {pausedMs > 0 && (
+                <span className="block text-[10px] text-gray-400">
+                  minus {formatDurationHuman(pausedMs)} paused
+                </span>
+              )}
             </div>
           </div>
 

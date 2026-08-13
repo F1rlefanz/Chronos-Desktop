@@ -1,12 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useStopwatch } from './useStopwatch';
+import { breakMs, netMs } from '../domain/timeEntry';
 
 /**
  * The hook drives itself from requestAnimationFrame + performance.now(), so
  * tests advance a controllable clock and pump frames by hand. Real timers would
  * make every assertion a race.
+ *
+ * `Date.now` is pinned to the same clock: pauses are recorded as wall-clock
+ * timestamps, so a fake performance clock alone would leave every break with a
+ * duration of zero.
  */
+const EPOCH = 1_700_000_000_000;
 let now = 0;
 let frameCallbacks: FrameRequestCallback[] = [];
 
@@ -23,6 +29,7 @@ beforeEach(() => {
   now = 0;
   frameCallbacks = [];
   vi.spyOn(performance, 'now').mockImplementation(() => now);
+  vi.spyOn(Date, 'now').mockImplementation(() => EPOCH + now);
   vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb) => {
     frameCallbacks.push(cb);
     return frameCallbacks.length;
@@ -112,7 +119,7 @@ describe('useStopwatch', () => {
     expect(result.current.laps).toEqual([]);
   });
 
-  it('returns the final total and laps from stop()', () => {
+  it('returns the facts of the run from stop()', () => {
     const { result } = renderHook(() => useStopwatch());
 
     act(() => result.current.start());
@@ -128,14 +135,15 @@ describe('useStopwatch', () => {
     });
 
     expect(result.current.timerState).toBe('STOPPED');
-    expect(stopped.totalMs).toBeCloseTo(1500, 5);
-    expect(stopped.laps).toHaveLength(1);
     expect(stopped.endTime).toBeGreaterThanOrEqual(stopped.startTime);
+    expect(stopped.breaks).toEqual([]);
+    // Laps are a live display concern and never reach the saved entry.
+    expect(stopped).not.toHaveProperty('laps');
     // The display is flushed to the exact stop instant, not the last throttled tick.
     expect(result.current.elapsedTimeMs).toBeCloseTo(1500, 5);
   });
 
-  it('reports how long the session sat paused', () => {
+  it('records a pause as a closed break on the wall clock', () => {
     const { result } = renderHook(() => useStopwatch());
 
     act(() => result.current.start());
@@ -152,12 +160,13 @@ describe('useStopwatch', () => {
       stopped = result.current.stop();
     });
 
-    expect(stopped.pauseDurationMs).toBeCloseTo(3000, 5);
-    // Paused time is excluded from the measured duration.
-    expect(stopped.totalMs).toBeCloseTo(1500, 5);
+    expect(stopped.breaks).toHaveLength(1);
+    expect(breakMs({ breaks: stopped.breaks })).toBeCloseTo(3000, -1);
+    // Paused time is excluded from the derived net duration.
+    expect(netMs(stopped)).toBeCloseTo(1500, -1);
   });
 
-  it('counts a pause that is never resumed before stopping', () => {
+  it('closes a pause that is never resumed before stopping', () => {
     const { result } = renderHook(() => useStopwatch());
 
     act(() => result.current.start());
@@ -170,10 +179,12 @@ describe('useStopwatch', () => {
       stopped = result.current.stop();
     });
 
-    expect(stopped.pauseDurationMs).toBeCloseTo(2000, 5);
+    expect(stopped.breaks).toHaveLength(1);
+    expect(stopped.breaks[0].endTime).not.toBeNull();
+    expect(breakMs({ breaks: stopped.breaks })).toBeCloseTo(2000, -1);
   });
 
-  it('reports no pause for a session that never paused', () => {
+  it('records no break for a session that never paused', () => {
     const { result } = renderHook(() => useStopwatch());
 
     act(() => result.current.start());
@@ -184,7 +195,8 @@ describe('useStopwatch', () => {
       stopped = result.current.stop();
     });
 
-    expect(stopped.pauseDurationMs).toBe(0);
+    expect(stopped.breaks).toEqual([]);
+    expect(breakMs({ breaks: stopped.breaks })).toBe(0);
   });
 
   it('clears everything on reset, from any state', () => {

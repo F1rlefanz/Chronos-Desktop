@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useStopwatch } from './hooks/useStopwatch';
-import { AppSettings, Project, TimeEntry, Lap } from './types';
+import { useStopwatch, StopwatchResult } from './hooks/useStopwatch';
+import { AppSettings, Project, TimeEntry } from './types';
 import { ImportedData, buildBackupPayload } from './utils/dataExporter';
 import { logInfo, logWarn, loggingToFile, revealLogs } from './utils/logging/logger';
 import {
@@ -59,13 +59,7 @@ export default function App({ initialState }: AppProps) {
   } | null>(null);
 
   // Stopped Session Pending Save State
-  const [pendingSaveData, setPendingSaveData] = useState<{
-    recordedMs: number;
-    pauseDurationMs: number;
-    recordedLaps: Lap[];
-    startTime: number;
-    endTime: number;
-  } | null>(null);
+  const [pendingSaveData, setPendingSaveData] = useState<StopwatchResult | null>(null);
 
   // High-Precision Stopwatch Hook
   const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
@@ -198,14 +192,7 @@ export default function App({ initialState }: AppProps) {
 
   const handleStopAndOpenSaver = useCallback(() => {
     playAudioCue('stop');
-    const result = stop();
-    setPendingSaveData({
-      recordedMs: result.totalMs,
-      pauseDurationMs: result.pauseDurationMs,
-      recordedLaps: result.laps,
-      startTime: result.startTime,
-      endTime: result.endTime,
-    });
+    setPendingSaveData(stop());
     setIsSaverOpen(true);
   }, [playAudioCue, stop]);
 
@@ -227,11 +214,12 @@ export default function App({ initialState }: AppProps) {
     setPersistenceError(result.ok ? null : { what, detail: result.message });
   };
 
-  const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
+  const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt' | 'source'>) => {
     const newEntry: TimeEntry = {
       ...entryData,
       id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       createdAt: Date.now(),
+      source: 'stopwatch',
     };
 
     const updated = [newEntry, ...timeEntries];
@@ -488,11 +476,7 @@ export default function App({ initialState }: AppProps) {
             setPendingSaveData(null);
           }}
           onSave={handleSaveEntry}
-          recordedMs={pendingSaveData.recordedMs}
-          pauseDurationMs={pendingSaveData.pauseDurationMs}
-          recordedLaps={pendingSaveData.recordedLaps}
-          startTime={pendingSaveData.startTime}
-          endTime={pendingSaveData.endTime}
+          recorded={pendingSaveData}
           projects={projects}
           defaultProjectId={activeProjectId}
         />

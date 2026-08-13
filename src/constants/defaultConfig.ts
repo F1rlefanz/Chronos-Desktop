@@ -35,6 +35,20 @@ export const TIMER_INTERVAL_OPTIONS = [
 ] as const;
 
 export const STORAGE_KEYS = {
+  SETTINGS: 'chronos_settings_v2',
+  TIME_ENTRIES: 'chronos_entries_v2',
+  PROJECTS: 'chronos_projects_v2',
+} as const;
+
+/**
+ * What builds up to 0.3.0 wrote, back when an entry was a stopwatch readout.
+ *
+ * Read once, on the first start after the upgrade, and converted to the current
+ * shape (`migrateEntries`). The old values are left in place rather than
+ * deleted: the adapter has no `remove`, and adding IPC surface to tidy up a key
+ * nobody reads twice is not worth the extra thing that can fail.
+ */
+export const LEGACY_STORAGE_KEYS = {
   SETTINGS: 'stopwatch_app_settings_v1',
   TIME_ENTRIES: 'stopwatch_app_entries_v1',
   PROJECTS: 'stopwatch_app_projects_v1',
