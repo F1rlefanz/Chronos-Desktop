@@ -3,6 +3,13 @@ import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState } from './types';
 import { closeOpenBreak, hasRunningBreak, isRunning } from './domain/timeEntry';
+import {
+  monthlySeries,
+  summarise,
+  weekdayTotals,
+  weeklySeries,
+  WEEKDAY_LABELS,
+} from './domain/stats';
 import { ImportedData, buildBackupPayload } from './utils/dataExporter';
 import { logInfo, logWarn, loggingToFile, revealLogs } from './utils/logging/logger';
 import {
@@ -24,6 +31,9 @@ import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { BreakList } from './components/BreakList';
 import { RecoveryPrompt } from './components/RecoveryPrompt';
+import { StatCards } from './components/StatCards';
+import { MonthCalendar } from './components/MonthCalendar';
+import { TimeBarChart } from './components/TimeBarChart';
 import { SessionSaverModal } from './components/SessionSaverModal';
 import { EntryFormModal, EntryDraft } from './components/EntryFormModal';
 import { SessionHistory } from './components/SessionHistory';
@@ -114,9 +124,33 @@ export default function App({ initialState }: AppProps) {
 
   const elapsedTimeMs = useLiveDuration(runningEntry, settings.timerIntervalMs);
 
-  // A second, much slower clock for anything that only needs to look live —
-  // the break list, whose ongoing pause grows by the second.
-  const now = useNow(runningEntry ? 1000 : null);
+  // A second, slower clock for everything that only needs to look live: the
+  // break list and every aggregate, both of which count a running entry up to
+  // this instant. It keeps ticking once a minute when nothing is running, and
+  // that is not idle churn — "today" is a range, so an app left open across
+  // midnight would otherwise go on totalling yesterday.
+  const now = useNow(runningEntry ? 1000 : 60_000);
+
+  // Recomputed from the entries on every change rather than maintained
+  // alongside them: an edited entry moves its day, its week, its month and
+  // every chart at once, with no total left behind to go stale.
+  const summary = useMemo(() => summarise(timeEntries, now), [timeEntries, now]);
+
+  const weekdaySeries = useMemo(
+    () =>
+      weekdayTotals(timeEntries, now).map((value, index) => ({
+        label: WEEKDAY_LABELS[index],
+        value,
+      })),
+    [timeEntries, now]
+  );
+
+  const lastTwelveWeeks = useMemo(() => weeklySeries(timeEntries, 12, now), [timeEntries, now]);
+
+  const thisYearByMonth = useMemo(
+    () => monthlySeries(timeEntries, new Date(now).getFullYear(), now),
+    [timeEntries, now]
+  );
 
   // One snapshot per day, of the state as it was found on disk — the slow
   // counterpart to the snapshots taken before a destructive action. It is
@@ -645,6 +679,18 @@ export default function App({ initialState }: AppProps) {
 
         {/* Breaks taken during the measurement in progress */}
         {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+
+        {/* Totals, calendar and trends — all derived, nothing stored twice */}
+        <StatCards summary={summary} />
+
+        <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TimeBarChart title="Last 12 weeks" points={lastTwelveWeeks} />
+          <TimeBarChart title="By weekday" points={weekdaySeries} />
+        </div>
+
+        <TimeBarChart title={`Months of ${new Date(now).getFullYear()}`} points={thisYearByMonth} />
 
         {/* Session History Log & Export Table */}
         <SessionHistory
