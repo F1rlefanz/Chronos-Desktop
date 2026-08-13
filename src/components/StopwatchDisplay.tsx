@@ -7,7 +7,7 @@ interface StopwatchDisplayProps {
   elapsedTimeMs: number;
   timerState: TimerState;
   showMilliseconds: boolean;
-  lapCount: number;
+  breakCount: number;
   selectedProjectName: string;
   selectedProjectColor: string;
 }
@@ -16,7 +16,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   elapsedTimeMs,
   timerState,
   showMilliseconds,
-  lapCount,
+  breakCount,
   selectedProjectName,
   selectedProjectColor,
 }) => {
@@ -102,9 +102,9 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
               </strong>
             </span>
           )}
-          {lapCount > 0 && (
-            <span className="bg-blue-50 text-[#2D5BFF] border border-blue-200/80 px-3.5 py-1.5 rounded-full font-semibold">
-              Laps: {lapCount}
+          {breakCount > 0 && (
+            <span className="bg-amber-50 text-amber-700 border border-amber-200/80 px-3.5 py-1.5 rounded-full font-semibold">
+              Breaks: {breakCount}
             </span>
           )}
         </div>

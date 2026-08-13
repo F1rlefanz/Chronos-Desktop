@@ -61,6 +61,23 @@ export function netMs(
   return Math.max(0, grossMs(entry, now) - breakMs(entry, now));
 }
 
+/**
+ * Closes the open pause in a list, if there is one.
+ *
+ * Idempotent, because two different transitions need it: resuming, and
+ * stopping straight out of a pause. A measurement must never be written out
+ * with a pause that has no end — it would keep growing against `now` for as
+ * long as the entry exists and quietly eat the recorded time.
+ */
+export function closeOpenBreak(breaks: Break[], at: number = Date.now()): Break[] {
+  const open = breaks.findIndex(isBreakRunning);
+  if (open === -1) return breaks;
+
+  const closed = [...breaks];
+  closed[open] = { ...closed[open], endTime: at };
+  return closed;
+}
+
 /** Sums net time over many entries — the one place aggregates start from. */
 export function totalNetMs(entries: TimeEntry[], now: number = Date.now()): number {
   return entries.reduce((total, entry) => total + netMs(entry, now), 0);

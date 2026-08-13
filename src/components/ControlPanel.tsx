@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Flag, RotateCcw, Save } from 'lucide-react';
+import { Play, Pause, Trash2, Save } from 'lucide-react';
 import { TimerState } from '../types';
 
 interface ControlPanelProps {
@@ -7,9 +7,8 @@ interface ControlPanelProps {
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
-  onLap: () => void;
   onStop: () => void;
-  onReset: () => void;
+  onDiscard: () => void;
   shortcutsEnabled?: boolean;
 }
 
@@ -18,9 +17,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onStart,
   onPause,
   onResume,
-  onLap,
   onStop,
-  onReset,
+  onDiscard,
   shortcutsEnabled = true,
 }) => {
   return (
@@ -74,22 +72,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </button>
         )}
 
-        {/* LAP / SPLIT Button */}
-        {(timerState === 'RUNNING' || timerState === 'PAUSED') && (
-          <button
-            onClick={onLap}
-            className="flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-white hover:bg-gray-50 text-gray-700 font-semibold text-sm border border-gray-200 shadow-xs transition-all transform active:scale-95 cursor-pointer"
-          >
-            <Flag className="w-4 h-4 text-[#2D5BFF]" />
-            <span>LAP / SPLIT</span>
-            {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
-                L
-              </kbd>
-            )}
-          </button>
-        )}
-
         {/* STOP & SAVE Session Button */}
         {(timerState === 'RUNNING' || timerState === 'PAUSED') && (
           <button
@@ -106,15 +88,16 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </button>
         )}
 
-        {/* RESET Button */}
-        {timerState !== 'IDLE' && (
+        {/* DISCARD Button — deletes the measurement rather than "resetting" it,
+            because the entry is already stored the moment it starts. */}
+        {(timerState === 'RUNNING' || timerState === 'PAUSED') && (
           <button
-            onClick={onReset}
-            className="flex items-center justify-center gap-2 px-5 py-4 rounded-full bg-gray-100 hover:bg-gray-200/80 text-gray-600 hover:text-gray-900 border border-gray-200 transition-all cursor-pointer text-sm font-semibold"
-            title="Reset Timer"
+            onClick={onDiscard}
+            className="flex items-center justify-center gap-2 px-5 py-4 rounded-full bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 border border-gray-200 transition-all cursor-pointer text-sm font-semibold"
+            title="Discard the running measurement"
           >
-            <RotateCcw className="w-4 h-4 text-gray-500" />
-            <span>RESET</span>
+            <Trash2 className="w-4 h-4" />
+            <span>DISCARD</span>
             {shortcutsEnabled && (
               <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-white text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
                 R
