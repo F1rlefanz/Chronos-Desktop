@@ -55,6 +55,11 @@ up in a pull request.
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
+- **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
+  stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
+  `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
+  line. The badge used to be a hardcoded `v1.2.0` that had drifted three minor versions from the
+  real number — do not reintroduce a second copy.
 - **Timing accuracy lives in refs, not state.** `src/hooks/useStopwatch.ts` accumulates elapsed
   time per animation frame and only throttles the state push. Do not "simplify" it into a
   `setInterval` that stores time in state.

@@ -121,6 +121,10 @@ Things worth knowing before changing code here:
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
   it reaches the app, because the import is persisted immediately — a malformed entry would
   otherwise break the app on every subsequent reload.
+- **There is one version number.** `package.json` holds it; `tauri.conf.json` reads it via
+  `"version": "../package.json"`, and Vite stamps it into `__APP_VERSION__` for the badge in the
+  header. `src-tauri/Cargo.toml` sits at `0.0.0` on purpose — Cargo needs a value there, Tauri
+  ignores it.
 - **The desktop write is atomic.** `storage_write` in `src-tauri/src/lib.rs` writes a temporary
   file, syncs it and renames it into place, so a crash mid-write leaves either the old file or the
   new one, never a truncated one. The command also validates the storage key rather than trusting
