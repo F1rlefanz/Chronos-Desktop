@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useStopwatch } from './hooks/useStopwatch';
-import { AppSettings, Project, TimeEntry, Lap } from './types';
+import { useLiveDuration } from './hooks/useLiveDuration';
+import { useNow } from './hooks/useNow';
+import { AppSettings, Project, TimeEntry, TimerState } from './types';
+import { closeOpenBreak, hasRunningBreak, isRunning } from './domain/timeEntry';
+import {
+  monthlySeries,
+  summarise,
+  weekdayTotals,
+  weeklySeries,
+  WEEKDAY_LABELS,
+} from './domain/stats';
 import { ImportedData, buildBackupPayload } from './utils/dataExporter';
 import { logInfo, logWarn, loggingToFile, revealLogs } from './utils/logging/logger';
 import {
@@ -20,8 +29,13 @@ import {
 import { DesktopHeader } from './components/DesktopHeader';
 import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
-import { LapList } from './components/LapList';
+import { BreakList } from './components/BreakList';
+import { RecoveryPrompt } from './components/RecoveryPrompt';
+import { StatCards } from './components/StatCards';
+import { MonthCalendar } from './components/MonthCalendar';
+import { TimeBarChart } from './components/TimeBarChart';
 import { SessionSaverModal } from './components/SessionSaverModal';
+import { EntryFormModal, EntryDraft } from './components/EntryFormModal';
 import { SessionHistory } from './components/SessionHistory';
 import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -58,18 +72,85 @@ export default function App({ initialState }: AppProps) {
     detail: string;
   } | null>(null);
 
-  // Stopped Session Pending Save State
-  const [pendingSaveData, setPendingSaveData] = useState<{
-    recordedMs: number;
-    pauseDurationMs: number;
-    recordedLaps: Lap[];
-    startTime: number;
-    endTime: number;
-  } | null>(null);
+  // The just-stopped entry awaiting a title. It is already saved by the time
+  // this is set, so only the id is held here.
+  const [pendingSaveEntryId, setPendingSaveEntryId] = useState<string | null>(null);
 
-  // High-Precision Stopwatch Hook
-  const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
-    useStopwatch(settings.timerIntervalMs);
+  // The entry form doubles as "add" and "edit": `null` means a new entry that
+  // never saw the stopwatch, which is the whole point of having the form.
+  const [entryUnderEdit, setEntryUnderEdit] = useState<TimeEntry | null>(null);
+  const [isEntryFormOpen, setIsEntryFormOpen] = useState<boolean>(false);
+
+  // A measurement found already running in storage was started by an earlier
+  // run of the app — after a crash, a reboot, or a closed window. It is only
+  // ever asked about once, at startup, so this is seeded from the initial state
+  // rather than watched: a measurement started in *this* session must not
+  // trigger the prompt.
+  const [recoveryEntryId, setRecoveryEntryId] = useState<string | null>(
+    () => initialState.entries.find(isRunning)?.id ?? null
+  );
+
+  // The active project is derived, not stored a second time: deleting the
+  // selected project (or importing a different project list) must not leave the
+  // dropdown showing one project while saved entries carry a vanished id and
+  // get labelled "General". Deriving it also avoids a repair effect that would
+  // cascade an extra render.
+  const currentProject = useMemo(() => {
+    return (
+      projects.find((p) => p.id === selectedProjectId) ||
+      projects[0] || { id: 'proj-work', name: 'Allgemein', color: '#10b981' }
+    );
+  }, [projects, selectedProjectId]);
+
+  const activeProjectId = currentProject.id;
+
+  /**
+   * The measurement in progress, if any — a normal entry with no end yet.
+   *
+   * There is no separate timer state to keep in step with it: what the
+   * stopwatch is doing is a fact about the stored data, so it is read back out
+   * rather than tracked alongside. That is also why a crash cannot desynchronise
+   * the two.
+   */
+  const runningEntry = useMemo(() => timeEntries.find(isRunning) ?? null, [timeEntries]);
+
+  const timerState: TimerState = pendingSaveEntryId
+    ? 'STOPPED'
+    : runningEntry
+      ? hasRunningBreak(runningEntry)
+        ? 'PAUSED'
+        : 'RUNNING'
+      : 'IDLE';
+
+  const elapsedTimeMs = useLiveDuration(runningEntry, settings.timerIntervalMs);
+
+  // A second, slower clock for everything that only needs to look live: the
+  // break list and every aggregate, both of which count a running entry up to
+  // this instant. It keeps ticking once a minute when nothing is running, and
+  // that is not idle churn — "today" is a range, so an app left open across
+  // midnight would otherwise go on totalling yesterday.
+  const now = useNow(runningEntry ? 1000 : 60_000);
+
+  // Recomputed from the entries on every change rather than maintained
+  // alongside them: an edited entry moves its day, its week, its month and
+  // every chart at once, with no total left behind to go stale.
+  const summary = useMemo(() => summarise(timeEntries, now), [timeEntries, now]);
+
+  const weekdaySeries = useMemo(
+    () =>
+      weekdayTotals(timeEntries, now).map((value, index) => ({
+        label: WEEKDAY_LABELS[index],
+        value,
+      })),
+    [timeEntries, now]
+  );
+
+  const lastTwelveWeeks = useMemo(() => weeklySeries(timeEntries, 12, now), [timeEntries, now]);
+
+  const thisYearByMonth = useMemo(
+    () => monthlySeries(timeEntries, new Date(now).getFullYear(), now),
+    [timeEntries, now]
+  );
 
   // One snapshot per day, of the state as it was found on disk — the slow
   // counterpart to the snapshots taken before a destructive action. It is
@@ -95,7 +176,7 @@ export default function App({ initialState }: AppProps) {
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
-  // permanently kill audio after a handful of laps.
+  // permanently kill audio after a handful of start/pause/stop transitions.
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback((): AudioContext | null => {
@@ -126,7 +207,7 @@ export default function App({ initialState }: AppProps) {
 
   // Synthesized Web Audio API sound cue generator
   const playAudioCue = useCallback(
-    (type: 'start' | 'pause' | 'lap' | 'stop') => {
+    (type: 'start' | 'pause' | 'stop') => {
       if (!settings.soundEnabled) return;
       try {
         const audioCtx = getAudioContext();
@@ -151,12 +232,6 @@ export default function App({ initialState }: AppProps) {
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
           osc.start();
           osc.stop(audioCtx.currentTime + 0.15);
-        } else if (type === 'lap') {
-          osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // C6
-          gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
-          osc.start();
-          osc.stop(audioCtx.currentTime + 0.12);
         } else if (type === 'stop') {
           osc.frequency.setValueAtTime(349.23, audioCtx.currentTime); // F4
           gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
@@ -171,50 +246,15 @@ export default function App({ initialState }: AppProps) {
     [settings.soundEnabled, getAudioContext]
   );
 
-  // Handlers. These are memoized because the keyboard shortcut effect below
-  // depends on them — without it the listener would be torn down and
-  // re-attached on every single render.
-  const handleStart = useCallback(() => {
-    playAudioCue('start');
-    start();
-  }, [playAudioCue, start]);
-
-  const handlePause = useCallback(() => {
-    playAudioCue('pause');
-    pause();
-  }, [playAudioCue, pause]);
-
-  const handleResume = useCallback(() => {
-    playAudioCue('start');
-    resume();
-  }, [playAudioCue, resume]);
-
-  const handleLap = useCallback(() => {
-    const lap = recordLap();
-    if (lap) {
-      playAudioCue('lap');
-    }
-  }, [playAudioCue, recordLap]);
-
-  const handleStopAndOpenSaver = useCallback(() => {
-    playAudioCue('stop');
-    const result = stop();
-    setPendingSaveData({
-      recordedMs: result.totalMs,
-      pauseDurationMs: result.pauseDurationMs,
-      recordedLaps: result.laps,
-      startTime: result.startTime,
-      endTime: result.endTime,
-    });
-    setIsSaverOpen(true);
-  }, [playAudioCue, stop]);
-
   // Every persisting handler routes its result through here, so a rejected
   // write surfaces in the UI instead of only in the console. A later successful
   // write clears the warning again.
   const writeSeqRef = useRef(0);
 
-  const persist = async (write: Promise<WriteResult>, what: string): Promise<void> => {
+  // Stable across renders: the timer handlers below are memoised so the
+  // keyboard listener is not torn down on every keystroke, and they can only
+  // stay stable if what they call does too.
+  const persist = useCallback(async (write: Promise<WriteResult>, what: string): Promise<void> => {
     const seq = ++writeSeqRef.current;
     const result = await write;
 
@@ -225,27 +265,219 @@ export default function App({ initialState }: AppProps) {
     if (seq !== writeSeqRef.current) return;
 
     setPersistenceError(result.ok ? null : { what, detail: result.message });
-  };
-
-  const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
-    const newEntry: TimeEntry = {
-      ...entryData,
-      id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      createdAt: Date.now(),
-    };
-
-    const updated = [newEntry, ...timeEntries];
-    setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'this session');
-    setPendingSaveData(null);
-    reset();
-  };
+  }, []);
 
   const handleDeleteEntry = (id: string) => {
     const updated = timeEntries.filter((e) => e.id !== id);
     setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'the updated history');
+    void persist(saveTimeEntries(updated), 'die Änderung');
   };
+
+  const openEntryForm = (entry: TimeEntry | null) => {
+    setEntryUnderEdit(entry);
+    setIsEntryFormOpen(true);
+  };
+
+  /**
+   * Stores what the entry form produced — a correction to an existing entry, or
+   * one that was typed in from scratch.
+   *
+   * No backup is taken first: unlike clearing the history or importing, editing
+   * one entry does not replace the data set, and a confirmation on every
+   * correction would train the user to click through it.
+   */
+  const handleSaveEntryDraft = (draft: EntryDraft) => {
+    const updated = entryUnderEdit
+      ? timeEntries.map((entry) =>
+          entry.id === entryUnderEdit.id ? { ...entryUnderEdit, ...draft } : entry
+        )
+      : [
+          {
+            ...draft,
+            id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            createdAt: Date.now(),
+            source: 'manual' as const,
+          },
+          ...timeEntries,
+        ];
+
+    setTimeEntries(updated);
+    void persist(saveTimeEntries(updated), entryUnderEdit ? 'die Änderung' : 'den neuen Eintrag');
+    setEntryUnderEdit(null);
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* The running measurement                                                */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Applies a change to the entry currently being measured and writes it out.
+   *
+   * Every transition of the stopwatch goes through here, which is what makes a
+   * measurement survive a crash: the open entry is a normal, persisted entry
+   * from the moment it starts, not state living in a hook that dies with the
+   * process. Memoised because the keyboard shortcut effect depends on the
+   * handlers built on top of it.
+   */
+  const patchRunningEntry = useCallback(
+    (patch: (entry: TimeEntry) => TimeEntry, what: string): void => {
+      setTimeEntries((current) => {
+        const updated = current.map((entry) => (isRunning(entry) ? patch(entry) : entry));
+        void persist(saveTimeEntries(updated), what);
+        return updated;
+      });
+    },
+    [persist]
+  );
+
+  const handleStart = useCallback(() => {
+    playAudioCue('start');
+
+    const startedAt = Date.now();
+    const entry: TimeEntry = {
+      id: `entry-${startedAt}-${Math.random().toString(36).substring(2, 6)}`,
+      title: '',
+      project: activeProjectId,
+      tags: [],
+      startTime: startedAt,
+      endTime: null,
+      breaks: [],
+      createdAt: startedAt,
+      source: 'stopwatch',
+    };
+
+    setTimeEntries((current) => {
+      const updated = [entry, ...current];
+      void persist(saveTimeEntries(updated), 'die gestartete Erfassung');
+      return updated;
+    });
+  }, [playAudioCue, persist, activeProjectId]);
+
+  const handlePause = useCallback(() => {
+    playAudioCue('pause');
+    patchRunningEntry(
+      (entry) => ({
+        ...entry,
+        breaks: [
+          ...entry.breaks,
+          {
+            id: `break-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            startTime: Date.now(),
+            endTime: null,
+          },
+        ],
+      }),
+      'die Pause'
+    );
+  }, [playAudioCue, patchRunningEntry]);
+
+  const handleResume = useCallback(() => {
+    playAudioCue('start');
+    patchRunningEntry((entry) => ({ ...entry, breaks: closeOpenBreak(entry.breaks) }), 'die Pause');
+  }, [playAudioCue, patchRunningEntry]);
+
+  /**
+   * Ends the measurement, then asks what it was.
+   *
+   * The entry is closed and written *before* the naming dialog opens, so
+   * dismissing that dialog — or losing the window at that moment — costs a
+   * title, not the recorded time.
+   */
+  const handleStopAndOpenSaver = useCallback(() => {
+    playAudioCue('stop');
+
+    const stoppedAt = Date.now();
+    let stoppedId: string | null = null;
+
+    setTimeEntries((current) => {
+      const updated = current.map((entry) => {
+        if (!isRunning(entry)) return entry;
+        stoppedId = entry.id;
+        return { ...entry, endTime: stoppedAt, breaks: closeOpenBreak(entry.breaks, stoppedAt) };
+      });
+      void persist(saveTimeEntries(updated), 'die beendete Erfassung');
+      return updated;
+    });
+
+    setPendingSaveEntryId(stoppedId);
+    setIsSaverOpen(true);
+  }, [playAudioCue, persist]);
+
+  /* ---------------------------------------------------------------------- */
+  /* Naming a finished measurement                                          */
+  /* ---------------------------------------------------------------------- */
+
+  const pendingSaveEntry = useMemo(
+    () => timeEntries.find((entry) => entry.id === pendingSaveEntryId) ?? null,
+    [timeEntries, pendingSaveEntryId]
+  );
+
+  const closeSaver = useCallback(() => {
+    setIsSaverOpen(false);
+    setPendingSaveEntryId(null);
+  }, []);
+
+  /** Fills in what the stopwatch could not know: what this time was spent on. */
+  const handleNamePendingEntry = (
+    patch: Pick<TimeEntry, 'title' | 'project' | 'tags' | 'notes'>
+  ) => {
+    const updated = timeEntries.map((entry) =>
+      entry.id === pendingSaveEntryId ? { ...entry, ...patch } : entry
+    );
+    setTimeEntries(updated);
+    void persist(saveTimeEntries(updated), 'diesen Eintrag');
+    closeSaver();
+  };
+
+  /** Deletes the entry the dialog is about — an explicit "that was not work". */
+  const handleDiscardPendingEntry = () => {
+    if (!window.confirm('Diesen Eintrag löschen? Die erfasste Zeit geht verloren.')) return;
+
+    const updated = timeEntries.filter((entry) => entry.id !== pendingSaveEntryId);
+    setTimeEntries(updated);
+    void persist(saveTimeEntries(updated), 'das Löschen');
+    closeSaver();
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* Recovering a measurement from a previous run                           */
+  /* ---------------------------------------------------------------------- */
+
+  const recoveryEntry = useMemo(
+    () => timeEntries.find((entry) => entry.id === recoveryEntryId && isRunning(entry)) ?? null,
+    [timeEntries, recoveryEntryId]
+  );
+
+  const handleRecoveryStopNow = () => {
+    const stoppedAt = Date.now();
+    const updated = timeEntries.map((entry) =>
+      entry.id === recoveryEntryId
+        ? { ...entry, endTime: stoppedAt, breaks: closeOpenBreak(entry.breaks, stoppedAt) }
+        : entry
+    );
+    setTimeEntries(updated);
+    void persist(saveTimeEntries(updated), 'die wiederhergestellte Erfassung');
+    setRecoveryEntryId(null);
+  };
+
+  const handleRecoveryEdit = () => {
+    if (recoveryEntry) openEntryForm(recoveryEntry);
+    setRecoveryEntryId(null);
+  };
+
+  /** Throws away the running measurement — the only destructive timer action. */
+  const handleDiscardRunning = useCallback(() => {
+    const confirmed = window.confirm(
+      'Laufende Erfassung verwerfen? Die bisher erfasste Zeit wird gelöscht.'
+    );
+    if (!confirmed) return;
+
+    setTimeEntries((current) => {
+      const updated = current.filter((entry) => !isRunning(entry));
+      void persist(saveTimeEntries(updated), 'das Verwerfen');
+      return updated;
+    });
+  }, [persist]);
 
   /**
    * Snapshots the current state before something that replaces or destroys it.
@@ -264,32 +496,32 @@ export default function App({ initialState }: AppProps) {
     }
 
     return window.confirm(
-      `Could not write a safety backup: ${result.message}\n\nContinue ${action} anyway?`
+      `Es konnte keine Sicherung angelegt werden: ${result.message}\n\n${action} trotzdem fortsetzen?`
     );
   };
 
   const handleClearAllHistory = async () => {
-    if (!(await backupBefore('before-clear', 'clearing the history'))) return;
+    if (!(await backupBefore('before-clear', 'Das Löschen aller Einträge'))) return;
 
     setTimeEntries([]);
-    void persist(saveTimeEntries([]), 'the cleared history');
+    void persist(saveTimeEntries([]), 'das Leeren der Liste');
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
-    void persist(saveSettings(updated), 'your settings');
+    void persist(saveSettings(updated), 'die Einstellungen');
   };
 
   const handleUpdateProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
-    void persist(saveProjects(updatedProjects), 'your projects');
+    void persist(saveProjects(updatedProjects), 'die Projekte');
   };
 
   const handleImportData = async (data: ImportedData) => {
     // An import overwrites everything at once, so the state it replaces is
     // snapshotted first — this is the accident a backup exists for.
-    if (!(await backupBefore('before-import', 'importing'))) return;
+    if (!(await backupBefore('before-import', 'Den Import'))) return;
 
     // An import is also the most likely way to hit the quota, and it replaces
     // everything at once — so all three writes are reported together rather
@@ -317,22 +549,8 @@ export default function App({ initialState }: AppProps) {
       (results): WriteResult => results.find((result) => !result.ok) ?? { ok: true }
     );
 
-    void persist(combined, 'the imported data');
+    void persist(combined, 'die importierten Daten');
   };
-
-  // The active project is derived, not stored a second time: deleting the
-  // selected project (or importing a different project list) must not leave the
-  // dropdown showing one project while saved entries carry a vanished id and
-  // get labelled "General". Deriving it also avoids a repair effect that would
-  // cascade an extra render.
-  const currentProject = useMemo(() => {
-    return (
-      projects.find((p) => p.id === selectedProjectId) ||
-      projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' }
-    );
-  }, [projects, selectedProjectId]);
-
-  const activeProjectId = currentProject.id;
 
   // Global Keyboard Shortcuts Listener
   useEffect(() => {
@@ -355,15 +573,12 @@ export default function App({ initialState }: AppProps) {
         if (timerState === 'IDLE') handleStart();
         else if (timerState === 'RUNNING') handlePause();
         else if (timerState === 'PAUSED') handleResume();
-      } else if (e.code === 'KeyL') {
-        e.preventDefault();
-        if (timerState === 'RUNNING' || timerState === 'PAUSED') handleLap();
       } else if (e.code === 'KeyS') {
         e.preventDefault();
         if (timerState === 'RUNNING' || timerState === 'PAUSED') handleStopAndOpenSaver();
       } else if (e.code === 'KeyR') {
         e.preventDefault();
-        if (timerState !== 'IDLE') reset();
+        if (timerState === 'RUNNING' || timerState === 'PAUSED') handleDiscardRunning();
       }
     };
 
@@ -375,9 +590,8 @@ export default function App({ initialState }: AppProps) {
     handleStart,
     handlePause,
     handleResume,
-    handleLap,
     handleStopAndOpenSaver,
-    reset,
+    handleDiscardRunning,
   ]);
 
   return (
@@ -402,14 +616,16 @@ export default function App({ initialState }: AppProps) {
             className="flex items-start justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 px-5 text-sm text-red-800"
           >
             <p>
-              <strong className="font-semibold">Could not save {persistenceError.what}.</strong>{' '}
+              <strong className="font-semibold">
+                {persistenceError.what} konnte nicht gespeichert werden.
+              </strong>{' '}
               {persistenceError.detail} This change will be gone after a reload — export a JSON
               backup while it is still on screen.
             </p>
             <button
               type="button"
               onClick={() => setPersistenceError(null)}
-              aria-label="Dismiss warning"
+              aria-label="Hinweis schließen"
               className="shrink-0 rounded-full px-2 text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
             >
               ✕
@@ -420,7 +636,7 @@ export default function App({ initialState }: AppProps) {
         {/* Project Selector Bar */}
         <div className="flex items-center justify-between bg-white p-3 px-5 rounded-2xl border border-gray-200/80 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Tracking Category:</span>
+            <span className="text-xs text-gray-500 font-medium">Projekt:</span>
             <select
               value={activeProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
@@ -435,7 +651,7 @@ export default function App({ initialState }: AppProps) {
           </div>
 
           <div className="text-xs text-gray-400 hidden sm:block">
-            Precision: <strong className="text-[#2D5BFF]">10ms (0.01s)</strong>
+            Wird lokal gespeichert — <strong className="text-[#2D5BFF]">ohne Cloud</strong>
           </div>
         </div>
 
@@ -444,7 +660,7 @@ export default function App({ initialState }: AppProps) {
           elapsedTimeMs={elapsedTimeMs}
           timerState={timerState}
           showMilliseconds={settings.showMilliseconds}
-          lapCount={laps.length}
+          breakCount={runningEntry?.breaks.length ?? 0}
           selectedProjectName={currentProject.name}
           selectedProjectColor={currentProject.color}
         />
@@ -455,20 +671,33 @@ export default function App({ initialState }: AppProps) {
           onStart={handleStart}
           onPause={handlePause}
           onResume={handleResume}
-          onLap={handleLap}
           onStop={handleStopAndOpenSaver}
-          onReset={reset}
+          onDiscard={handleDiscardRunning}
           shortcutsEnabled={settings.keyShortcutsEnabled}
         />
 
-        {/* Real-time Lap Splits */}
-        <LapList laps={laps} />
+        {/* Breaks taken during the measurement in progress */}
+        {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+
+        {/* Totals, calendar and trends — all derived, nothing stored twice */}
+        <StatCards summary={summary} />
+
+        <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
+          <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+        </div>
+
+        <TimeBarChart title={`Monate ${new Date(now).getFullYear()}`} points={thisYearByMonth} />
 
         {/* Session History Log & Export Table */}
         <SessionHistory
           entries={timeEntries}
           projects={projects}
           onDeleteEntry={handleDeleteEntry}
+          onEditEntry={(entry) => openEntryForm(entry)}
+          onAddEntry={() => openEntryForm(null)}
           onClearAll={handleClearAllHistory}
           onExportPdf={() => setIsExportOpen(true)}
         />
@@ -476,23 +705,33 @@ export default function App({ initialState }: AppProps) {
 
       {/* Footer */}
       <footer className="border-t border-gray-200/80 bg-white py-4 text-center text-xs text-gray-400">
-        <p>Chronos Desktop • Modular Desktop Time Engine • High Precision</p>
+        <p>Chronos Desktop • Zeiterfassung • lokal gespeichert, ohne Cloud</p>
       </footer>
 
       {/* Modals */}
-      {pendingSaveData && (
+      {pendingSaveEntry && (
         <SessionSaverModal
           isOpen={isSaverOpen}
+          entry={pendingSaveEntry}
+          projects={projects}
+          onSave={handleNamePendingEntry}
+          onDiscard={handleDiscardPendingEntry}
+          onClose={closeSaver}
+        />
+      )}
+
+      {/* Keyed so switching from one entry to another rebuilds the form state
+          instead of showing the previous entry's values. */}
+      {isEntryFormOpen && (
+        <EntryFormModal
+          key={entryUnderEdit?.id ?? 'new-entry'}
+          isOpen={isEntryFormOpen}
           onClose={() => {
-            setIsSaverOpen(false);
-            setPendingSaveData(null);
+            setIsEntryFormOpen(false);
+            setEntryUnderEdit(null);
           }}
-          onSave={handleSaveEntry}
-          recordedMs={pendingSaveData.recordedMs}
-          pauseDurationMs={pendingSaveData.pauseDurationMs}
-          recordedLaps={pendingSaveData.recordedLaps}
-          startTime={pendingSaveData.startTime}
-          endTime={pendingSaveData.endTime}
+          onSave={handleSaveEntryDraft}
+          entry={entryUnderEdit}
           projects={projects}
           defaultProjectId={activeProjectId}
         />
@@ -504,6 +743,7 @@ export default function App({ initialState }: AppProps) {
         entries={timeEntries}
         projects={projects}
         settings={settings}
+        now={now}
       />
 
       <SettingsModal
@@ -519,6 +759,17 @@ export default function App({ initialState }: AppProps) {
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />
+
+      {/* Asked once, at startup, and rendered last so it sits above everything
+          else: the answer changes what the recorded time means. */}
+      {recoveryEntry && (
+        <RecoveryPrompt
+          entry={recoveryEntry}
+          onContinue={() => setRecoveryEntryId(null)}
+          onStopNow={handleRecoveryStopNow}
+          onEdit={handleRecoveryEdit}
+        />
+      )}
     </div>
   );
 }

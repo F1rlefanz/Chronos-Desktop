@@ -82,7 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-200 shrink-0">
           <div className="flex items-center gap-2 text-[#2D5BFF] font-semibold text-base">
             <Settings className="w-5 h-5 text-[#2D5BFF]" />
-            <span>Preferences & Settings</span>
+            <span>Einstellungen</span>
           </div>
           <button
             onClick={onClose}
@@ -97,16 +97,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Section: Display & Precision */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
-              Display & Precision
+              Anzeige
             </h3>
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
-                  Show Milliseconds (.00)
+                  Millisekunden anzeigen (.00)
                 </span>
                 <span className="text-[11px] text-gray-400">
-                  Display high-precision hundredths of a second readout
+                  Hundertstelsekunden in der laufenden Anzeige
                 </span>
               </div>
               <input
@@ -120,10 +120,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
-                  Desktop Window Frame
+                  Eigene Fensterleiste
                 </span>
                 <span className="text-[11px] text-gray-400">
-                  Render top desktop title bar for standalone window feel
+                  Eigene Titelleiste statt der des Betriebssystems
                 </span>
               </div>
               <input
@@ -137,10 +137,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
-                  Display Refresh Rate
+                  Aktualisierungsrate
                 </span>
                 <span className="text-[11px] text-gray-400">
-                  How often the readout updates. Timing accuracy is unaffected.
+                  Wie oft die Anzeige neu gezeichnet wird. Die erfasste Zeit bleibt gleich.
                 </span>
               </div>
               <select
@@ -158,11 +158,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
-                <span className="text-xs font-semibold text-gray-800 block">
-                  Keyboard Shortcuts
-                </span>
+                <span className="text-xs font-semibold text-gray-800 block">Tastenkürzel</span>
                 <span className="text-[11px] text-gray-400">
-                  Enable Space (Start/Pause), L (Lap), S (Save), R (Reset)
+                  Leertaste (Start/Pause), S (Beenden), R (Verwerfen)
                 </span>
               </div>
               <input
@@ -177,7 +175,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Section: Project Categories */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
-              Projects & Categories
+              Projekte
             </h3>
 
             <div className="space-y-2">
@@ -196,7 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <button
                     onClick={() => handleDeleteProject(proj.id)}
                     className="p-1 text-gray-400 hover:text-rose-500 transition-colors cursor-pointer"
-                    title="Delete Project"
+                    title="Projekt löschen"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -210,7 +208,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="text"
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="New project name..."
+                placeholder="Name des neuen Projekts…"
                 className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-4 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#2D5BFF] focus:bg-white"
               />
               <input
@@ -224,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="px-4 py-2 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add</span>
+                <span>Anlegen</span>
               </button>
             </form>
           </div>
@@ -232,16 +230,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Section: Backup & Import */}
           <div className="space-y-3 pt-2">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
-              Data Import / Portability
+              Daten & Sicherungen
             </h3>
 
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
-                  Restore from JSON Backup
+                  Aus JSON-Sicherung wiederherstellen
                 </span>
                 <span className="text-[11px] text-gray-400">
-                  Import previously exported stopwatch data
+                  Zuvor exportierte Daten wieder einlesen
                 </span>
               </div>
               <button
@@ -249,7 +247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <Upload className="w-3.5 h-3.5 text-[#2D5BFF]" />
-                <span>Import File</span>
+                <span>Datei wählen</span>
               </button>
               <input
                 ref={fileInputRef}
@@ -266,11 +264,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
                   <span className="text-xs font-semibold text-gray-800 block">
-                    Automatic Backups
+                    Automatische Sicherungen
                   </span>
                   <span className="text-[11px] text-gray-400">
-                    Snapshots taken daily and before clearing or importing. Restore one with Import
-                    File above.
+                    Täglich sowie vor dem Löschen und vor einem Import. Wiederherstellen über „Datei
+                    wählen" oben.
                   </span>
                 </div>
                 <button
@@ -278,7 +276,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
                 >
                   <FolderOpen className="w-3.5 h-3.5 text-[#2D5BFF]" />
-                  <span>Open Folder</span>
+                  <span>Ordner öffnen</span>
                 </button>
               </div>
             )}
@@ -286,9 +284,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {onRevealLogs && (
               <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
-                  <span className="text-xs font-semibold text-gray-800 block">Application Log</span>
+                  <span className="text-xs font-semibold text-gray-800 block">Protokolldatei</span>
                   <span className="text-[11px] text-gray-400">
-                    What the app recorded about failed saves and other errors.
+                    Was die App über fehlgeschlagene Speichervorgänge und Fehler notiert hat.
                   </span>
                 </div>
                 <button
@@ -296,7 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
                 >
                   <FileWarning className="w-3.5 h-3.5 text-[#2D5BFF]" />
-                  <span>Open Folder</span>
+                  <span>Ordner öffnen</span>
                 </button>
               </div>
             )}

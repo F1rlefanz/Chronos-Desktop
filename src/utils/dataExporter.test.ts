@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { exportToCsv, importFromJsonFile } from './dataExporter';
+import { breakMs, netMs } from '../domain/timeEntry';
 import type { TimeEntry, Project } from '../types';
 
 /**
@@ -35,10 +36,9 @@ function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     tags: [],
     startTime: 1_700_000_000_000,
     endTime: 1_700_000_060_000,
-    durationMs: 60_000,
-    pauseDurationMs: 0,
-    laps: [],
+    breaks: [],
     createdAt: 1_700_000_060_000,
+    source: 'stopwatch',
     ...overrides,
   };
 }
@@ -70,7 +70,8 @@ describe('exportToCsv', () => {
         makeEntry({ id: 'entry-1', title: 'Ticket #42 rollout' }),
         makeEntry({ id: 'entry-2', title: 'Second session' }),
       ],
-      PROJECTS
+      PROJECTS,
+      'test'
     );
 
     const csv = await download.text();
@@ -83,7 +84,7 @@ describe('exportToCsv', () => {
   it('escapes quotes and keeps commas inside a single field', async () => {
     const download = captureDownload();
 
-    exportToCsv([makeEntry({ title: 'He said "go", then left' })], PROJECTS);
+    exportToCsv([makeEntry({ title: 'He said "go", then left' })], PROJECTS, 'test');
 
     const csv = await download.text();
     expect(csv).toContain('"He said ""go"", then left"');
@@ -92,7 +93,7 @@ describe('exportToCsv', () => {
   it('starts with a UTF-8 BOM so Excel reads non-ASCII text correctly', async () => {
     const download = captureDownload();
 
-    exportToCsv([makeEntry({ title: 'Übung' })], PROJECTS);
+    exportToCsv([makeEntry({ title: 'Übung' })], PROJECTS, 'test');
 
     // Blob.text() decodes UTF-8 and strips a leading BOM per spec, so the BOM
     // has to be asserted on the raw bytes.
@@ -109,7 +110,7 @@ function jsonFile(payload: unknown): File {
 
 describe('importFromJsonFile', () => {
   it('fills in missing fields instead of passing a broken entry through', async () => {
-    // Regression: an entry without title/tags/laps was persisted as-is and then
+    // Regression: an entry without title/tags was persisted as-is and then
     // crashed SessionHistory on entry.title.toLowerCase() — on every reload.
     const result = await importFromJsonFile(
       jsonFile({ entries: [{ id: 'e1', durationMs: 1000 }] })
@@ -120,7 +121,7 @@ describe('importFromJsonFile', () => {
     expect(typeof entry.title).toBe('string');
     expect(entry.title).not.toBe('');
     expect(Array.isArray(entry.tags)).toBe(true);
-    expect(Array.isArray(entry.laps)).toBe(true);
+    expect(Array.isArray(entry.breaks)).toBe(true);
     expect(typeof entry.createdAt).toBe('number');
   });
 
@@ -132,7 +133,7 @@ describe('importFromJsonFile', () => {
             id: 'e1',
             title: 42,
             tags: ['keep', 7, null],
-            laps: ['nonsense'],
+            breaks: ['nonsense'],
             startTime: 'yesterday',
           },
         ],
@@ -140,11 +141,46 @@ describe('importFromJsonFile', () => {
     );
 
     const entry = result.entries[0];
-    expect(entry.title).toBe('Untitled Session');
+    expect(entry.title).toBe('Ohne Titel');
     expect(entry.tags).toEqual(['keep']);
     expect(entry.startTime).toBe(0);
-    expect(entry.laps).toHaveLength(1);
-    expect(entry.laps[0].lapNumber).toBe(1);
+    expect(entry.breaks).toEqual([]);
+  });
+
+  it('reads a 0.3.0 record and keeps its net time exactly', async () => {
+    // The old model stored durationMs (already net of pauses) next to
+    // wall-clock timestamps. The converted entry must report the same net
+    // time, which means the reconstructed break has to absorb the difference.
+    const result = await importFromJsonFile(
+      jsonFile({
+        entries: [
+          {
+            id: 'legacy-1',
+            title: 'Old session',
+            startTime: 1_700_000_000_000,
+            endTime: 1_700_000_600_000, // 10 minutes on the wall clock
+            durationMs: 400_000, // but only 6:40 actually ran
+            pauseDurationMs: 200_000,
+            laps: [{ id: 'lap-1', lapNumber: 1, lapTimeMs: 1000, splitTimeMs: 1000 }],
+          },
+        ],
+      })
+    );
+
+    const entry = result.entries[0];
+    expect(netMs(entry)).toBe(400_000);
+    expect(breakMs(entry)).toBe(200_000);
+    expect(entry.breaks).toHaveLength(1);
+    // Laps are not part of the model any more and are dropped, not smuggled in.
+    expect(entry).not.toHaveProperty('laps');
+  });
+
+  it('treats an explicit null end as a running entry', async () => {
+    const result = await importFromJsonFile(
+      jsonFile({ entries: [{ id: 'e1', startTime: 1_700_000_000_000, endTime: null }] })
+    );
+
+    expect(result.entries[0].endTime).toBeNull();
   });
 
   it('accepts a bare array of entries', async () => {

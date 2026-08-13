@@ -38,11 +38,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         className="min-h-screen bg-[#F4F7F9] text-[#1A1C1E] font-sans antialiased flex items-center justify-center px-4"
       >
         <div className="max-w-lg w-full bg-white rounded-2xl border border-gray-200/80 shadow-2xs p-6 space-y-4">
-          <h1 className="text-lg font-semibold">Something broke while rendering</h1>
+          <h1 className="text-lg font-semibold">Beim Anzeigen ist etwas schiefgegangen</h1>
 
           <p className="text-sm text-gray-600">
-            Your saved sessions are stored separately and were not affected. Reloading should bring
-            the app back.
+            Die gespeicherten Einträge liegen getrennt davon und sind nicht betroffen. Ein Neuladen
+            sollte die App zurückbringen.
           </p>
 
           <button
@@ -50,11 +50,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             onClick={() => window.location.reload()}
             className="rounded-full bg-[#2D5BFF] px-5 py-2 text-sm font-semibold text-white hover:bg-[#2449cc] focus:outline-none focus:ring-2 focus:ring-[#2D5BFF] focus:ring-offset-2"
           >
-            Reload the app
+            App neu laden
           </button>
 
           <details className="text-xs text-gray-500">
-            <summary className="cursor-pointer select-none">Technical details</summary>
+            <summary className="cursor-pointer select-none">Technische Details</summary>
             <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11px] text-gray-600">
               {error.message}
             </pre>

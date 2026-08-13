@@ -1,7 +1,11 @@
 # Chronos Desktop
 
-A precision stopwatch and time tracker. Sessions are timed at animation-frame resolution, tagged
-to a project, and exported as PDF, CSV or a portable JSON backup.
+A time tracker with a stopwatch in it. An entry records when work happened — a start, an end and
+the breaks between them — and every duration is derived from that, never stored alongside it.
+Entries can be typed in by hand as readily as measured, corrected afterwards, and exported for a
+named month as PDF, CSV or a portable JSON backup.
+
+The interface is in German; the code is in English.
 
 It ships as a **Windows desktop app** built with Tauri, and the same code still runs as a plain
 web app in the browser. There is no backend and no account: everything lives on the machine it
@@ -18,16 +22,23 @@ Nothing above that interface knows which one is in use.
 
 ## Features
 
-- Stopwatch with start / pause / resume / stop and lap splits, showing lap time and total split
-  side by side, with the fastest and slowest lap highlighted.
-- Sessions saved with a title, project, tags and notes, plus the time actually spent paused.
+- Stopwatch with start / pause / resume / stop. A running measurement is written to disk as it
+  starts, so closing the window does not lose it — the next launch asks whether to continue it,
+  stop it, or correct its times.
+- Entries can also be typed in from scratch, and any entry can be edited: start, end, breaks,
+  title, project, tags and notes. Start and end each carry their own date, so an entry that runs
+  past midnight is ordinary rather than impossible.
+- Breaks are recorded as individual periods with their own start and end, and are editable.
+- Totals for today, the week, the month, the year and overall; a month calendar shaded by daily
+  total; charts by week, weekday and month.
 - Searchable history filtered by project, with a running total.
-- Exports: PDF report (filterable by project and date range), CSV for spreadsheets, JSON backup
-  and restore.
-- Keyboard shortcuts: `Space` start/pause, `L` lap, `S` stop and save, `R` reset. Modified
-  combinations such as `Cmd/Ctrl+R` are left to the browser.
-- Configurable display refresh rate, so the readout can be slowed down without affecting timing
-  accuracy.
+- Exports: PDF and CSV for a chosen period — a specific month or year, a free from–to range, or
+  everything — plus a JSON backup for moving between machines. A measurement still running is left
+  out and reported, so the same report is reproducible.
+- Keyboard shortcuts: `Space` start/pause, `S` stop, `R` discard. Modified combinations such as
+  `Cmd/Ctrl+R` are left to the browser.
+- Configurable display refresh rate, which changes how often the readout is redrawn and not what
+  is recorded.
 - Automatic backups (desktop only): a snapshot once a day, and one immediately before clearing the
   history or importing a file. The last ten are kept.
 - A log file (desktop only) recording startup, backup outcomes and every failed save, with both
@@ -98,8 +109,14 @@ bun run desktop:dev  # desktop app; starts the dev server itself
 ```
 src/
   App.tsx              Root container: owns settings, entries and projects; modal orchestration
-  hooks/useStopwatch   Timer state machine (IDLE/RUNNING/PAUSED/STOPPED), laps, pause accounting
-  components/          Presentational components — header, display, controls, laps, modals
+  domain/              Pure rules, no React and no persistence
+    timeEntry            Durations derived from start/end/breaks, plus entry validation
+    stats                Totals, calendar grids and chart series, none of them cached
+    exportRange          Calendar periods for exports, and which entries they select
+  hooks/
+    useLiveDuration      The running readout: frames set the repaint rate, the clock sets the value
+    useNow               A shared "now" for anything that has to look live
+  components/          Presentational components — header, display, controls, modals
   utils/
     timeFormatters     Pure ms → display/duration/date formatting
     storage/           Persistence behind an adapter interface
@@ -126,9 +143,19 @@ src-tauri/
 
 Things worth knowing before changing code here:
 
-- **The timer never trusts React state for measurement.** Elapsed time accumulates in refs at
-  full animation-frame resolution; `timerIntervalMs` only throttles how often that value is
-  pushed into state. Changing the setting changes render frequency, never accuracy.
+- **A duration is derived, never stored.** An entry holds `startTime`, `endTime` (`null` while it
+  runs) and `breaks`; every length comes from `domain/timeEntry`. An earlier version stored a
+  `durationMs` beside the timestamps, filled from an animation-frame accumulator that stopped
+  advancing while the window was minimised — so the two disagreed and the JSON import had to guess
+  between them. Do not add the field back.
+- **The running measurement is a stored entry.** Starting the stopwatch writes an entry with no
+  end; pause and resume append and close a break; stop sets the end. The timer state is read back
+  out of that entry rather than tracked beside it, which is why a crash cannot desynchronise the
+  two — and why there is a recovery prompt at startup instead of silent resumption.
+- **Frames set the repaint rate; the wall clock sets the number.** `useLiveDuration` runs a
+  `requestAnimationFrame` loop, because `setInterval` stutters against the refresh rate, but reads
+  `Date.now()` rather than accumulating frame deltas. `timerIntervalMs` throttles the state push
+  only: changing it changes render frequency, never what is recorded.
 - **A failed write has to be visible.** Storage is the only copy of the data, so when a write is
   rejected — a full quota, or storage disabled — the change is gone on the next reload. Writes
   return a `WriteResult` rather than throwing, and every save in `App.tsx` routes that result

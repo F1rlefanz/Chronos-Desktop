@@ -35,8 +35,8 @@ describe('ErrorBoundary', () => {
     );
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Something broke while rendering')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reload the app' })).toBeInTheDocument();
+    expect(screen.getByText('Beim Anzeigen ist etwas schiefgegangen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'App neu laden' })).toBeInTheDocument();
     expect(screen.queryByText('all good')).not.toBeInTheDocument();
   });
 

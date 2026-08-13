@@ -6,6 +6,58 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-08-13
+
+Chronos was built as a stopwatch. This release makes it a time tracker, which
+changed things a stopwatch never had to get right.
+
+### Added
+
+- **Enter and correct times by hand.** Until now an entry could only come from the stopwatch:
+  forget to start it and the time was gone, stop it too late and the only remedy was deleting the
+  entry. There is now an **Eintrag hinzufügen** button, and every entry has a pencil icon. Start
+  and end each carry their own date, so a stretch of work from 22:00 to 01:00 can be entered — and,
+  more to the point, edited afterwards.
+- **A running measurement survives a crash.** The measurement is written to disk the moment you
+  start it. If the app closes while it is running — a crash, a reboot, a closed window — the next
+  start asks whether to keep it running, stop it now, or correct the times. Nothing is lost while
+  you decide. Previously the whole measurement lived in memory and simply vanished.
+- **Breaks are recorded individually**, each with its own start and end, and can be moved or
+  removed afterwards. They replace the single summed pause figure, which could not say _when_ you
+  paused.
+- **Totals, a calendar and trends.** Today, this week, this month, this year and overall; a month
+  calendar shaded by daily total whose days open their entries; charts for the last twelve weeks,
+  by weekday, and by month.
+- **Export a real period.** A specific month, a specific year, or a free from–to range, alongside
+  today / this week / this month / this year / everything.
+
+### Changed
+
+- **The interface is in German**, including dates, times and durations. Durations are shown to the
+  minute ("2 Std. 35 Min.") — seconds are noise in a record of worked hours.
+- **Milliseconds are off by default** and the readout updates once a second. Both are still
+  settings.
+- **CSV uses semicolons** and adds a minutes column, so a German Excel opens it in columns instead
+  of dumping everything into column A.
+- **Lap splits are gone**, replaced by the break list. A lap time says something about a stopwatch
+  run and nothing about worked hours.
+- **Stopping no longer risks the recording.** The dialog that asks for a title appears _after_ the
+  entry is saved, so dismissing it costs a title rather than the hours.
+
+### Fixed
+
+- **A minimised window no longer loses time.** The recorded duration was accumulated per animation
+  frame, and frames stop arriving when the window is hidden — so minimising the app for half an
+  hour recorded far less than half an hour. Durations are now read from the clock.
+- **Exports are reproducible.** A running measurement is left out of PDF and CSV exports, and the
+  dialog says how many were skipped. Its duration keeps growing, so including it made the same
+  report for the same month come out differently an hour later.
+
+### Note
+
+The first start converts existing entries to the new format automatically; the recorded net time
+is preserved exactly. Export a JSON backup first if you would like a copy of the old shape.
+
 ## [0.3.0] — 2026-08-13
 
 ### Added

@@ -35,15 +35,15 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <div className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full bg-[#FF5F57] hover:opacity-80 transition-opacity cursor-pointer"
-              title="Close"
+              title="Schließen"
             />
             <div
               className="w-3 h-3 rounded-full bg-[#FEBC2E] hover:opacity-80 transition-opacity cursor-pointer"
-              title="Minimize"
+              title="Minimieren"
             />
             <div
               className="w-3 h-3 rounded-full bg-[#28C840] hover:opacity-80 transition-opacity cursor-pointer"
-              title="Maximize"
+              title="Maximieren"
             />
           </div>
         </div>
@@ -68,10 +68,10 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <button
             onClick={onOpenArchitecture}
             className="flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200/80 border border-gray-200/60 transition-all cursor-pointer"
-            title="Inspect Architecture"
+            title="Aufbau der App ansehen"
           >
             <Code2 className="w-3.5 h-3.5 text-[#2D5BFF]" />
-            <span>Architecture & Specs</span>
+            <span>Aufbau</span>
           </button>
 
           <button
@@ -94,7 +94,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
                 ? 'bg-blue-50 text-[#2D5BFF] border-blue-200'
                 : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
             }`}
-            title={settings.soundEnabled ? 'Audio cues enabled' : 'Audio cues muted'}
+            title={settings.soundEnabled ? 'Signaltöne an' : 'Signaltöne aus'}
           >
             {settings.soundEnabled ? (
               <Volume2 className="w-4 h-4" />
@@ -106,7 +106,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           <button
             onClick={onOpenSettings}
             className="p-2 rounded-full bg-white text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-gray-200 shadow-xs transition-all cursor-pointer"
-            title="Settings & Config"
+            title="Einstellungen"
           >
             <Settings className="w-4 h-4" />
           </button>

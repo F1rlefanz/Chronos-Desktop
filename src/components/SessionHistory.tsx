@@ -1,12 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import { TimeEntry, Project } from '../types';
-import { formatTimeDisplay, formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
-import { Clock, Search, Trash2, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { breakMs, isRunning, netMs, totalNetMs } from '../domain/timeEntry';
+import { useNow } from '../hooks/useNow';
+import {
+  formatTimeDisplay,
+  formatDateTime,
+  formatTimeOfDay,
+  formatDurationHuman,
+} from '../utils/timeFormatters';
+import {
+  Clock,
+  Search,
+  Trash2,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+} from 'lucide-react';
 
 interface SessionHistoryProps {
   entries: TimeEntry[];
   projects: Project[];
   onDeleteEntry: (id: string) => void;
+  onEditEntry: (entry: TimeEntry) => void;
+  onAddEntry: () => void;
   onClearAll: () => void;
   onExportPdf: () => void;
 }
@@ -15,6 +33,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   entries,
   projects,
   onDeleteEntry,
+  onEditEntry,
+  onAddEntry,
   onClearAll,
   onExportPdf,
 }) => {
@@ -40,18 +60,29 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
     });
   }, [entries, searchTerm, selectedProjectId]);
 
-  const totalCalculatedMs = useMemo(() => {
-    return filteredEntries.reduce((sum, e) => sum + e.durationMs, 0);
-  }, [filteredEntries]);
+  // One clock for the whole list: a running entry must not be counted with a
+  // different "now" in the total than in its own row. It only ticks while
+  // something is actually running.
+  const anyRunning = useMemo(() => entries.some(isRunning), [entries]);
+  const now = useNow(anyRunning ? 1000 : null);
+
+  const totalCalculatedMs = useMemo(() => totalNetMs(filteredEntries, now), [filteredEntries, now]);
 
   if (entries.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200/90 p-8 text-center my-6 shadow-xs">
         <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-        <h3 className="text-sm font-semibold text-gray-700">No Tracked Sessions Yet</h3>
+        <h3 className="text-sm font-semibold text-gray-700">Noch keine Einträge</h3>
         <p className="text-xs text-gray-400 mt-1">
-          Start the stopwatch and click "Stop & Save" to store your time sessions here.
+          Stoppuhr starten — oder bereits geleistete Zeit nachtragen.
         </p>
+        <button
+          onClick={onAddEntry}
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Eintrag hinzufügen</span>
+        </button>
       </div>
     );
   }
@@ -63,33 +94,44 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#2D5BFF]" />
-            <span>Time Tracking History</span>
+            <span>Erfasste Zeiten</span>
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Total Logged:{' '}
+            Gesamt:{' '}
             <strong className="text-[#2D5BFF]">{formatDurationHuman(totalCalculatedMs)}</strong> (
-            {filteredEntries.length} sessions)
+            {filteredEntries.length} {filteredEntries.length === 1 ? 'Eintrag' : 'Einträge'})
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
+            onClick={onAddEntry}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Eintrag hinzufügen</span>
+          </button>
+          <button
             onClick={onExportPdf}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-[#2D5BFF]" />
-            <span>PDF Export</span>
+            <span>PDF-Export</span>
           </button>
           {entries.length > 0 && (
             <button
               onClick={() => {
-                if (window.confirm('Are you sure you want to clear all history entries?')) {
+                if (
+                  window.confirm(
+                    'Wirklich alle Einträge löschen? Vorher wird eine Sicherung angelegt.'
+                  )
+                ) {
                   onClearAll();
                 }
               }}
               className="text-xs text-rose-500 hover:text-rose-600 px-2.5 py-1 transition-colors cursor-pointer"
             >
-              Clear History
+              Alle löschen
             </button>
           )}
         </div>
@@ -104,7 +146,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search titles, notes, tags..."
+            placeholder="Titel, Notizen, Schlagwörter durchsuchen…"
             className="w-full bg-gray-50 border border-gray-200/90 rounded-full pl-9 pr-4 py-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-[#2D5BFF] focus:bg-white"
           />
         </div>
@@ -116,7 +158,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             onChange={(e) => setSelectedProjectId(e.target.value)}
             className="w-full bg-gray-50 border border-gray-200/90 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF] focus:bg-white cursor-pointer"
           >
-            <option value="all">All Projects</option>
+            <option value="all">Alle Projekte</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -131,10 +173,13 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         {filteredEntries.map((entry, index) => {
           const project = projectMap.get(entry.project);
           const projectColor = project ? project.color : '#2D5BFF';
-          const projectName = project ? project.name : 'General';
+          const projectName = project ? project.name : 'Allgemein';
           const isExpanded = expandedEntryId === entry.id;
+          const entryNetMs = netMs(entry, now);
+          const entryBreakMs = breakMs(entry, now);
+          const running = isRunning(entry);
 
-          const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+          const { mainTime, subTime } = formatTimeDisplay(entryNetMs, {
             includeMilliseconds: true,
           });
 
@@ -158,6 +203,12 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       <span className="font-semibold text-gray-600">{projectName}</span>
                       <span>•</span>
                       <span>{formatDateTime(entry.startTime)}</span>
+                      {running && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-[#2D5BFF]">läuft</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -169,14 +220,14 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       <span className="text-xs text-[#2D5BFF]">{subTime}</span>
                     </span>
                     <span className="block text-[10px] text-gray-400">
-                      {formatDurationHuman(entry.durationMs)}
+                      {formatDurationHuman(entryNetMs)}
                     </span>
                   </div>
 
                   <button
                     onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
                     className="p-1.5 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Toggle Details"
+                    title="Details ein-/ausblenden"
                   >
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4" />
@@ -186,9 +237,17 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   </button>
 
                   <button
+                    onClick={() => onEditEntry(entry)}
+                    className="p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2D5BFF] border border-gray-200 shadow-2xs transition-colors cursor-pointer"
+                    title="Eintrag bearbeiten"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+
+                  <button
                     onClick={() => onDeleteEntry(entry.id)}
                     className="p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Delete Entry"
+                    title="Eintrag löschen"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -215,35 +274,31 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   {entry.notes && (
                     <div className="bg-white p-3 rounded-lg border border-gray-200 text-gray-700">
                       <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
-                        Notes
+                        Notiz
                       </strong>
                       {entry.notes}
                     </div>
                   )}
 
-                  {entry.laps.length > 0 && (
+                  {entry.breaks.length > 0 && (
                     <div>
                       <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
-                        Recorded Laps ({entry.laps.length})
+                        Pausen ({entry.breaks.length}) — zusammen{' '}
+                        {formatDurationHuman(entryBreakMs)}
                       </strong>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 font-mono text-[11px]">
-                        {entry.laps.map((lap) => {
-                          const lapDisp = formatTimeDisplay(lap.lapTimeMs, {
-                            includeMilliseconds: true,
-                          });
-                          return (
-                            <div
-                              key={lap.id}
-                              className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between"
-                            >
-                              <span className="text-gray-400">Lap {lap.lapNumber}:</span>
-                              <span className="text-gray-800 font-semibold">
-                                {lapDisp.mainTime}
-                                <span className="text-[#2D5BFF]">{lapDisp.subTime}</span>
-                              </span>
-                            </div>
-                          );
-                        })}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[11px]">
+                        {entry.breaks.map((pause, i) => (
+                          <div
+                            key={pause.id}
+                            className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between gap-2"
+                          >
+                            <span className="text-gray-400">#{i + 1}</span>
+                            <span className="text-gray-800 font-semibold">
+                              {formatTimeOfDay(pause.startTime)} —{' '}
+                              {pause.endTime === null ? 'läuft' : formatTimeOfDay(pause.endTime)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
