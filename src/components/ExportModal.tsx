@@ -162,6 +162,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
                   <input
                     type="checkbox"
+                    checked={pdfOptions.includeLaps}
+                    onChange={(e) => setPdfOptions({ ...pdfOptions, includeLaps: e.target.checked })}
+                    className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"
+                  />
+                  <span>Include Lap Count Column</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
                     checked={pdfOptions.includeNotes}
                     onChange={(e) => setPdfOptions({ ...pdfOptions, includeNotes: e.target.checked })}
                     className="rounded bg-gray-50 border-gray-300 text-[#2D5BFF] focus:ring-0"

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
+import { ImportedData } from './utils/dataExporter';
 import {
   loadSettings,
   saveSettings,
@@ -59,12 +60,43 @@ export default function App() {
     reset,
   } = useStopwatch(settings.timerIntervalMs);
 
+  // A single AudioContext is reused for every cue: browsers cap the number of
+  // concurrent contexts (Chrome allows six), so creating one per cue would
+  // permanently kill audio after a handful of laps.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = useCallback((): AudioContext | null => {
+    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!Ctor) return null;
+
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      audioCtxRef.current = new Ctor();
+    }
+    // Autoplay policies suspend the context until a user gesture occurs.
+    if (audioCtxRef.current.state === 'suspended') {
+      void audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  // Release the shared context when the app unmounts.
+  useEffect(() => {
+    return () => {
+      audioCtxRef.current?.close().catch(() => {
+        /* context may already be closed */
+      });
+      audioCtxRef.current = null;
+    };
+  }, []);
+
   // Synthesized Web Audio API sound cue generator
   const playAudioCue = useCallback(
     (type: 'start' | 'pause' | 'lap' | 'stop') => {
       if (!settings.soundEnabled) return;
       try {
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const audioCtx = getAudioContext();
+        if (!audioCtx) return;
+
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
@@ -101,7 +133,7 @@ export default function App() {
         // Fallback silently if web audio is restricted
       }
     },
-    [settings.soundEnabled]
+    [settings.soundEnabled, getAudioContext]
   );
 
   // Handlers
@@ -175,7 +207,7 @@ export default function App() {
     saveProjects(updatedProjects);
   };
 
-  const handleImportData = (data: { entries: TimeEntry[]; projects: Project[]; settings?: unknown }) => {
+  const handleImportData = (data: ImportedData) => {
     if (Array.isArray(data.entries) && data.entries.length > 0) {
       setTimeEntries(data.entries);
       saveTimeEntries(data.entries);
@@ -191,6 +223,17 @@ export default function App() {
     }
   };
 
+  // Keep the active selection pointing at a project that still exists. Deleting
+  // the selected project (or importing a different project list) would
+  // otherwise leave the dropdown showing one project while saved entries carry
+  // a vanished id and get labelled "General".
+  useEffect(() => {
+    if (projects.length === 0) return;
+    if (!projects.some((p) => p.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
+
   // Active Project Data
   const currentProject = useMemo(() => {
     return projects.find((p) => p.id === selectedProjectId) || projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' };
@@ -203,6 +246,12 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger shortcuts if typing inside input or textarea
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+
+      // Leave browser and OS combinations alone — otherwise Cmd/Ctrl+R would
+      // reset a running session instead of reloading, and Cmd+S would stop it.
+      if (e.ctrlKey || e.metaKey || e.altKey) {
         return;
       }
 

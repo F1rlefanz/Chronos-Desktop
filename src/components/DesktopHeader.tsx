@@ -70,7 +70,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
             <FileText className="w-3.5 h-3.5 text-[#2D5BFF]" />
             <span>Export</span>
             {activeEntriesCount > 0 && (
-              <span className="ml-1 bg-[#2D5BFF] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+              <span className="ml-1 bg-[#2D5BFF] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                 {activeEntriesCount}
               </span>
             )}

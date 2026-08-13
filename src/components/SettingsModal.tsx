@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { AppSettings, Project } from '../types';
-import { importFromJsonFile } from '../utils/dataExporter';
+import { importFromJsonFile, ImportedData } from '../utils/dataExporter';
 import { Settings, Volume2, Monitor, Keyboard, Plus, Trash2, Upload, X, Check } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -10,7 +10,7 @@ interface SettingsModalProps {
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   projects: Project[];
   onUpdateProjects: (projects: Project[]) => void;
-  onImportData: (data: { entries: any[]; projects: Project[]; settings?: any }) => void;
+  onImportData: (data: ImportedData) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -51,15 +51,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
     try {
       const data = await importFromJsonFile(file);
       onImportData(data);
-      alert('Data imported successfully!');
+      alert(`Imported ${data.entries.length} session(s) and ${data.projects.length} project(s).`);
     } catch (err: any) {
       alert(`Import failed: ${err.message || 'Invalid file format'}`);
+    } finally {
+      // Clear the input so picking the same file again fires another change event.
+      input.value = '';
     }
   };
 

@@ -27,18 +27,27 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
   const lastTickTimeRef = useRef<number | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const lastLapTotalMsRef = useRef<number>(0);
+  const lastRenderTimeRef = useRef<number>(0);
 
-  // Core ticker loop
+  // Core ticker loop.
+  //
+  // Elapsed time is always accumulated at full animation-frame resolution; only
+  // the React state push is throttled to `intervalMs`, so the configured update
+  // interval controls re-render frequency without costing timing accuracy.
   const updateTick = useCallback(() => {
     if (lastTickTimeRef.current !== null) {
       const now = performance.now();
       const delta = now - lastTickTimeRef.current;
       lastTickTimeRef.current = now;
       accumulatedTimeRef.current += delta;
-      setElapsedTimeMs(accumulatedTimeRef.current);
+
+      if (now - lastRenderTimeRef.current >= intervalMs) {
+        lastRenderTimeRef.current = now;
+        setElapsedTimeMs(accumulatedTimeRef.current);
+      }
     }
     animFrameIdRef.current = requestAnimationFrame(updateTick);
-  }, []);
+  }, [intervalMs]);
 
   const start = useCallback(() => {
     const nowTimestamp = Date.now();
@@ -48,6 +57,7 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
     lastLapTotalMsRef.current = 0;
     startTimeRef.current = nowTimestamp;
     lastTickTimeRef.current = perfNow;
+    lastRenderTimeRef.current = perfNow;
 
     setElapsedTimeMs(0);
     setLaps([]);
@@ -61,11 +71,15 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
       animFrameIdRef.current = null;
     }
     lastTickTimeRef.current = null;
+    // Flush the throttled value so the display shows the exact pause instant.
+    setElapsedTimeMs(accumulatedTimeRef.current);
     setTimerState('PAUSED');
   }, []);
 
   const resume = useCallback(() => {
-    lastTickTimeRef.current = performance.now();
+    const perfNow = performance.now();
+    lastTickTimeRef.current = perfNow;
+    lastRenderTimeRef.current = perfNow;
     setTimerState('RUNNING');
   }, []);
 
@@ -99,6 +113,7 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
     const endTime = Date.now();
     const recordedStartTime = startTimeRef.current || endTime - finalMs;
 
+    setElapsedTimeMs(finalMs);
     setTimerState('STOPPED');
 
     return {
@@ -118,6 +133,7 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
     startTimeRef.current = null;
     accumulatedTimeRef.current = 0;
     lastLapTotalMsRef.current = 0;
+    lastRenderTimeRef.current = 0;
 
     setElapsedTimeMs(0);
     setLaps([]);
