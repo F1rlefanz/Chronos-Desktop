@@ -29,6 +29,32 @@ Touching `src-tauri/` means running those two cargo commands as well — `.githu
 desktop.yml` enforces them, but only on demand and on tags, so a broken Rust side will not show
 up in a pull request.
 
+## The changelog is part of the work, not paperwork
+
+**Every change a user would notice gets an entry in `CHANGELOG.md`, in the same pull request as
+the change itself.** Not afterwards, not at release time — reconstructing it later from `git log`
+is how it silently stops matching reality.
+
+That file is written for people who _use_ Chronos. It is not a second copy of the commit history,
+and the difference is the whole point: git records every step, a changelog records what someone
+would notice. The `StorageAdapter` refactor is the yardstick — a large body of work in the commit
+log, one line in `CHANGELOG.md`, because "the warning now says why" is all a user ever saw of it.
+
+| Belongs in `CHANGELOG.md`                     | Belongs only in the commit history        |
+| --------------------------------------------- | ----------------------------------------- |
+| New or changed features, new UI               | Refactors with no visible effect          |
+| Fixed behaviour someone could have run into   | Tests, CI, tooling, dependency bumps      |
+| Moved files or folders a user's data lives in | Internal renames and file moves in `src/` |
+| Anything changing what the app does or where  | Comments, formatting, documentation       |
+
+Rules of the form: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and SemVer, newest
+version first, `Added` / `Changed` / `Fixed`, plain language, no jargon and no file paths the user
+has no reason to know. Bump the version in `package.json` when a release goes out — that is the
+only place a version number is written (see below).
+
+If a change turns out to be invisible to users, that is a fine answer: leave the file alone and
+say so in the pull request, rather than padding it with an entry nobody benefits from.
+
 ## Conventions
 
 - **TypeScript is strict.** No `any`. If a browser API needs a feature-detect, write a narrow
@@ -66,11 +92,6 @@ up in a pull request.
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
-- **A user-visible change needs a `CHANGELOG.md` entry.** That file is curated for people who use
-  Chronos, not a second copy of the commit log: one section per version, plain language, and
-  nothing about refactors or tooling. Purely internal work belongs in the commit history only.
-  Write the entry in the same pull request as the change, and bump the version in `package.json`
-  when the release goes out.
 - **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
   stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
