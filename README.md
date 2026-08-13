@@ -44,6 +44,8 @@ uninstalls by deleting the folder takes their data with them.
 - A log file (desktop only) recording startup, backup outcomes and every failed save, with both
   folders reachable from the Settings dialog.
 
+What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
+
 ## Requirements
 
 For the web build: Node.js 20 or newer. [Bun](https://bun.sh) 1.3+ is the project's package

@@ -66,6 +66,11 @@ up in a pull request.
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
+- **A user-visible change needs a `CHANGELOG.md` entry.** That file is curated for people who use
+  Chronos, not a second copy of the commit log: one section per version, plain language, and
+  nothing about refactors or tooling. Purely internal work belongs in the commit history only.
+  Write the entry in the same pull request as the change, and bump the version in `package.json`
+  when the release goes out.
 - **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
   stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
