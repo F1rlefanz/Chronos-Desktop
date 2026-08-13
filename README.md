@@ -1,13 +1,20 @@
 # Chronos Desktop
 
-A precision stopwatch and time tracker that runs entirely in the browser. Sessions are timed at
-animation-frame resolution, tagged to a project, and exported as PDF, CSV or a portable JSON
-backup.
+A precision stopwatch and time tracker. Sessions are timed at animation-frame resolution, tagged
+to a project, and exported as PDF, CSV or a portable JSON backup.
 
-There is no backend and no account: everything lives on the machine it was recorded on, and the
-JSON backup is how you move data between machines. Persistence sits behind a `StorageAdapter`
-interface — the browser build writes to `localStorage`; a desktop build will write to the
-filesystem without the rest of the app noticing.
+It ships as a **Windows desktop app** built with Tauri, and the same code still runs as a plain
+web app in the browser. There is no backend and no account: everything lives on the machine it
+was recorded on, and the JSON backup is how you move data between machines.
+
+Persistence sits behind a `StorageAdapter` interface, chosen at startup:
+
+| Build   | Backend                                                            |
+| ------- | ------------------------------------------------------------------ |
+| Desktop | `%LOCALAPPDATA%\de.f1rlefanz.chronos\data\*.json`, written by Rust |
+| Browser | `localStorage`                                                     |
+
+Nothing above that interface knows which one is in use.
 
 ## Features
 
@@ -24,32 +31,41 @@ filesystem without the rest of the app noticing.
 
 ## Requirements
 
-Node.js 20 or newer. [Bun](https://bun.sh) 1.3+ is the project's package manager — `bun.lock` is
-the committed lockfile — but npm works too.
+For the web build: Node.js 20 or newer. [Bun](https://bun.sh) 1.3+ is the project's package
+manager — `bun.lock` is the committed lockfile — but npm works too.
+
+For the desktop build, additionally:
+
+- A [Rust](https://rustup.rs) toolchain (stable).
+- Microsoft Visual Studio Build Tools with the C++ workload.
+- WebView2, which is preinstalled on Windows 11 and current Windows 10.
 
 ## Setup
 
 ```bash
-bun install     # or: npm install
-bun run dev     # http://localhost:3000
+bun install          # or: npm install
+bun run dev          # web app on http://localhost:3000
+bun run desktop:dev  # desktop app; starts the dev server itself
 ```
 
 ## Scripts
 
-| Script                  | What it does                          |
-| ----------------------- | ------------------------------------- |
-| `bun run dev`           | Vite dev server on port 3000          |
-| `bun run build`         | Production build into `dist/`         |
-| `bun run preview`       | Serve the production build locally    |
-| `bun run typecheck`     | `tsc --noEmit` (strict)               |
-| `bun run lint`          | ESLint over the project               |
-| `bun run lint:fix`      | ESLint with autofix                   |
-| `bun run format`        | Prettier, writing changes             |
-| `bun run format:check`  | Prettier in check mode (what CI runs) |
-| `bun run test`          | Vitest, single run                    |
-| `bun run test:watch`    | Vitest in watch mode                  |
-| `bun run test:coverage` | Vitest with a coverage report         |
-| `bun run clean`         | Remove `dist/` and `coverage/`        |
+| Script                  | What it does                                              |
+| ----------------------- | --------------------------------------------------------- |
+| `bun run dev`           | Vite dev server on port 3000                              |
+| `bun run build`         | Production build into `dist/`                             |
+| `bun run preview`       | Serve the production build locally                        |
+| `bun run desktop:dev`   | Tauri dev window over the dev server                      |
+| `bun run desktop:build` | Windows installer into `src-tauri/target/release/bundle/` |
+| `bun run typecheck`     | `tsc --noEmit` (strict)                                   |
+| `bun run lint`          | ESLint over the project                                   |
+| `bun run lint:fix`      | ESLint with autofix                                       |
+| `bun run format`        | Prettier, writing changes                                 |
+| `bun run format:check`  | Prettier in check mode (what CI runs)                     |
+| `bun run test`          | Vitest, single run                                        |
+| `bun run test:watch`    | Vitest in watch mode                                      |
+| `bun run test:coverage` | Vitest with a coverage report                             |
+| `bun run clean`         | Remove `dist/` and `coverage/`                            |
 
 ## Architecture
 
@@ -63,6 +79,7 @@ src/
     storage/           Persistence behind an adapter interface
       types              StorageAdapter and the WriteResult a failed write returns
       localStorageAdapter  The browser backend (default)
+      tauriAdapter         The desktop backend, over IPC to Rust
       memoryAdapter        In-memory backend used by the tests
       index                Domain layer: loadPersistedState, the save* functions,
                            settings migration, setStorageAdapter
@@ -70,9 +87,15 @@ src/
     pdfExporter        jsPDF report generation
   constants/           Defaults, storage keys, time constants
   types/               Shared types
+
+src-tauri/
+  src/lib.rs           The storage_read / storage_write commands and the window setup
+  src/main.rs          Desktop entry point over lib.rs
+  tauri.conf.json      Window, bundle and CSP configuration
+  capabilities/        Permission scopes granted to the window
 ```
 
-Two things worth knowing before changing code here:
+Things worth knowing before changing code here:
 
 - **The timer never trusts React state for measurement.** Elapsed time accumulates in refs at
   full animation-frame resolution; `timerIntervalMs` only throttles how often that value is
@@ -90,8 +113,13 @@ Two things worth knowing before changing code here:
   loading state in every component, and no flash of defaults. A backend that cannot be read at
   all falls back to defaults rather than leaving a blank page.
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
-  it reaches the app, because the import is persisted to `localStorage` immediately — a malformed
-  entry would otherwise break the app on every subsequent reload.
+  it reaches the app, because the import is persisted immediately — a malformed entry would
+  otherwise break the app on every subsequent reload.
+- **The desktop write is atomic.** `storage_write` in `src-tauri/src/lib.rs` writes a temporary
+  file, syncs it and renames it into place, so a crash mid-write leaves either the old file or the
+  new one, never a truncated one. The command also validates the storage key rather than trusting
+  it: values crossing the IPC boundary are input, and a key containing `..` would otherwise let
+  the front end write anywhere on disk.
 
 ## Testing
 
@@ -100,16 +128,23 @@ bun run test
 ```
 
 Vitest with jsdom and Testing Library. The suite covers the time formatters, the stopwatch state
-machine (over a controlled clock with hand-pumped animation frames), the settings migration, and
-the export/import layer — including regression tests for previously fixed bugs. Coverage is
-reported but no threshold is enforced.
+machine (over a controlled clock with hand-pumped animation frames), the settings migration, both
+storage adapters and the export/import layer — including regression tests for previously fixed
+bugs. Coverage is reported but no threshold is enforced.
+
+The Rust side has no unit tests; it is verified by building and running the desktop app.
 
 ## CI
 
 `.github/workflows/ci.yml` runs typecheck, lint, format check, tests and build on every push to
-`main` and every pull request.
+`main` and every pull request. It does not build the desktop app: a cold Rust build takes minutes,
+and this is the check that gates merging.
 
-To require it before merging (needs admin rights on the repository):
+`.github/workflows/desktop.yml` checks Rust formatting, runs Clippy, builds the Windows installer
+and uploads it as an artefact. It runs on demand (Actions → Desktop build → Run workflow) and on
+`v*` tags.
+
+To require CI before merging (needs admin rights on the repository):
 Settings → Branches → Add rule for `main` → enable _Require a pull request before merging_ and
 _Require status checks to pass_, selecting the `Typecheck, lint, test, build` check.
 

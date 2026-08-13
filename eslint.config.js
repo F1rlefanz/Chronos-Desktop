@@ -6,7 +6,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules'] },
+  // src-tauri/target holds Rust build output, including generated .js assets
+  // that ESLint would try — and fail — to parse.
+  { ignores: ['dist', 'coverage', 'node_modules', 'src-tauri/target', 'src-tauri/gen'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

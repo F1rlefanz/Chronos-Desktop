@@ -1,0 +1,28 @@
+[package]
+name = "chronos-desktop"
+version = "0.1.1"
+description = "Precision stopwatch and time tracker"
+edition = "2021"
+rust-version = "1.77.2"
+publish = false
+
+[lib]
+# The desktop entry point is a thin main.rs over this library, which is also
+# what integration tests would link against.
+name = "chronos_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+# A time tracker does not need to ship debug symbols; this keeps the installer
+# in the tens of megabytes rather than the hundreds.
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
