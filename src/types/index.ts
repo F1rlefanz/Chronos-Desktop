@@ -51,5 +51,3 @@ export interface PdfExportOptions {
   dateRange: 'all' | 'today' | 'week' | 'month';
   selectedProject: string; // 'all' or project ID
 }
-
-export type ExportFormat = 'pdf' | 'csv' | 'json';

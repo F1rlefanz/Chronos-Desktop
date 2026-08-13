@@ -16,17 +16,6 @@ Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
 Nothing above that interface knows which one is in use.
 
-The desktop data folder is deliberately **not** named after the bundle
-identifier, which is what Tauri would do by default: where the user's data lives
-and how Windows identifies the installation are separate concerns, and tying
-them together would mean that renaming the identifier later orphans every
-existing recording.
-
-It is deliberately not the product name either. The NSIS installer puts the
-program in `%LOCALAPPDATA%\Chronos Desktop`, so naming the data folder after the
-product would drop recordings into the application folder — where anyone who
-uninstalls by deleting the folder takes their data with them.
-
 ## Features
 
 - Stopwatch with start / pause / resume / stop and lap splits, showing lap time and total split
@@ -45,6 +34,25 @@ uninstalls by deleting the folder takes their data with them.
   folders reachable from the Settings dialog.
 
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
+
+## Where the desktop app keeps things
+
+```
+%LOCALAPPDATA%\Chronos\           your data — nothing else writes here
+  data\                           the live state: sessions, projects, settings
+  backups\                        the last ten snapshots
+  logs\                           chronos.log, plus one rolled-over generation
+
+%LOCALAPPDATA%\Chronos Desktop\   the program, put there by the installer
+```
+
+The two are deliberately separate, so removing the program never removes the recordings — see
+[Architecture](#architecture) for why that is worth a paragraph of its own.
+
+Both data folders are reachable from **Settings**, at the bottom of the dialog. Installing is
+per-user and needs no administrator rights, an installer of a newer version updates the existing
+installation rather than adding a second one, and uninstalling leaves `%LOCALAPPDATA%\Chronos`
+untouched — deleting your recordings has to be something you do on purpose.
 
 ## Requirements
 
@@ -67,22 +75,23 @@ bun run desktop:dev  # desktop app; starts the dev server itself
 
 ## Scripts
 
-| Script                  | What it does                                              |
-| ----------------------- | --------------------------------------------------------- |
-| `bun run dev`           | Vite dev server on port 3000                              |
-| `bun run build`         | Production build into `dist/`                             |
-| `bun run preview`       | Serve the production build locally                        |
-| `bun run desktop:dev`   | Tauri dev window over the dev server                      |
-| `bun run desktop:build` | Windows installer into `src-tauri/target/release/bundle/` |
-| `bun run typecheck`     | `tsc --noEmit` (strict)                                   |
-| `bun run lint`          | ESLint over the project                                   |
-| `bun run lint:fix`      | ESLint with autofix                                       |
-| `bun run format`        | Prettier, writing changes                                 |
-| `bun run format:check`  | Prettier in check mode (what CI runs)                     |
-| `bun run test`          | Vitest, single run                                        |
-| `bun run test:watch`    | Vitest in watch mode                                      |
-| `bun run test:coverage` | Vitest with a coverage report                             |
-| `bun run clean`         | Remove `dist/` and `coverage/`                            |
+| Script                  | What it does                                                             |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `bun run dev`           | Vite dev server on port 3000                                             |
+| `bun run build`         | Production build into `dist/`                                            |
+| `bun run preview`       | Serve the production build locally                                       |
+| `bun run desktop:dev`   | Tauri dev window over the dev server                                     |
+| `bun run desktop:build` | Windows installer into `src-tauri/target/release/bundle/`                |
+| `bun run typecheck`     | `tsc --noEmit` (strict)                                                  |
+| `bun run lint`          | ESLint over the project                                                  |
+| `bun run lint:fix`      | ESLint with autofix                                                      |
+| `bun run format`        | Prettier, writing changes                                                |
+| `bun run format:check`  | Prettier in check mode (what CI runs)                                    |
+| `bun run test`          | Vitest, single run                                                       |
+| `bun run test:watch`    | Vitest in watch mode                                                     |
+| `bun run test:coverage` | Vitest with a coverage report                                            |
+| `bun run clean`         | Remove `dist/` and `coverage/`                                           |
+| `bun run clean:desktop` | Remove `src-tauri/target/` — gigabytes, but a cold rebuild takes minutes |
 
 ## Architecture
 
@@ -109,7 +118,7 @@ src/
   types/               Shared types
 
 src-tauri/
-  src/lib.rs           The storage_* and backup_* commands, and the window setup
+  src/lib.rs           The storage_*, backup_*, log_append and reveal_folder commands
   src/main.rs          Desktop entry point over lib.rs
   tauri.conf.json      Window, bundle and CSP configuration
   capabilities/        Permission scopes granted to the window
@@ -154,7 +163,14 @@ Things worth knowing before changing code here:
   file, syncs it and renames it into place, so a crash mid-write leaves either the old file or the
   new one, never a truncated one. The command also validates the storage key rather than trusting
   it: values crossing the IPC boundary are input, and a key containing `..` would otherwise let
-  the front end write anywhere on disk.
+  the front end write anywhere on disk. `reveal_folder` follows the same rule: it takes the name
+  `backups` or `logs`, never a path.
+- **User data lives outside the installation folder.** The installer puts the program in
+  `%LOCALAPPDATA%\Chronos Desktop`, so the data folder is `%LOCALAPPDATA%\Chronos` — one folder
+  over, not inside it. Naming it after the product would have dropped recordings into the
+  application directory, where anyone uninstalling by deleting the folder takes their data with
+  them. It is not named after the bundle identifier either, so the identifier stays free to change
+  without orphaning anything.
 
 ## Testing
 
@@ -163,11 +179,20 @@ bun run test
 ```
 
 Vitest with jsdom and Testing Library. The suite covers the time formatters, the stopwatch state
-machine (over a controlled clock with hand-pumped animation frames), the settings migration, both
-storage adapters and the export/import layer — including regression tests for previously fixed
-bugs. Coverage is reported but no threshold is enforced.
+machine (over a controlled clock with hand-pumped animation frames), the settings migration, all
+three storage adapters, the backup rules, the logger and the export/import layer — including
+regression tests for previously fixed bugs. Coverage is reported but no threshold is enforced.
 
-The Rust side has no unit tests; it is verified by building and running the desktop app.
+The Rust side has no unit tests. It is verified by building the installer and exercising the app,
+which is not a formality: the collision between the data folder and the installation folder was
+found that way and by nothing else. What a release should cover, beyond the suite:
+
+- Install, launch, record and save a session, restart — the session is still there.
+- Install a newer version over an older one: one entry in Programs and Features, data intact.
+- Uninstall: the program is gone, `%LOCALAPPDATA%\Chronos` is not.
+- Both **Open Folder** buttons in Settings.
+- A rejected write, which is easiest to force by denying write permission on `data\` — the banner
+  appears and the reason lands in `logs\chronos.log`.
 
 ## CI
 
