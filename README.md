@@ -9,18 +9,23 @@ was recorded on, and the JSON backup is how you move data between machines.
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
-| Build   | Backend                                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------------------- |
-| Desktop | `%LOCALAPPDATA%\Chronos Desktop\data\*.json`, written by Rust, with rotating snapshots in `..\backups\` |
-| Browser | `localStorage`, no snapshots — the quota has no room for a second copy                                  |
+| Build   | Backend                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| Desktop | `%LOCALAPPDATA%\Chronos\data\*.json`, written by Rust, with rotating snapshots in `..\backups\` |
+| Browser | `localStorage`, no snapshots — the quota has no room for a second copy                          |
 
 Nothing above that interface knows which one is in use.
 
 The desktop data folder is deliberately **not** named after the bundle
-identifier, which is what Tauri would do by default. Where the user's data lives
-and how Windows identifies the installation are separate concerns: tying them
-together would mean that renaming the identifier later orphans every existing
-recording. It also keeps the folder findable in Explorer.
+identifier, which is what Tauri would do by default: where the user's data lives
+and how Windows identifies the installation are separate concerns, and tying
+them together would mean that renaming the identifier later orphans every
+existing recording.
+
+It is deliberately not the product name either. The NSIS installer puts the
+program in `%LOCALAPPDATA%\Chronos Desktop`, so naming the data folder after the
+product would drop recordings into the application folder — where anyone who
+uninstalls by deleting the folder takes their data with them.
 
 ## Features
 

@@ -65,7 +65,12 @@ static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// install identity, and renaming the identifier later would orphan every
 /// existing recording. Keeping the two apart also means the folder is
 /// something a person can find in Explorer.
-const DATA_FOLDER: &str = "Chronos Desktop";
+///
+/// It is also deliberately *not* the product name. The NSIS installer puts the
+/// program itself in `%LOCALAPPDATA%\Chronos Desktop`, so using that name here
+/// would drop the user's recordings into the application folder — where anyone
+/// uninstalling by deleting the folder takes their data with them.
+const DATA_FOLDER: &str = "Chronos";
 
 /// How many snapshots survive in backups/. Older ones are pruned after each
 /// write, so the folder cannot grow without bound.
