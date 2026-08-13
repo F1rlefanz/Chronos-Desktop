@@ -53,8 +53,8 @@ export const LapList: React.FC<LapListProps> = ({ laps }) => {
                 isFastest
                   ? 'bg-blue-50/80 border-blue-200 text-blue-900'
                   : isSlowest
-                  ? 'bg-rose-50/80 border-rose-200 text-rose-900'
-                  : 'bg-gray-50/70 border-gray-200/80 text-gray-800'
+                    ? 'bg-rose-50/80 border-rose-200 text-rose-900'
+                    : 'bg-gray-50/70 border-gray-200/80 text-gray-800'
               }`}
             >
               <div className="flex items-center gap-2">
@@ -75,7 +75,9 @@ export const LapList: React.FC<LapListProps> = ({ laps }) => {
 
               <div className="flex items-center gap-6">
                 <div>
-                  <span className="text-[10px] text-gray-400 block font-sans uppercase tracking-wider">Lap Time</span>
+                  <span className="text-[10px] text-gray-400 block font-sans uppercase tracking-wider">
+                    Lap Time
+                  </span>
                   <span className="font-semibold text-gray-900">
                     {lapDisplay.mainTime}
                     <span className="text-[#2D5BFF] text-[10px] ml-0.5">{lapDisplay.subTime}</span>
@@ -83,7 +85,9 @@ export const LapList: React.FC<LapListProps> = ({ laps }) => {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] text-gray-400 block font-sans uppercase tracking-wider">Total Split</span>
+                  <span className="text-[10px] text-gray-400 block font-sans uppercase tracking-wider">
+                    Total Split
+                  </span>
                   <span className="text-gray-500">
                     {splitDisplay.mainTime}
                     <span className="text-gray-400 text-[10px] ml-0.5">{splitDisplay.subTime}</span>

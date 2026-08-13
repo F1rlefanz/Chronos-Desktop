@@ -1,0 +1,99 @@
+# Chronos Desktop
+
+A precision stopwatch and time tracker that runs entirely in the browser. Sessions are timed at
+animation-frame resolution, tagged to a project, and exported as PDF, CSV or a portable JSON
+backup.
+
+There is no backend and no account: everything lives in `localStorage`, and the JSON backup is
+how you move data between machines.
+
+## Features
+
+- Stopwatch with start / pause / resume / stop and lap splits, showing lap time and total split
+  side by side, with the fastest and slowest lap highlighted.
+- Sessions saved with a title, project, tags and notes, plus the time actually spent paused.
+- Searchable history filtered by project, with a running total.
+- Exports: PDF report (filterable by project and date range), CSV for spreadsheets, JSON backup
+  and restore.
+- Keyboard shortcuts: `Space` start/pause, `L` lap, `S` stop and save, `R` reset. Modified
+  combinations such as `Cmd/Ctrl+R` are left to the browser.
+- Configurable display refresh rate, so the readout can be slowed down without affecting timing
+  accuracy.
+
+## Requirements
+
+Node.js 20 or newer. [Bun](https://bun.sh) 1.3+ is the project's package manager — `bun.lock` is
+the committed lockfile — but npm works too.
+
+## Setup
+
+```bash
+bun install     # or: npm install
+bun run dev     # http://localhost:3000
+```
+
+## Scripts
+
+| Script                  | What it does                          |
+| ----------------------- | ------------------------------------- |
+| `bun run dev`           | Vite dev server on port 3000          |
+| `bun run build`         | Production build into `dist/`         |
+| `bun run preview`       | Serve the production build locally    |
+| `bun run typecheck`     | `tsc --noEmit` (strict)               |
+| `bun run lint`          | ESLint over the project               |
+| `bun run lint:fix`      | ESLint with autofix                   |
+| `bun run format`        | Prettier, writing changes             |
+| `bun run format:check`  | Prettier in check mode (what CI runs) |
+| `bun run test`          | Vitest, single run                    |
+| `bun run test:watch`    | Vitest in watch mode                  |
+| `bun run test:coverage` | Vitest with a coverage report         |
+| `bun run clean`         | Remove `dist/` and `coverage/`        |
+
+## Architecture
+
+```
+src/
+  App.tsx              Root container: owns settings, entries and projects; modal orchestration
+  hooks/useStopwatch   Timer state machine (IDLE/RUNNING/PAUSED/STOPPED), laps, pause accounting
+  components/          Presentational components — header, display, controls, laps, modals
+  utils/
+    timeFormatters     Pure ms → display/duration/date formatting
+    storage            localStorage wrappers plus settings migration
+    dataExporter       CSV and JSON export, and validated JSON import
+    pdfExporter        jsPDF report generation
+  constants/           Defaults, storage keys, time constants
+  types/               Shared types
+```
+
+Two things worth knowing before changing code here:
+
+- **The timer never trusts React state for measurement.** Elapsed time accumulates in refs at
+  full animation-frame resolution; `timerIntervalMs` only throttles how often that value is
+  pushed into state. Changing the setting changes render frequency, never accuracy.
+- **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
+  it reaches the app, because the import is persisted to `localStorage` immediately — a malformed
+  entry would otherwise break the app on every subsequent reload.
+
+## Testing
+
+```bash
+bun run test
+```
+
+Vitest with jsdom and Testing Library. The suite covers the time formatters, the stopwatch state
+machine (over a controlled clock with hand-pumped animation frames), the settings migration, and
+the export/import layer — including regression tests for previously fixed bugs. Coverage is
+reported but no threshold is enforced.
+
+## CI
+
+`.github/workflows/ci.yml` runs typecheck, lint, format check, tests and build on every push to
+`main` and every pull request.
+
+To require it before merging (needs admin rights on the repository):
+Settings → Branches → Add rule for `main` → enable _Require a pull request before merging_ and
+_Require status checks to pass_, selecting the `Typecheck, lint, test, build` check.
+
+## License
+
+Not yet specified.

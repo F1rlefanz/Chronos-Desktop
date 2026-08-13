@@ -28,14 +28,16 @@ export interface Project {
   color: string;
 }
 
+/**
+ * Only settings that are actually wired up belong here. `theme`, `timeFormat`
+ * and `autoSaveSession` used to sit in this interface without a single reader,
+ * which made the type lie about what the app can do.
+ */
 export interface AppSettings {
   showMilliseconds: boolean;
   soundEnabled: boolean;
-  theme: 'light' | 'dark' | 'system';
   desktopWindowFrame: boolean;
-  autoSaveSession: boolean;
   defaultProject: string;
-  timeFormat: '12h' | '24h';
   keyShortcutsEnabled: boolean;
   timerIntervalMs: number;
 }

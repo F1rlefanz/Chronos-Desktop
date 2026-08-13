@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TimeEntry, Project } from '../types';
 import { formatTimeDisplay, formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
-import { Clock, Search, Folder, Trash2, Tag, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Search, Trash2, Download, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SessionHistoryProps {
   entries: TimeEntry[];
@@ -22,7 +22,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
 
-  const projectMap = useMemo(() => new Map<string, Project>(projects.map((p) => [p.id, p])), [projects]);
+  const projectMap = useMemo(
+    () => new Map<string, Project>(projects.map((p) => [p.id, p])),
+    [projects]
+  );
 
   const filteredEntries = useMemo(() => {
     return entries.filter((entry) => {
@@ -63,7 +66,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
             <span>Time Tracking History</span>
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Total Logged: <strong className="text-[#2D5BFF]">{formatDurationHuman(totalCalculatedMs)}</strong> ({filteredEntries.length} sessions)
+            Total Logged:{' '}
+            <strong className="text-[#2D5BFF]">{formatDurationHuman(totalCalculatedMs)}</strong> (
+            {filteredEntries.length} sessions)
           </p>
         </div>
 
@@ -129,7 +134,9 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           const projectName = project ? project.name : 'General';
           const isExpanded = expandedEntryId === entry.id;
 
-          const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, { includeMilliseconds: true });
+          const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, {
+            includeMilliseconds: true,
+          });
 
           return (
             <div
@@ -171,7 +178,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     className="p-1.5 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
                     title="Toggle Details"
                   >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
                   </button>
 
                   <button
@@ -188,7 +199,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
               {entry.tags.length > 0 && !isExpanded && (
                 <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2 border-t border-gray-200/60">
                   {entry.tags.map((tag, i) => (
-                    <span key={i} className="text-[10px] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200">
+                    <span
+                      key={i}
+                      className="text-[10px] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200"
+                    >
                       #{tag}
                     </span>
                   ))}
@@ -200,21 +214,33 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 <div className="mt-3 pt-3 border-t border-gray-200 text-xs space-y-2">
                   {entry.notes && (
                     <div className="bg-white p-3 rounded-lg border border-gray-200 text-gray-700">
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">Notes</strong>
+                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                        Notes
+                      </strong>
                       {entry.notes}
                     </div>
                   )}
 
                   {entry.laps.length > 0 && (
                     <div>
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">Recorded Laps ({entry.laps.length})</strong>
+                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                        Recorded Laps ({entry.laps.length})
+                      </strong>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 font-mono text-[11px]">
                         {entry.laps.map((lap) => {
-                          const lapDisp = formatTimeDisplay(lap.lapTimeMs, { includeMilliseconds: true });
+                          const lapDisp = formatTimeDisplay(lap.lapTimeMs, {
+                            includeMilliseconds: true,
+                          });
                           return (
-                            <div key={lap.id} className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between">
+                            <div
+                              key={lap.id}
+                              className="bg-white px-2.5 py-1 rounded border border-gray-200 flex justify-between"
+                            >
                               <span className="text-gray-400">Lap {lap.lapNumber}:</span>
-                              <span className="text-gray-800 font-semibold">{lapDisp.mainTime}<span className="text-[#2D5BFF]">{lapDisp.subTime}</span></span>
+                              <span className="text-gray-800 font-semibold">
+                                {lapDisp.mainTime}
+                                <span className="text-[#2D5BFF]">{lapDisp.subTime}</span>
+                              </span>
                             </div>
                           );
                         })}

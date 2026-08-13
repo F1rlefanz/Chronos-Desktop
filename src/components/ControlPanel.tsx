@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Flag, Square, RotateCcw, Save } from 'lucide-react';
+import { Play, Pause, Flag, RotateCcw, Save } from 'lucide-react';
 import { TimerState } from '../types';
 
 interface ControlPanelProps {

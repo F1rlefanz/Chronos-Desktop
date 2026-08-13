@@ -8,6 +8,7 @@ interface SessionSaverModalProps {
   onClose: () => void;
   onSave: (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => void;
   recordedMs: number;
+  pauseDurationMs: number;
   recordedLaps: Lap[];
   startTime: number;
   endTime: number;
@@ -20,6 +21,7 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
   onClose,
   onSave,
   recordedMs,
+  pauseDurationMs,
   recordedLaps,
   startTime,
   endTime,
@@ -27,7 +29,9 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
   defaultProjectId,
 }) => {
   const [title, setTitle] = useState<string>('Recorded Time Session');
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjectId || projects[0]?.id || 'proj-work');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    defaultProjectId || projects[0]?.id || 'proj-work'
+  );
   const [tagInput, setTagInput] = useState<string>('work, focused');
   const [notes, setNotes] = useState<string>('');
 
@@ -48,7 +52,7 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
       startTime,
       endTime,
       durationMs: recordedMs,
-      pauseDurationMs: 0,
+      pauseDurationMs,
       notes: notes.trim(),
       laps: recordedLaps,
     });

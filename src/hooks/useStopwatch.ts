@@ -11,11 +11,19 @@ export interface UseStopwatchReturn {
   pause: () => void;
   resume: () => void;
   recordLap: () => Lap | null;
-  stop: () => { totalMs: number; laps: Lap[]; startTime: number; endTime: number };
+  stop: () => {
+    totalMs: number;
+    pauseDurationMs: number;
+    laps: Lap[];
+    startTime: number;
+    endTime: number;
+  };
   reset: () => void;
 }
 
-export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_UPDATE_INTERVAL_MS): UseStopwatchReturn {
+export function useStopwatch(
+  intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_UPDATE_INTERVAL_MS
+): UseStopwatchReturn {
   const [elapsedTimeMs, setElapsedTimeMs] = useState<number>(0);
   const [timerState, setTimerState] = useState<TimerState>('IDLE');
   const [laps, setLaps] = useState<Lap[]>([]);
@@ -25,29 +33,14 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
   const startTimeRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef<number>(0);
   const lastTickTimeRef = useRef<number | null>(null);
-  const animFrameIdRef = useRef<number | null>(null);
   const lastLapTotalMsRef = useRef<number>(0);
   const lastRenderTimeRef = useRef<number>(0);
 
-  // Core ticker loop.
-  //
-  // Elapsed time is always accumulated at full animation-frame resolution; only
-  // the React state push is throttled to `intervalMs`, so the configured update
-  // interval controls re-render frequency without costing timing accuracy.
-  const updateTick = useCallback(() => {
-    if (lastTickTimeRef.current !== null) {
-      const now = performance.now();
-      const delta = now - lastTickTimeRef.current;
-      lastTickTimeRef.current = now;
-      accumulatedTimeRef.current += delta;
-
-      if (now - lastRenderTimeRef.current >= intervalMs) {
-        lastRenderTimeRef.current = now;
-        setElapsedTimeMs(accumulatedTimeRef.current);
-      }
-    }
-    animFrameIdRef.current = requestAnimationFrame(updateTick);
-  }, [intervalMs]);
+  // Time spent in PAUSED, measured on the wall clock: the accumulator above
+  // deliberately does not advance while paused, so the gap has to be tracked
+  // separately for the saved entry to report it.
+  const pausedTotalMsRef = useRef<number>(0);
+  const pauseStartedAtRef = useRef<number | null>(null);
 
   const start = useCallback(() => {
     const nowTimestamp = Date.now();
@@ -55,6 +48,8 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
 
     accumulatedTimeRef.current = 0;
     lastLapTotalMsRef.current = 0;
+    pausedTotalMsRef.current = 0;
+    pauseStartedAtRef.current = null;
     startTimeRef.current = nowTimestamp;
     lastTickTimeRef.current = perfNow;
     lastRenderTimeRef.current = perfNow;
@@ -65,23 +60,30 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
     setTimerState('RUNNING');
   }, []);
 
+  // The ticker loop is owned by the effect below; leaving RUNNING is enough to
+  // stop it, so pause/stop/reset only settle their own bookkeeping.
   const pause = useCallback(() => {
-    if (animFrameIdRef.current !== null) {
-      cancelAnimationFrame(animFrameIdRef.current);
-      animFrameIdRef.current = null;
-    }
     lastTickTimeRef.current = null;
+    pauseStartedAtRef.current = performance.now();
     // Flush the throttled value so the display shows the exact pause instant.
     setElapsedTimeMs(accumulatedTimeRef.current);
     setTimerState('PAUSED');
   }, []);
 
+  const settlePause = useCallback((perfNow: number) => {
+    if (pauseStartedAtRef.current !== null) {
+      pausedTotalMsRef.current += perfNow - pauseStartedAtRef.current;
+      pauseStartedAtRef.current = null;
+    }
+  }, []);
+
   const resume = useCallback(() => {
     const perfNow = performance.now();
+    settlePause(perfNow);
     lastTickTimeRef.current = perfNow;
     lastRenderTimeRef.current = perfNow;
     setTimerState('RUNNING');
-  }, []);
+  }, [settlePause]);
 
   const recordLap = useCallback((): Lap | null => {
     if (timerState !== 'RUNNING' && timerState !== 'PAUSED') return null;
@@ -103,11 +105,9 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
   }, [timerState, laps.length]);
 
   const stop = useCallback(() => {
-    if (animFrameIdRef.current !== null) {
-      cancelAnimationFrame(animFrameIdRef.current);
-      animFrameIdRef.current = null;
-    }
     lastTickTimeRef.current = null;
+    // Stopping straight out of PAUSED still closes that pause.
+    settlePause(performance.now());
 
     const finalMs = accumulatedTimeRef.current;
     const endTime = Date.now();
@@ -118,22 +118,21 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
 
     return {
       totalMs: finalMs,
+      pauseDurationMs: pausedTotalMsRef.current,
       laps: [...laps],
       startTime: recordedStartTime,
       endTime,
     };
-  }, [laps]);
+  }, [laps, settlePause]);
 
   const reset = useCallback(() => {
-    if (animFrameIdRef.current !== null) {
-      cancelAnimationFrame(animFrameIdRef.current);
-      animFrameIdRef.current = null;
-    }
     lastTickTimeRef.current = null;
     startTimeRef.current = null;
     accumulatedTimeRef.current = 0;
     lastLapTotalMsRef.current = 0;
     lastRenderTimeRef.current = 0;
+    pausedTotalMsRef.current = 0;
+    pauseStartedAtRef.current = null;
 
     setElapsedTimeMs(0);
     setLaps([]);
@@ -141,21 +140,35 @@ export function useStopwatch(intervalMs: number = TIME_CONSTANTS.DEFAULT_TIMER_U
     setTimerState('IDLE');
   }, []);
 
-  // Sync state & animation frame loop
+  // Core ticker loop, owned entirely by this effect: it runs while the timer is
+  // RUNNING and is cancelled by the cleanup on any other state.
+  //
+  // Elapsed time is accumulated at full animation-frame resolution; only the
+  // React state push is throttled to `intervalMs`, so the configured update
+  // interval controls re-render frequency without costing timing accuracy.
   useEffect(() => {
-    if (timerState === 'RUNNING') {
-      animFrameIdRef.current = requestAnimationFrame(updateTick);
-    } else if (animFrameIdRef.current !== null) {
-      cancelAnimationFrame(animFrameIdRef.current);
-      animFrameIdRef.current = null;
-    }
+    if (timerState !== 'RUNNING') return;
 
-    return () => {
-      if (animFrameIdRef.current !== null) {
-        cancelAnimationFrame(animFrameIdRef.current);
+    let frameId = 0;
+
+    const tick = () => {
+      if (lastTickTimeRef.current !== null) {
+        const now = performance.now();
+        const delta = now - lastTickTimeRef.current;
+        lastTickTimeRef.current = now;
+        accumulatedTimeRef.current += delta;
+
+        if (now - lastRenderTimeRef.current >= intervalMs) {
+          lastRenderTimeRef.current = now;
+          setElapsedTimeMs(accumulatedTimeRef.current);
+        }
       }
+      frameId = requestAnimationFrame(tick);
     };
-  }, [timerState, updateTick]);
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [timerState, intervalMs]);
 
   return {
     elapsedTimeMs,

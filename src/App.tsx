@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
 import { ImportedData } from './utils/dataExporter';
@@ -9,6 +9,7 @@ import {
   saveTimeEntries,
   loadProjects,
   saveProjects,
+  migrateSettings,
 } from './utils/storage';
 
 import { DesktopHeader } from './components/DesktopHeader';
@@ -41,24 +42,15 @@ export default function App() {
   // Stopped Session Pending Save State
   const [pendingSaveData, setPendingSaveData] = useState<{
     recordedMs: number;
+    pauseDurationMs: number;
     recordedLaps: Lap[];
     startTime: number;
     endTime: number;
   } | null>(null);
 
   // High-Precision Stopwatch Hook
-  const {
-    elapsedTimeMs,
-    timerState,
-    laps,
-    startTime,
-    start,
-    pause,
-    resume,
-    recordLap,
-    stop,
-    reset,
-  } = useStopwatch(settings.timerIntervalMs);
+  const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
+    useStopwatch(settings.timerIntervalMs);
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
@@ -66,7 +58,9 @@ export default function App() {
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback((): AudioContext | null => {
-    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+    // Safari below 14.1 only exposes the prefixed constructor.
+    const legacyWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+    const Ctor = window.AudioContext || legacyWindow.webkitAudioContext;
     if (!Ctor) return null;
 
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
@@ -129,47 +123,50 @@ export default function App() {
           osc.start();
           osc.stop(audioCtx.currentTime + 0.25);
         }
-      } catch (e) {
+      } catch {
         // Fallback silently if web audio is restricted
       }
     },
     [settings.soundEnabled, getAudioContext]
   );
 
-  // Handlers
-  const handleStart = () => {
+  // Handlers. These are memoized because the keyboard shortcut effect below
+  // depends on them — without it the listener would be torn down and
+  // re-attached on every single render.
+  const handleStart = useCallback(() => {
     playAudioCue('start');
     start();
-  };
+  }, [playAudioCue, start]);
 
-  const handlePause = () => {
+  const handlePause = useCallback(() => {
     playAudioCue('pause');
     pause();
-  };
+  }, [playAudioCue, pause]);
 
-  const handleResume = () => {
+  const handleResume = useCallback(() => {
     playAudioCue('start');
     resume();
-  };
+  }, [playAudioCue, resume]);
 
-  const handleLap = () => {
+  const handleLap = useCallback(() => {
     const lap = recordLap();
     if (lap) {
       playAudioCue('lap');
     }
-  };
+  }, [playAudioCue, recordLap]);
 
-  const handleStopAndOpenSaver = () => {
+  const handleStopAndOpenSaver = useCallback(() => {
     playAudioCue('stop');
     const result = stop();
     setPendingSaveData({
       recordedMs: result.totalMs,
+      pauseDurationMs: result.pauseDurationMs,
       recordedLaps: result.laps,
       startTime: result.startTime,
       endTime: result.endTime,
     });
     setIsSaverOpen(true);
-  };
+  }, [playAudioCue, stop]);
 
   const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
     const newEntry: TimeEntry = {
@@ -216,28 +213,29 @@ export default function App() {
       setProjects(data.projects);
       saveProjects(data.projects);
     }
-    if (data.settings && typeof data.settings === 'object') {
-      const updated = { ...settings, ...(data.settings as AppSettings) };
+    if (data.settings) {
+      // Imported settings run through the same migration as stored ones, so a
+      // backup from an older build cannot smuggle removed or wrongly-typed
+      // keys back into state.
+      const updated = migrateSettings(data.settings);
       setSettings(updated);
       saveSettings(updated);
     }
   };
 
-  // Keep the active selection pointing at a project that still exists. Deleting
-  // the selected project (or importing a different project list) would
-  // otherwise leave the dropdown showing one project while saved entries carry
-  // a vanished id and get labelled "General".
-  useEffect(() => {
-    if (projects.length === 0) return;
-    if (!projects.some((p) => p.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0].id);
-    }
+  // The active project is derived, not stored a second time: deleting the
+  // selected project (or importing a different project list) must not leave the
+  // dropdown showing one project while saved entries carry a vanished id and
+  // get labelled "General". Deriving it also avoids a repair effect that would
+  // cascade an extra render.
+  const currentProject = useMemo(() => {
+    return (
+      projects.find((p) => p.id === selectedProjectId) ||
+      projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' }
+    );
   }, [projects, selectedProjectId]);
 
-  // Active Project Data
-  const currentProject = useMemo(() => {
-    return projects.find((p) => p.id === selectedProjectId) || projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' };
-  }, [projects, selectedProjectId]);
+  const activeProjectId = currentProject.id;
 
   // Global Keyboard Shortcuts Listener
   useEffect(() => {
@@ -274,7 +272,16 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [timerState, settings.keyShortcutsEnabled, handleStart, handlePause, handleResume, handleLap, handleStopAndOpenSaver, reset]);
+  }, [
+    timerState,
+    settings.keyShortcutsEnabled,
+    handleStart,
+    handlePause,
+    handleResume,
+    handleLap,
+    handleStopAndOpenSaver,
+    reset,
+  ]);
 
   return (
     <div className="min-h-screen bg-[#F4F7F9] text-[#1A1C1E] font-sans antialiased flex flex-col selection:bg-blue-500 selection:text-white">
@@ -295,7 +302,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Tracking Category:</span>
             <select
-              value={selectedProjectId}
+              value={activeProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-800 rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#2D5BFF] cursor-pointer"
             >
@@ -362,11 +369,12 @@ export default function App() {
           }}
           onSave={handleSaveEntry}
           recordedMs={pendingSaveData.recordedMs}
+          pauseDurationMs={pendingSaveData.pauseDurationMs}
           recordedLaps={pendingSaveData.recordedLaps}
           startTime={pendingSaveData.startTime}
           endTime={pendingSaveData.endTime}
           projects={projects}
-          defaultProjectId={selectedProjectId}
+          defaultProjectId={activeProjectId}
         />
       )}
 
@@ -388,10 +396,7 @@ export default function App() {
         onImportData={handleImportData}
       />
 
-      <ArchitectureModal
-        isOpen={isArchitectureOpen}
-        onClose={() => setIsArchitectureOpen(false)}
-      />
+      <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />
     </div>
   );
 }

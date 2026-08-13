@@ -28,8 +28,43 @@ export function saveToStorage<T>(key: string, value: T): boolean {
   }
 }
 
+/**
+ * Loads settings and reconciles them with the current shape.
+ *
+ * Stored settings outlive the code that wrote them: an older build may be
+ * missing keys added since, and will carry keys that have been removed
+ * (`theme`, `timeFormat`, `autoSaveSession`). Reading the raw JSON straight
+ * into state would keep both problems alive across every reload, so the stored
+ * value is merged onto the defaults and narrowed to the keys that still exist.
+ */
 export function loadSettings(): AppSettings {
-  return loadFromStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_APP_SETTINGS);
+  const stored = loadFromStorage<Partial<AppSettings>>(STORAGE_KEYS.SETTINGS, {});
+  const migrated = migrateSettings(stored);
+
+  // Write the cleaned state back, otherwise the stale keys sit in localStorage
+  // until the user happens to change a setting.
+  if (JSON.stringify(stored) !== JSON.stringify(migrated)) {
+    saveSettings(migrated);
+  }
+
+  return migrated;
+}
+
+export function migrateSettings(stored: unknown): AppSettings {
+  if (typeof stored !== 'object' || stored === null) return { ...DEFAULT_APP_SETTINGS };
+
+  const raw = stored as Record<string, unknown>;
+  const migrated = { ...DEFAULT_APP_SETTINGS };
+
+  for (const key of Object.keys(DEFAULT_APP_SETTINGS) as (keyof AppSettings)[]) {
+    const value = raw[key];
+    // Only adopt a stored value when its type still matches the default's.
+    if (typeof value === typeof DEFAULT_APP_SETTINGS[key]) {
+      migrated[key] = value as never;
+    }
+  }
+
+  return migrated;
 }
 
 export function saveSettings(settings: AppSettings): boolean {
