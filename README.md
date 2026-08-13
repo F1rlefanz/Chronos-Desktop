@@ -4,8 +4,10 @@ A precision stopwatch and time tracker that runs entirely in the browser. Sessio
 animation-frame resolution, tagged to a project, and exported as PDF, CSV or a portable JSON
 backup.
 
-There is no backend and no account: everything lives in `localStorage`, and the JSON backup is
-how you move data between machines.
+There is no backend and no account: everything lives on the machine it was recorded on, and the
+JSON backup is how you move data between machines. Persistence sits behind a `StorageAdapter`
+interface — the browser build writes to `localStorage`; a desktop build will write to the
+filesystem without the rest of the app noticing.
 
 ## Features
 
@@ -58,7 +60,12 @@ src/
   components/          Presentational components — header, display, controls, laps, modals
   utils/
     timeFormatters     Pure ms → display/duration/date formatting
-    storage            localStorage wrappers plus settings migration
+    storage/           Persistence behind an adapter interface
+      types              StorageAdapter and the WriteResult a failed write returns
+      localStorageAdapter  The browser backend (default)
+      memoryAdapter        In-memory backend used by the tests
+      index                Domain layer: loadPersistedState, the save* functions,
+                           settings migration, setStorageAdapter
     dataExporter       CSV and JSON export, and validated JSON import
     pdfExporter        jsPDF report generation
   constants/           Defaults, storage keys, time constants
@@ -70,11 +77,18 @@ Two things worth knowing before changing code here:
 - **The timer never trusts React state for measurement.** Elapsed time accumulates in refs at
   full animation-frame resolution; `timerIntervalMs` only throttles how often that value is
   pushed into state. Changing the setting changes render frequency, never accuracy.
-- **A failed write has to be visible.** `localStorage` is the only copy of the data, so when a
-  write is rejected — a full quota, or storage disabled — the change is gone on the next reload.
-  Every save in `App.tsx` routes its result through `persist()`, which raises a banner. Adding a
-  new save means routing it the same way. An `ErrorBoundary` around the app covers the other
-  failure mode, so a render error shows a recovery screen rather than a white page.
+- **A failed write has to be visible.** Storage is the only copy of the data, so when a write is
+  rejected — a full quota, or storage disabled — the change is gone on the next reload. Writes
+  return a `WriteResult` rather than throwing, and every save in `App.tsx` routes that result
+  through `persist()`, which raises a banner carrying the backend's own explanation. Adding a new
+  save means routing it the same way. `persist()` also ignores any result that is not from the
+  most recent write, because writes are asynchronous now: a slow failure must not overwrite a
+  later success. An `ErrorBoundary` around the app covers the other failure mode, so a render
+  error shows a recovery screen rather than a white page.
+- **State is read once, before the first render.** `main.tsx` awaits `loadPersistedState()` and
+  passes the result into `App` as a prop, so the component tree itself stays synchronous — no
+  loading state in every component, and no flash of defaults. A backend that cannot be read at
+  all falls back to defaults rather than leaving a blank page.
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
   it reaches the app, because the import is persisted to `localStorage` immediately — a malformed
   entry would otherwise break the app on every subsequent reload.

@@ -25,8 +25,14 @@ Before pushing, all four should pass — that is exactly what CI runs, plus `for
   list was never imported and had to be removed. Prefer the platform.
 - **A setting must have a reader.** Adding a field to `AppSettings` without wiring it up recreates
   the dead-switch problem that `theme`, `timeFormat` and `autoSaveSession` used to be. If you
-  remove a field, extend `migrateSettings` in `src/utils/storage.ts` so old stored states are
-  cleaned up.
+  remove a field, extend `migrateSettings` in `src/utils/storage/index.ts` so old stored states are
+  cleaned up. The same holds for `STORAGE_KEYS`: a key nothing reads is dead weight.
+- **Persistence goes through the adapter, never through `localStorage` directly.** The web build
+  and the coming desktop build share `src/utils/storage/index.ts`; only an adapter under
+  `src/utils/storage/` may touch a concrete backend. Writes return a `WriteResult`
+  (`{ ok: true } | { ok: false; reason; message }`) instead of throwing, because a rejected write
+  is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it into a banner.
+  Adapters deal in strings so that JSON encoding and the corrupt-data fallback live in one place.
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
