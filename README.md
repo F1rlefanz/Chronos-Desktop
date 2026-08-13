@@ -41,6 +41,8 @@ uninstalls by deleting the folder takes their data with them.
   accuracy.
 - Automatic backups (desktop only): a snapshot once a day, and one immediately before clearing the
   history or importing a file. The last ten are kept.
+- A log file (desktop only) recording startup, backup outcomes and every failed save, with both
+  folders reachable from the Settings dialog.
 
 ## Requirements
 
@@ -96,6 +98,9 @@ src/
       memoryAdapter        In-memory backend used by the tests
       index                Domain layer: loadPersistedState, the save* functions,
                            settings migration, setStorageAdapter, the backup rules
+    logging/           Console plus, on the desktop, a log file
+      logger             logInfo/logWarn/logError, level routing, write ordering
+      tauriLogSink       Appends through IPC to logs/chronos.log
     dataExporter       CSV and JSON export, and validated JSON import
     pdfExporter        jsPDF report generation
   constants/           Defaults, storage keys, time constants
@@ -128,6 +133,13 @@ Things worth knowing before changing code here:
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
   it reaches the app, because the import is persisted immediately — a malformed entry would
   otherwise break the app on every subsequent reload.
+- **`console.*` is invisible in a shipped desktop build.** There are no devtools to open, so
+  anything logged only to the console is written to nobody — which is why the app logs through
+  `src/utils/logging/logger.ts` instead. On the desktop that also appends to
+  `%LOCALAPPDATA%\Chronos\logs\chronos.log`, rolled over at a megabyte and kept one generation
+  deep. Log writes are chained rather than concurrent, because a log whose lines are out of order
+  is one you stop trusting, and failures are swallowed: a logger that can break the code it is
+  meant to diagnose is worse than no logger.
 - **A backup is just an export file.** Snapshots are written in the exact shape
   `importFromJsonFile` reads, so restoring one goes through the import the app already has instead
   of a second restore path with its own bugs. `buildBackupPayload` in `dataExporter.ts` is shared

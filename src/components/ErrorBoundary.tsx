@@ -1,4 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { logError } from '../utils/logging/logger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -24,7 +25,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[ErrorBoundary] Uncaught render error:', error, errorInfo.componentStack);
+    logError('[ErrorBoundary] Uncaught render error:', error, errorInfo.componentStack);
   }
 
   render(): ReactNode {

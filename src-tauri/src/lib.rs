@@ -226,11 +226,70 @@ fn backup_write(app: tauri::AppHandle, name: String, contents: String) -> Result
     Ok(())
 }
 
-/// Opens the backups folder in Explorer so the user can copy a snapshot out or
-/// feed it back through the app's existing JSON import.
+/* -------------------------------------------------------------------------- */
+/* Log file                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/// Size at which the log is rolled over. Two files of this size is the whole
+/// disk budget for logging.
+const LOG_MAX_BYTES: u64 = 1024 * 1024;
+
+const LOG_FILE: &str = "chronos.log";
+const LOG_PREVIOUS: &str = "chronos.log.1";
+
+/// Appends one line to the log, rolling the file over when it grows too large.
+///
+/// Appending rather than the atomic write used elsewhere is deliberate: a log
+/// grows by one line at a time, and rewriting the whole file per line would
+/// turn a diagnostic aid into a performance problem. Losing the tail of a log
+/// to a crash costs nothing, unlike losing a recording.
 #[tauri::command]
-fn backup_reveal(app: tauri::AppHandle) -> Result<(), StorageError> {
-    let directory = app_folder(&app)?.join("backups");
+fn log_append(app: tauri::AppHandle, line: String) -> Result<(), StorageError> {
+    let directory = app_folder(&app)?.join("logs");
+    fs::create_dir_all(&directory).map_err(|error| StorageError::from_io(&error, &directory))?;
+
+    let path = directory.join(LOG_FILE);
+
+    if let Ok(metadata) = fs::metadata(&path) {
+        if metadata.len() >= LOG_MAX_BYTES {
+            // A failed rollover must not stop the app from logging; the file
+            // simply keeps growing until the next attempt succeeds.
+            let _ = fs::rename(&path, directory.join(LOG_PREVIOUS));
+        }
+    }
+
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| StorageError::from_io(&error, &path))?;
+
+    writeln!(file, "{line}").map_err(|error| StorageError::from_io(&error, &path))
+}
+
+/* -------------------------------------------------------------------------- */
+/* Revealing folders                                                          */
+/* -------------------------------------------------------------------------- */
+
+/// Opens one of the app's folders in Explorer: `backups` so the user can copy a
+/// snapshot out or feed it back through the JSON import, `logs` so a log can be
+/// read or attached to a bug report.
+///
+/// The target is an enumerated name rather than a path — the front end never
+/// gets to say which directory is opened.
+#[tauri::command]
+fn reveal_folder(app: tauri::AppHandle, target: String) -> Result<(), StorageError> {
+    let subfolder = match target.as_str() {
+        "backups" => "backups",
+        "logs" => "logs",
+        other => {
+            return Err(StorageError::rejected(format!(
+                "Rejected the folder \"{other}\"."
+            )))
+        }
+    };
+
+    let directory = app_folder(&app)?.join(subfolder);
     fs::create_dir_all(&directory).map_err(|error| StorageError::from_io(&error, &directory))?;
 
     // Explorer exits with a non-zero status even when it succeeds, so the
@@ -253,7 +312,8 @@ pub fn run() {
             storage_write,
             backup_list,
             backup_write,
-            backup_reveal
+            log_append,
+            reveal_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running Chronos Desktop");

@@ -48,6 +48,11 @@ up in a pull request.
   rejected write is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it
   into a banner. Adapters deal in strings so that JSON encoding and the corrupt-data fallback live
   in one place.
+- **Log through `src/utils/logging/logger.ts`, not `console.*` directly.** The console does not
+  exist in a shipped desktop build, so a bare `console.warn` about a failed save reaches nobody.
+  `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything
+  worth a `console.warn` is worth a log line; anything the user is expected to act on needs the
+  persistence banner as well, because nobody reads a log they have not been told about.
 - **A backup must be taken before the thing it protects against.** `backupBefore` in `src/App.tsx`
   runs ahead of clearing the history and ahead of an import, over the state that is about to be
   replaced — a snapshot of the already-cleared state is worthless. When the snapshot fails it asks

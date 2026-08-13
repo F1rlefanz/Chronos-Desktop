@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
 import { ImportedData, buildBackupPayload } from './utils/dataExporter';
+import { logInfo, logWarn, loggingToFile, revealLogs } from './utils/logging/logger';
 import {
   saveSettings,
   saveTimeEntries,
@@ -83,8 +84,11 @@ export default function App({ initialState }: AppProps) {
     void ensureDailyBackup(() =>
       buildBackupPayload(initialState.entries, initialState.projects, initialState.settings)
     ).then((result) => {
-      if (result && !result.ok) {
-        console.warn(`[Backup] Daily snapshot failed: ${result.message}`);
+      if (!result) return; // already taken today
+      if (result.ok) {
+        logInfo('[Backup] Daily snapshot written.');
+      } else {
+        logWarn(`[Backup] Daily snapshot failed: ${result.message}`);
       }
     });
   }, [initialState]);
@@ -254,7 +258,10 @@ export default function App({ initialState }: AppProps) {
     if (!backupsAvailable()) return true;
 
     const result = await writeBackup(reason, buildBackupPayload(timeEntries, projects, settings));
-    if (result.ok) return true;
+    if (result.ok) {
+      logInfo(`[Backup] Snapshot written before ${action} (${timeEntries.length} sessions).`);
+      return true;
+    }
 
     return window.confirm(
       `Could not write a safety backup: ${result.message}\n\nContinue ${action} anyway?`
@@ -508,6 +515,7 @@ export default function App({ initialState }: AppProps) {
         onUpdateProjects={handleUpdateProjects}
         onImportData={handleImportData}
         onRevealBackups={backupsAvailable() ? () => void revealBackups() : undefined}
+        onRevealLogs={loggingToFile() ? () => void revealLogs() : undefined}
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />

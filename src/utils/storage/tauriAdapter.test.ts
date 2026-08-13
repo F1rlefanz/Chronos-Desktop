@@ -112,10 +112,10 @@ describe('tauriAdapter backups', () => {
     });
   });
 
-  it('reveals through the backup_reveal command', async () => {
+  it('reveals the backups folder, naming it rather than passing a path', async () => {
     invoke.mockResolvedValue(null);
 
     await tauriAdapter.backups?.reveal();
-    expect(invoke).toHaveBeenCalledWith('backup_reveal');
+    expect(invoke).toHaveBeenCalledWith('reveal_folder', { target: 'backups' });
   });
 });
