@@ -37,7 +37,7 @@ function toWriteResult(error: unknown): WriteResult {
 
 /**
  * Persists through the Rust side, which writes to
- * `%LOCALAPPDATA%\<identifier>\data\<key>.json` via a temporary file and a
+ * `%LOCALAPPDATA%\Chronos Desktop\data\<key>.json` via a temporary file and a
  * rename, so a crash cannot leave a half-written file behind.
  */
 export const tauriAdapter: StorageAdapter = {

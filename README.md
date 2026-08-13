@@ -9,12 +9,18 @@ was recorded on, and the JSON backup is how you move data between machines.
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
-| Build   | Backend                                                            |
-| ------- | ------------------------------------------------------------------ |
-| Desktop | `%LOCALAPPDATA%\de.f1rlefanz.chronos\data\*.json`, written by Rust |
-| Browser | `localStorage`                                                     |
+| Build   | Backend                                                       |
+| ------- | ------------------------------------------------------------- |
+| Desktop | `%LOCALAPPDATA%\Chronos Desktop\data\*.json`, written by Rust |
+| Browser | `localStorage`                                                |
 
 Nothing above that interface knows which one is in use.
+
+The desktop data folder is deliberately **not** named after the bundle
+identifier, which is what Tauri would do by default. Where the user's data lives
+and how Windows identifies the installation are separate concerns: tying them
+together would mean that renaming the identifier later orphans every existing
+recording. It also keeps the folder findable in Explorer.
 
 ## Features
 

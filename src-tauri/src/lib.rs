@@ -58,6 +58,15 @@ impl StorageError {
 /// cannot fight over one temporary file.
 static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// The folder holding user data, under the OS-level local data directory.
+///
+/// Deliberately not Tauri's `app_local_data_dir()`, which appends the bundle
+/// identifier: that would tie the location of the user's data to the app's
+/// install identity, and renaming the identifier later would orphan every
+/// existing recording. Keeping the two apart also means the folder is
+/// something a person can find in Explorer.
+const DATA_FOLDER: &str = "Chronos Desktop";
+
 /// Resolves a storage key to its file, rejecting anything that is not a plain
 /// key. The keys come from `STORAGE_KEYS`, but this runs on values crossing the
 /// IPC boundary, so it validates rather than trusts: without this, a key
@@ -74,15 +83,16 @@ fn data_file(app: &tauri::AppHandle, key: &str) -> Result<PathBuf, StorageError>
         )));
     }
 
-    let base = app.path().app_local_data_dir().map_err(|error| {
-        StorageError::rejected(format!(
-            "Could not locate the application data folder: {error}."
-        ))
+    let base = app.path().local_data_dir().map_err(|error| {
+        StorageError::rejected(format!("Could not locate the local data folder: {error}."))
     })?;
 
     // Data sits in its own subfolder so that a backups/ sibling can be added
     // later without mixing the two.
-    Ok(base.join("data").join(format!("{key}.json")))
+    Ok(base
+        .join(DATA_FOLDER)
+        .join("data")
+        .join(format!("{key}.json")))
 }
 
 #[tauri::command]
