@@ -1,6 +1,0 @@
-{
-  "name": "Stopwatch & Time Tracker",
-  "description": "A modern, modular, state-of-the-art stopwatch and time tracking desktop application with PDF, CSV, and JSON export, session logging, project tagging, and precise time measurement.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
