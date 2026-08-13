@@ -130,37 +130,39 @@ export default function App() {
           osc.start();
           osc.stop(audioCtx.currentTime + 0.25);
         }
-      } catch (e) {
+      } catch {
         // Fallback silently if web audio is restricted
       }
     },
     [settings.soundEnabled, getAudioContext]
   );
 
-  // Handlers
-  const handleStart = () => {
+  // Handlers. These are memoized because the keyboard shortcut effect below
+  // depends on them — without it the listener would be torn down and
+  // re-attached on every single render.
+  const handleStart = useCallback(() => {
     playAudioCue('start');
     start();
-  };
+  }, [playAudioCue, start]);
 
-  const handlePause = () => {
+  const handlePause = useCallback(() => {
     playAudioCue('pause');
     pause();
-  };
+  }, [playAudioCue, pause]);
 
-  const handleResume = () => {
+  const handleResume = useCallback(() => {
     playAudioCue('start');
     resume();
-  };
+  }, [playAudioCue, resume]);
 
-  const handleLap = () => {
+  const handleLap = useCallback(() => {
     const lap = recordLap();
     if (lap) {
       playAudioCue('lap');
     }
-  };
+  }, [playAudioCue, recordLap]);
 
-  const handleStopAndOpenSaver = () => {
+  const handleStopAndOpenSaver = useCallback(() => {
     playAudioCue('stop');
     const result = stop();
     setPendingSaveData({
@@ -170,7 +172,7 @@ export default function App() {
       endTime: result.endTime,
     });
     setIsSaverOpen(true);
-  };
+  }, [playAudioCue, stop]);
 
   const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
     const newEntry: TimeEntry = {
@@ -224,21 +226,19 @@ export default function App() {
     }
   };
 
-  // Keep the active selection pointing at a project that still exists. Deleting
-  // the selected project (or importing a different project list) would
-  // otherwise leave the dropdown showing one project while saved entries carry
-  // a vanished id and get labelled "General".
-  useEffect(() => {
-    if (projects.length === 0) return;
-    if (!projects.some((p) => p.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0].id);
-    }
+  // The active project is derived, not stored a second time: deleting the
+  // selected project (or importing a different project list) must not leave the
+  // dropdown showing one project while saved entries carry a vanished id and
+  // get labelled "General". Deriving it also avoids a repair effect that would
+  // cascade an extra render.
+  const currentProject = useMemo(() => {
+    return (
+      projects.find((p) => p.id === selectedProjectId) ||
+      projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' }
+    );
   }, [projects, selectedProjectId]);
 
-  // Active Project Data
-  const currentProject = useMemo(() => {
-    return projects.find((p) => p.id === selectedProjectId) || projects[0] || { id: 'proj-work', name: 'General', color: '#10b981' };
-  }, [projects, selectedProjectId]);
+  const activeProjectId = currentProject.id;
 
   // Global Keyboard Shortcuts Listener
   useEffect(() => {
@@ -296,7 +296,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500 font-medium">Tracking Category:</span>
             <select
-              value={selectedProjectId}
+              value={activeProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
               className="bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-800 rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#2D5BFF] cursor-pointer"
             >
@@ -367,7 +367,7 @@ export default function App() {
           startTime={pendingSaveData.startTime}
           endTime={pendingSaveData.endTime}
           projects={projects}
-          defaultProjectId={selectedProjectId}
+          defaultProjectId={activeProjectId}
         />
       )}
 

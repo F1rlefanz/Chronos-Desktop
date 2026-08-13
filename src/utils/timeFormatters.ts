@@ -52,12 +52,10 @@ export function formatTimeDisplay(
   const formattedSeconds = pad(seconds);
   const formattedHundredths = pad(hundredths);
 
-  let mainTime = '';
-  if (hours > 0 || options.alwaysShowHours) {
-    mainTime = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
-  } else {
-    mainTime = `${formattedMinutes}:${formattedSeconds}`;
-  }
+  const mainTime =
+    hours > 0 || options.alwaysShowHours
+      ? `${formattedHours}:${formattedMinutes}:${formattedSeconds}`
+      : `${formattedMinutes}:${formattedSeconds}`;
 
   const subTime = options.includeMilliseconds ? `.${formattedHundredths}` : '';
 
