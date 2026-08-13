@@ -39,7 +39,15 @@ export function saveToStorage<T>(key: string, value: T): boolean {
  */
 export function loadSettings(): AppSettings {
   const stored = loadFromStorage<Partial<AppSettings>>(STORAGE_KEYS.SETTINGS, {});
-  return migrateSettings(stored);
+  const migrated = migrateSettings(stored);
+
+  // Write the cleaned state back, otherwise the stale keys sit in localStorage
+  // until the user happens to change a setting.
+  if (JSON.stringify(stored) !== JSON.stringify(migrated)) {
+    saveSettings(migrated);
+  }
+
+  return migrated;
 }
 
 export function migrateSettings(stored: unknown): AppSettings {

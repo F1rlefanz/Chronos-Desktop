@@ -68,6 +68,29 @@ describe('loadSettings', () => {
     expect(loaded).not.toHaveProperty('theme');
   });
 
+  it('writes the cleaned state back so the stale keys do not linger', () => {
+    localStorage.setItem(
+      STORAGE_KEYS.SETTINGS,
+      JSON.stringify({ soundEnabled: false, theme: 'dark', autoSaveSession: true })
+    );
+
+    loadSettings();
+
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) ?? '{}');
+    expect(Object.keys(persisted).sort()).toEqual(Object.keys(DEFAULT_APP_SETTINGS).sort());
+    expect(persisted.soundEnabled).toBe(false);
+  });
+
+  it('does not rewrite storage when the stored state is already current', () => {
+    const current = { ...DEFAULT_APP_SETTINGS, soundEnabled: false };
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(current));
+    const before = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+
+    loadSettings();
+
+    expect(localStorage.getItem(STORAGE_KEYS.SETTINGS)).toBe(before);
+  });
+
   it('round-trips what it saves', () => {
     const next = { ...DEFAULT_APP_SETTINGS, soundEnabled: false, timerIntervalMs: 100 };
     expect(saveSettings(next)).toBe(true);
