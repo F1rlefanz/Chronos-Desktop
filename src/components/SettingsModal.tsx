@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { AppSettings, Project } from '../types';
 import { importFromJsonFile, ImportedData } from '../utils/dataExporter';
+import { TIMER_INTERVAL_OPTIONS } from '../constants/defaultConfig';
 import { Settings, Plus, Trash2, Upload, X } from 'lucide-react';
 
 interface SettingsModalProps {
@@ -125,6 +126,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onChange={(e) => onUpdateSettings({ desktopWindowFrame: e.target.checked })}
                 className="w-4 h-4 rounded bg-white border-gray-300 text-[#2D5BFF] focus:ring-0"
               />
+            </label>
+
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+              <div>
+                <span className="text-xs font-semibold text-gray-800 block">
+                  Display Refresh Rate
+                </span>
+                <span className="text-[11px] text-gray-400">
+                  How often the readout updates. Timing accuracy is unaffected.
+                </span>
+              </div>
+              <select
+                value={settings.timerIntervalMs}
+                onChange={(e) => onUpdateSettings({ timerIntervalMs: Number(e.target.value) })}
+                className="bg-white border border-gray-200 text-xs font-semibold text-gray-800 rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#2D5BFF] cursor-pointer"
+              >
+                {TIMER_INTERVAL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">

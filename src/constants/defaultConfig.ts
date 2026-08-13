@@ -21,14 +21,18 @@ export const DEFAULT_PROJECTS: Project[] = [
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   showMilliseconds: true,
   soundEnabled: true,
-  theme: 'dark',
   desktopWindowFrame: true,
-  autoSaveSession: true,
   defaultProject: 'proj-work',
-  timeFormat: '24h',
   keyShortcutsEnabled: true,
   timerIntervalMs: TIME_CONSTANTS.DEFAULT_TIMER_UPDATE_INTERVAL_MS,
 };
+
+/** Update intervals offered in the settings UI, in milliseconds. */
+export const TIMER_INTERVAL_OPTIONS = [
+  { value: 10, label: 'Every 10 ms (smoothest)' },
+  { value: 100, label: 'Every 100 ms' },
+  { value: 1000, label: 'Every second (lowest CPU)' },
+] as const;
 
 export const STORAGE_KEYS = {
   SETTINGS: 'stopwatch_app_settings_v1',

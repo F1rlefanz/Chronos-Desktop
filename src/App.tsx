@@ -9,6 +9,7 @@ import {
   saveTimeEntries,
   loadProjects,
   saveProjects,
+  migrateSettings,
 } from './utils/storage';
 
 import { DesktopHeader } from './components/DesktopHeader';
@@ -41,6 +42,7 @@ export default function App() {
   // Stopped Session Pending Save State
   const [pendingSaveData, setPendingSaveData] = useState<{
     recordedMs: number;
+    pauseDurationMs: number;
     recordedLaps: Lap[];
     startTime: number;
     endTime: number;
@@ -158,6 +160,7 @@ export default function App() {
     const result = stop();
     setPendingSaveData({
       recordedMs: result.totalMs,
+      pauseDurationMs: result.pauseDurationMs,
       recordedLaps: result.laps,
       startTime: result.startTime,
       endTime: result.endTime,
@@ -210,8 +213,11 @@ export default function App() {
       setProjects(data.projects);
       saveProjects(data.projects);
     }
-    if (data.settings && typeof data.settings === 'object') {
-      const updated = { ...settings, ...(data.settings as AppSettings) };
+    if (data.settings) {
+      // Imported settings run through the same migration as stored ones, so a
+      // backup from an older build cannot smuggle removed or wrongly-typed
+      // keys back into state.
+      const updated = migrateSettings(data.settings);
       setSettings(updated);
       saveSettings(updated);
     }
@@ -363,6 +369,7 @@ export default function App() {
           }}
           onSave={handleSaveEntry}
           recordedMs={pendingSaveData.recordedMs}
+          pauseDurationMs={pendingSaveData.pauseDurationMs}
           recordedLaps={pendingSaveData.recordedLaps}
           startTime={pendingSaveData.startTime}
           endTime={pendingSaveData.endTime}

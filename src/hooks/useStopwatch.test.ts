@@ -135,6 +135,58 @@ describe('useStopwatch', () => {
     expect(result.current.elapsedTimeMs).toBeCloseTo(1500, 5);
   });
 
+  it('reports how long the session sat paused', () => {
+    const { result } = renderHook(() => useStopwatch());
+
+    act(() => result.current.start());
+    pumpFrame(1000);
+
+    act(() => result.current.pause());
+    now += 3000; // paused wall-clock time
+    act(() => result.current.resume());
+
+    pumpFrame(500);
+
+    let stopped!: ReturnType<typeof result.current.stop>;
+    act(() => {
+      stopped = result.current.stop();
+    });
+
+    expect(stopped.pauseDurationMs).toBeCloseTo(3000, 5);
+    // Paused time is excluded from the measured duration.
+    expect(stopped.totalMs).toBeCloseTo(1500, 5);
+  });
+
+  it('counts a pause that is never resumed before stopping', () => {
+    const { result } = renderHook(() => useStopwatch());
+
+    act(() => result.current.start());
+    pumpFrame(1000);
+    act(() => result.current.pause());
+    now += 2000;
+
+    let stopped!: ReturnType<typeof result.current.stop>;
+    act(() => {
+      stopped = result.current.stop();
+    });
+
+    expect(stopped.pauseDurationMs).toBeCloseTo(2000, 5);
+  });
+
+  it('reports no pause for a session that never paused', () => {
+    const { result } = renderHook(() => useStopwatch());
+
+    act(() => result.current.start());
+    pumpFrame(1000);
+
+    let stopped!: ReturnType<typeof result.current.stop>;
+    act(() => {
+      stopped = result.current.stop();
+    });
+
+    expect(stopped.pauseDurationMs).toBe(0);
+  });
+
   it('clears everything on reset, from any state', () => {
     const { result } = renderHook(() => useStopwatch());
 
