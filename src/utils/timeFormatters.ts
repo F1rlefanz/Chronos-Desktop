@@ -91,6 +91,31 @@ export function formatDateTime(timestamp: number): string {
 }
 
 /**
+ * Formats a timestamp for an `<input type="datetime-local">`.
+ *
+ * Local time on purpose: `toISOString` would shift the value into UTC and show
+ * the user a different hour than the one they recorded. Because the control
+ * carries a full date, a stretch of work from 22:00 to 01:00 is expressed as
+ * two ordinary timestamps — there is no single "date of the entry" that both
+ * ends have to squeeze into, which is what makes an entry over midnight
+ * editable at all.
+ */
+export function toDateTimeInputValue(timestamp: number): string {
+  const date = new Date(timestamp);
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+/** Reads such an input back. `NaN` when the field is empty or half-typed. */
+export function fromDateTimeInputValue(value: string): number {
+  return new Date(value).getTime();
+}
+
+/**
  * Formats timestamp to simple date string.
  */
 export function formatDateOnly(timestamp: number): string {

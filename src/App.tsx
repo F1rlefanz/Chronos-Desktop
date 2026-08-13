@@ -22,6 +22,7 @@ import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { LapList } from './components/LapList';
 import { SessionSaverModal } from './components/SessionSaverModal';
+import { EntryFormModal, EntryDraft } from './components/EntryFormModal';
 import { SessionHistory } from './components/SessionHistory';
 import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -60,6 +61,11 @@ export default function App({ initialState }: AppProps) {
 
   // Stopped Session Pending Save State
   const [pendingSaveData, setPendingSaveData] = useState<StopwatchResult | null>(null);
+
+  // The entry form doubles as "add" and "edit": `null` means a new entry that
+  // never saw the stopwatch, which is the whole point of having the form.
+  const [entryUnderEdit, setEntryUnderEdit] = useState<TimeEntry | null>(null);
+  const [isEntryFormOpen, setIsEntryFormOpen] = useState<boolean>(false);
 
   // High-Precision Stopwatch Hook
   const { elapsedTimeMs, timerState, laps, start, pause, resume, recordLap, stop, reset } =
@@ -233,6 +239,39 @@ export default function App({ initialState }: AppProps) {
     const updated = timeEntries.filter((e) => e.id !== id);
     setTimeEntries(updated);
     void persist(saveTimeEntries(updated), 'the updated history');
+  };
+
+  const openEntryForm = (entry: TimeEntry | null) => {
+    setEntryUnderEdit(entry);
+    setIsEntryFormOpen(true);
+  };
+
+  /**
+   * Stores what the entry form produced — a correction to an existing entry, or
+   * one that was typed in from scratch.
+   *
+   * No backup is taken first: unlike clearing the history or importing, editing
+   * one entry does not replace the data set, and a confirmation on every
+   * correction would train the user to click through it.
+   */
+  const handleSaveEntryDraft = (draft: EntryDraft) => {
+    const updated = entryUnderEdit
+      ? timeEntries.map((entry) =>
+          entry.id === entryUnderEdit.id ? { ...entryUnderEdit, ...draft } : entry
+        )
+      : [
+          {
+            ...draft,
+            id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            createdAt: Date.now(),
+            source: 'manual' as const,
+          },
+          ...timeEntries,
+        ];
+
+    setTimeEntries(updated);
+    void persist(saveTimeEntries(updated), entryUnderEdit ? 'this change' : 'the new entry');
+    setEntryUnderEdit(null);
   };
 
   /**
@@ -457,6 +496,8 @@ export default function App({ initialState }: AppProps) {
           entries={timeEntries}
           projects={projects}
           onDeleteEntry={handleDeleteEntry}
+          onEditEntry={(entry) => openEntryForm(entry)}
+          onAddEntry={() => openEntryForm(null)}
           onClearAll={handleClearAllHistory}
           onExportPdf={() => setIsExportOpen(true)}
         />
@@ -477,6 +518,23 @@ export default function App({ initialState }: AppProps) {
           }}
           onSave={handleSaveEntry}
           recorded={pendingSaveData}
+          projects={projects}
+          defaultProjectId={activeProjectId}
+        />
+      )}
+
+      {/* Keyed so switching from one entry to another rebuilds the form state
+          instead of showing the previous entry's values. */}
+      {isEntryFormOpen && (
+        <EntryFormModal
+          key={entryUnderEdit?.id ?? 'new-entry'}
+          isOpen={isEntryFormOpen}
+          onClose={() => {
+            setIsEntryFormOpen(false);
+            setEntryUnderEdit(null);
+          }}
+          onSave={handleSaveEntryDraft}
+          entry={entryUnderEdit}
           projects={projects}
           defaultProjectId={activeProjectId}
         />

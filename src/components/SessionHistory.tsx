@@ -3,12 +3,23 @@ import { TimeEntry, Project } from '../types';
 import { breakMs, isRunning, netMs, totalNetMs } from '../domain/timeEntry';
 import { useNow } from '../hooks/useNow';
 import { formatTimeDisplay, formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
-import { Clock, Search, Trash2, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  Clock,
+  Search,
+  Trash2,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+} from 'lucide-react';
 
 interface SessionHistoryProps {
   entries: TimeEntry[];
   projects: Project[];
   onDeleteEntry: (id: string) => void;
+  onEditEntry: (entry: TimeEntry) => void;
+  onAddEntry: () => void;
   onClearAll: () => void;
   onExportPdf: () => void;
 }
@@ -17,6 +28,8 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
   entries,
   projects,
   onDeleteEntry,
+  onEditEntry,
+  onAddEntry,
   onClearAll,
   onExportPdf,
 }) => {
@@ -56,8 +69,15 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
         <h3 className="text-sm font-semibold text-gray-700">No Tracked Sessions Yet</h3>
         <p className="text-xs text-gray-400 mt-1">
-          Start the stopwatch and click "Stop & Save" to store your time sessions here.
+          Run the stopwatch, or add an entry for time you already worked.
         </p>
+        <button
+          onClick={onAddEntry}
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Entry</span>
+        </button>
       </div>
     );
   }
@@ -79,6 +99,13 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={onAddEntry}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Entry</span>
+          </button>
           <button
             onClick={onExportPdf}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
@@ -198,6 +225,14 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     ) : (
                       <ChevronDown className="w-4 h-4" />
                     )}
+                  </button>
+
+                  <button
+                    onClick={() => onEditEntry(entry)}
+                    className="p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2D5BFF] border border-gray-200 shadow-2xs transition-colors cursor-pointer"
+                    title="Edit Entry"
+                  >
+                    <Pencil className="w-4 h-4" />
                   </button>
 
                   <button
