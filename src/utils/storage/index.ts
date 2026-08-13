@@ -7,7 +7,7 @@ import { AppSettings, Project, TimeEntry } from '../../types';
 import { localStorageAdapter } from './localStorageAdapter';
 import { StorageAdapter, WriteResult } from './types';
 
-export type { StorageAdapter, WriteResult, WriteFailureReason } from './types';
+export type { StorageAdapter, BackupSupport, WriteResult, WriteFailureReason } from './types';
 
 /**
  * Everything the app needs before it can render. Loading is a single up-front
@@ -93,6 +93,77 @@ export function migrateSettings(stored: unknown): AppSettings {
   }
 
   return migrated;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Backups                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Why a snapshot was taken. Ends up in the file name, so the user can tell. */
+export type BackupReason = 'daily' | 'before-clear' | 'before-import';
+
+/** True when the active backend can keep snapshots — false in the browser. */
+export function backupsAvailable(): boolean {
+  return adapter.backups !== undefined;
+}
+
+/**
+ * Builds the file name, starting with a sortable local timestamp so that
+ * lexicographic order is chronological and the retention pass can prune the
+ * oldest without reading a single file.
+ */
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+/** `chronos-backup-2026-08-13` — everything a same-day snapshot shares. */
+function dayPrefix(at: Date): string {
+  return `chronos-backup-${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+export function backupName(reason: BackupReason, at: Date): string {
+  const time = `${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`;
+  return `${dayPrefix(at)}-${time}-${reason}.json`;
+}
+
+/**
+ * Writes a snapshot. Resolves to `{ ok: true }` when the backend keeps no
+ * backups at all — the caller asked for protection that does not exist here,
+ * which is not a failure it can do anything about.
+ */
+export function writeBackup(
+  reason: BackupReason,
+  contents: string,
+  at: Date = new Date()
+): Promise<WriteResult> {
+  if (!adapter.backups) return Promise.resolve({ ok: true });
+  return adapter.backups.write(backupName(reason, at), contents);
+}
+
+/**
+ * Takes the first snapshot of the day, if there is not one already.
+ *
+ * The payload is built lazily: on every start after the first, this walks away
+ * without serialising the whole history.
+ */
+export async function ensureDailyBackup(
+  buildContents: () => string,
+  at: Date = new Date()
+): Promise<WriteResult | null> {
+  if (!adapter.backups) return null;
+
+  const today = dayPrefix(at);
+  const existing = await adapter.backups.list();
+
+  if (existing.some((name) => name.startsWith(today) && name.endsWith('-daily.json'))) {
+    return null;
+  }
+
+  return adapter.backups.write(backupName('daily', at), buildContents());
+}
+
+/** Shows the backup folder in the user's file manager. */
+export async function revealBackups(): Promise<void> {
+  if (!adapter.backups) return;
+  await adapter.backups.reveal();
 }
 
 /** Loads the full application state through the active adapter. */

@@ -12,6 +12,11 @@ const ok: WriteResult = { ok: true };
 const rejected: WriteResult = { ok: false, reason: 'quota', message: 'Storage is full.' };
 
 const saveSettings = vi.fn<() => Promise<WriteResult>>(() => Promise.resolve(ok));
+const saveTimeEntries = vi.fn<() => Promise<WriteResult>>(() => Promise.resolve(ok));
+const writeBackup = vi.fn<(reason: string, contents: string, at?: Date) => Promise<WriteResult>>(
+  () => Promise.resolve(ok)
+);
+const backupsAvailable = vi.fn(() => true);
 
 vi.mock('./utils/storage', async () => {
   const actual = await vi.importActual<typeof import('./utils/storage')>('./utils/storage');
@@ -21,6 +26,13 @@ vi.mock('./utils/storage', async () => {
       void args;
       return saveSettings();
     },
+    saveTimeEntries: (...args: Parameters<typeof actual.saveTimeEntries>) => {
+      void args;
+      return saveTimeEntries();
+    },
+    backupsAvailable: () => backupsAvailable(),
+    writeBackup: (...args: Parameters<typeof actual.writeBackup>) => writeBackup(...args),
+    ensureDailyBackup: () => Promise.resolve(null),
   };
 });
 
@@ -30,8 +42,26 @@ const initialState: PersistedState = {
   projects: DEFAULT_PROJECTS,
 };
 
-function renderApp() {
-  return render(<App initialState={initialState} />);
+const withOneEntry: PersistedState = {
+  ...initialState,
+  entries: [
+    {
+      id: 'entry-1',
+      title: 'Recorded Time Session',
+      project: 'proj-work',
+      tags: [],
+      startTime: 1,
+      endTime: 2,
+      durationMs: 1,
+      pauseDurationMs: 0,
+      laps: [],
+      createdAt: 1,
+    },
+  ],
+};
+
+function renderApp(state: PersistedState = initialState) {
+  return render(<App initialState={state} />);
 }
 
 /** The header's audio toggle is the shortest path to a settings write. */
@@ -43,6 +73,9 @@ describe('App persistence warnings', () => {
   beforeEach(() => {
     localStorage.clear();
     saveSettings.mockResolvedValue(ok);
+    saveTimeEntries.mockResolvedValue(ok);
+    writeBackup.mockResolvedValue(ok);
+    backupsAvailable.mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -132,5 +165,84 @@ describe('App persistence warnings', () => {
     });
 
     expect(screen.queryByText(/Could not save/)).not.toBeInTheDocument();
+  });
+});
+
+describe('App backups before destructive actions', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveTimeEntries.mockResolvedValue(ok);
+    writeBackup.mockResolvedValue(ok);
+    backupsAvailable.mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+  });
+
+  async function clearHistory() {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Clear History' }));
+  }
+
+  it('snapshots the history before clearing it', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderApp(withOneEntry);
+
+    await clearHistory();
+
+    expect(writeBackup).toHaveBeenCalledWith('before-clear', expect.stringContaining('entry-1'));
+    expect(saveTimeEntries).toHaveBeenCalled();
+  });
+
+  it('takes the snapshot before the entries are gone, not after', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderApp(withOneEntry);
+
+    await clearHistory();
+
+    // A snapshot of the already-cleared state would be worthless — the whole
+    // point is the copy of what the user is about to lose.
+    const [, payload] = writeBackup.mock.calls[0];
+    expect(JSON.parse(payload).entries).toHaveLength(1);
+  });
+
+  it('asks before clearing when the snapshot could not be written', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    writeBackup.mockResolvedValue(rejected);
+    renderApp(withOneEntry);
+
+    await clearHistory();
+
+    // Two dialogs: the existing "are you sure", then the warning that there is
+    // no safety net this time.
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(confirm.mock.calls[1][0]).toMatch(/Storage is full\./);
+  });
+
+  it('leaves the history alone when the user declines after a failed snapshot', async () => {
+    vi.spyOn(window, 'confirm')
+      .mockReturnValueOnce(true) // yes, clear the history
+      .mockReturnValueOnce(false); // no, not without a backup
+    writeBackup.mockResolvedValue(rejected);
+    renderApp(withOneEntry);
+
+    await clearHistory();
+
+    expect(saveTimeEntries).not.toHaveBeenCalled();
+    expect(screen.getByText('Recorded Time Session')).toBeInTheDocument();
+  });
+
+  it('does not ask twice on a backend that keeps no snapshots', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    backupsAvailable.mockReturnValue(false);
+    renderApp(withOneEntry);
+
+    await clearHistory();
+
+    expect(writeBackup).not.toHaveBeenCalled();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(saveTimeEntries).toHaveBeenCalled();
   });
 });

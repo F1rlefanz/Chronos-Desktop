@@ -48,6 +48,12 @@ up in a pull request.
   rejected write is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it
   into a banner. Adapters deal in strings so that JSON encoding and the corrupt-data fallback live
   in one place.
+- **A backup must be taken before the thing it protects against.** `backupBefore` in `src/App.tsx`
+  runs ahead of clearing the history and ahead of an import, over the state that is about to be
+  replaced — a snapshot of the already-cleared state is worthless. When the snapshot fails it asks
+  rather than proceeding quietly, because that is the one moment where knowing there is no safety
+  net can change the user's decision. Snapshots use `buildBackupPayload`, the same shape the JSON
+  import reads, so there is no second restore path to keep correct.
 - **Anything crossing the IPC boundary is input.** The commands in `src-tauri/src/lib.rs` validate
   their arguments even though the only caller is our own front end — an unvalidated storage key
   turns a save into an arbitrary file write. Writes go through a temporary file and a rename;

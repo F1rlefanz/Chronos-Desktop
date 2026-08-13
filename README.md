@@ -9,10 +9,10 @@ was recorded on, and the JSON backup is how you move data between machines.
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
-| Build   | Backend                                                       |
-| ------- | ------------------------------------------------------------- |
-| Desktop | `%LOCALAPPDATA%\Chronos Desktop\data\*.json`, written by Rust |
-| Browser | `localStorage`                                                |
+| Build   | Backend                                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------- |
+| Desktop | `%LOCALAPPDATA%\Chronos Desktop\data\*.json`, written by Rust, with rotating snapshots in `..\backups\` |
+| Browser | `localStorage`, no snapshots — the quota has no room for a second copy                                  |
 
 Nothing above that interface knows which one is in use.
 
@@ -34,6 +34,8 @@ recording. It also keeps the folder findable in Explorer.
   combinations such as `Cmd/Ctrl+R` are left to the browser.
 - Configurable display refresh rate, so the readout can be slowed down without affecting timing
   accuracy.
+- Automatic backups (desktop only): a snapshot once a day, and one immediately before clearing the
+  history or importing a file. The last ten are kept.
 
 ## Requirements
 
@@ -88,14 +90,14 @@ src/
       tauriAdapter         The desktop backend, over IPC to Rust
       memoryAdapter        In-memory backend used by the tests
       index                Domain layer: loadPersistedState, the save* functions,
-                           settings migration, setStorageAdapter
+                           settings migration, setStorageAdapter, the backup rules
     dataExporter       CSV and JSON export, and validated JSON import
     pdfExporter        jsPDF report generation
   constants/           Defaults, storage keys, time constants
   types/               Shared types
 
 src-tauri/
-  src/lib.rs           The storage_read / storage_write commands and the window setup
+  src/lib.rs           The storage_* and backup_* commands, and the window setup
   src/main.rs          Desktop entry point over lib.rs
   tauri.conf.json      Window, bundle and CSP configuration
   capabilities/        Permission scopes granted to the window
@@ -121,6 +123,10 @@ Things worth knowing before changing code here:
 - **Imported data is untrusted.** `dataExporter` normalizes every record from a JSON file before
   it reaches the app, because the import is persisted immediately — a malformed entry would
   otherwise break the app on every subsequent reload.
+- **A backup is just an export file.** Snapshots are written in the exact shape
+  `importFromJsonFile` reads, so restoring one goes through the import the app already has instead
+  of a second restore path with its own bugs. `buildBackupPayload` in `dataExporter.ts` is shared
+  by both. The Settings dialog only opens the folder; the user picks the file.
 - **There is one version number.** `package.json` holds it; `tauri.conf.json` reads it via
   `"version": "../package.json"`, and Vite stamps it into `__APP_VERSION__` for the badge in the
   header. `src-tauri/Cargo.toml` sits at `0.0.0` on purpose — Cargo needs a value there, Tauri

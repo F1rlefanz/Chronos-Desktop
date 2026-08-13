@@ -70,6 +70,34 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[]): void {
 }
 
 /**
+ * The complete app state in the shape `importFromJsonFile` reads back.
+ *
+ * Shared by the manual export and the automatic desktop snapshots on purpose:
+ * a snapshot is then restored through the import the app already has, instead
+ * of a second restore path that could have its own bugs.
+ */
+export function buildBackupPayload(
+  entries: TimeEntry[],
+  projects: Project[],
+  settings: unknown
+): string {
+  const timestamp = Date.now();
+
+  return JSON.stringify(
+    {
+      version: '1.0.0',
+      exportTimestamp: timestamp,
+      exportDateFormatted: formatDateTime(timestamp),
+      settings,
+      projects,
+      entries,
+    },
+    null,
+    2
+  );
+}
+
+/**
  * Exports complete app state as JSON for backup and portability across PCs.
  */
 export function exportToJsonBackup(
@@ -77,17 +105,10 @@ export function exportToJsonBackup(
   projects: Project[],
   settings: unknown
 ): void {
-  const exportPayload = {
-    version: '1.0.0',
-    exportTimestamp: Date.now(),
-    exportDateFormatted: formatDateTime(Date.now()),
-    settings,
-    projects,
-    entries,
-  };
-
   downloadBlob(
-    new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json;charset=utf-8' }),
+    new Blob([buildBackupPayload(entries, projects, settings)], {
+      type: 'application/json;charset=utf-8',
+    }),
     `stopwatch_backup_${Date.now()}.json`
   );
 }
