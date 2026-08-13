@@ -1,5 +1,5 @@
 import React from 'react';
-import { Timer, Volume2, VolumeX, Settings, FileText, Code2, Monitor, Layers } from 'lucide-react';
+import { Timer, Volume2, VolumeX, Settings, FileText, Code2 } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface DesktopHeaderProps {

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { TimeEntry, Project } from '../types';
 import { formatTimeDisplay, formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
-import { Clock, Search, Folder, Trash2, Tag, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, Search, Trash2, Download, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface SessionHistoryProps {
   entries: TimeEntry[];

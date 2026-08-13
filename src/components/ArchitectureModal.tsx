@@ -1,5 +1,5 @@
 import React from 'react';
-import { Code2, Layers, Cpu, FileCheck, Shield, CheckCircle2, Sparkles, X } from 'lucide-react';
+import { Code2, Layers, FileCheck, CheckCircle2, Sparkles, X } from 'lucide-react';
 
 interface ArchitectureModalProps {
   isOpen: boolean;

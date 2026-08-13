@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
 import { ImportedData } from './utils/dataExporter';
@@ -51,7 +51,6 @@ export default function App() {
     elapsedTimeMs,
     timerState,
     laps,
-    startTime,
     start,
     pause,
     resume,
@@ -66,7 +65,9 @@ export default function App() {
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const getAudioContext = useCallback((): AudioContext | null => {
-    const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+    // Safari below 14.1 only exposes the prefixed constructor.
+    const legacyWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+    const Ctor = window.AudioContext || legacyWindow.webkitAudioContext;
     if (!Ctor) return null;
 
     if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {

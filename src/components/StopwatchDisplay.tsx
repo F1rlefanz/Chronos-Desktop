@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimerState } from '../types';
 import { formatTimeDisplay, parseMsToComponents } from '../utils/timeFormatters';
-import { Play, Pause, Square, Sparkles } from 'lucide-react';
+import { Pause } from 'lucide-react';
 
 interface StopwatchDisplayProps {
   elapsedTimeMs: number;

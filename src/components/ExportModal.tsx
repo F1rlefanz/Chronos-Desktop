@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { TimeEntry, Project, PdfExportOptions } from '../types';
+import { TimeEntry, Project, PdfExportOptions, AppSettings } from '../types';
 import { generatePdfReport } from '../utils/pdfExporter';
 import { exportToCsv, exportToJsonBackup } from '../utils/dataExporter';
-import { FileText, FileSpreadsheet, FileCode, Download, X, Check } from 'lucide-react';
+import { FileText, FileSpreadsheet, FileCode, Download, X } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   entries: TimeEntry[];
   projects: Project[];
-  settings: unknown;
+  settings: AppSettings;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
