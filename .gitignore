@@ -31,6 +31,10 @@ blob-report/
 .DS_Store
 Thumbs.db
 
+# Local scratch: third-party material kept next to the project for reference
+# only (builds, installers), never part of this repository.
+.0Zeiterfassungs-App von Flo/
+
 # Logs
 *.log
 npm-debug.log*

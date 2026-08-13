@@ -3,13 +3,12 @@ import { useStopwatch } from './hooks/useStopwatch';
 import { AppSettings, Project, TimeEntry, Lap } from './types';
 import { ImportedData } from './utils/dataExporter';
 import {
-  loadSettings,
   saveSettings,
-  loadTimeEntries,
   saveTimeEntries,
-  loadProjects,
   saveProjects,
   migrateSettings,
+  PersistedState,
+  WriteResult,
 } from './utils/storage';
 
 import { DesktopHeader } from './components/DesktopHeader';
@@ -22,11 +21,16 @@ import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ArchitectureModal } from './components/ArchitectureModal';
 
-export default function App() {
+interface AppProps {
+  /** Read from storage in `main.tsx` before the first render. */
+  initialState: PersistedState;
+}
+
+export default function App({ initialState }: AppProps) {
   // Application Data Persistence States
-  const [settings, setSettings] = useState<AppSettings>(loadSettings);
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(loadTimeEntries);
-  const [projects, setProjects] = useState<Project[]>(loadProjects);
+  const [settings, setSettings] = useState<AppSettings>(initialState.settings);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(initialState.entries);
+  const [projects, setProjects] = useState<Project[]>(initialState.projects);
 
   // Selected Active Project for current timer session
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
@@ -39,10 +43,14 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
 
-  // Set when a write to localStorage failed — usually the 5 MB quota, which a
-  // long history plus a large import can reach. The write is the only copy of
-  // the data, so failing silently means the entry is gone on the next reload.
-  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  // Set when a write to storage failed — usually the browser's 5 MB quota,
+  // which a long history plus a large import can reach. The write is the only
+  // copy of the data, so failing silently means the entry is gone on the next
+  // reload. `detail` is the backend's own explanation.
+  const [persistenceError, setPersistenceError] = useState<{
+    what: string;
+    detail: string;
+  } | null>(null);
 
   // Stopped Session Pending Save State
   const [pendingSaveData, setPendingSaveData] = useState<{
@@ -176,8 +184,19 @@ export default function App() {
   // Every persisting handler routes its result through here, so a rejected
   // write surfaces in the UI instead of only in the console. A later successful
   // write clears the warning again.
-  const persist = (succeeded: boolean, what: string): void => {
-    setPersistenceError(succeeded ? null : what);
+  const writeSeqRef = useRef(0);
+
+  const persist = async (write: Promise<WriteResult>, what: string): Promise<void> => {
+    const seq = ++writeSeqRef.current;
+    const result = await write;
+
+    // Only the newest write may touch the banner. Writes were synchronous
+    // before storage went behind an adapter; now a slow failing write can
+    // resolve after a later successful one and would otherwise resurrect a
+    // warning for data that is safely stored.
+    if (seq !== writeSeqRef.current) return;
+
+    setPersistenceError(result.ok ? null : { what, detail: result.message });
   };
 
   const handleSaveEntry = (entryData: Omit<TimeEntry, 'id' | 'createdAt'>) => {
@@ -189,7 +208,7 @@ export default function App() {
 
     const updated = [newEntry, ...timeEntries];
     setTimeEntries(updated);
-    persist(saveTimeEntries(updated), 'this session');
+    void persist(saveTimeEntries(updated), 'this session');
     setPendingSaveData(null);
     reset();
   };
@@ -197,38 +216,38 @@ export default function App() {
   const handleDeleteEntry = (id: string) => {
     const updated = timeEntries.filter((e) => e.id !== id);
     setTimeEntries(updated);
-    persist(saveTimeEntries(updated), 'the updated history');
+    void persist(saveTimeEntries(updated), 'the updated history');
   };
 
   const handleClearAllHistory = () => {
     setTimeEntries([]);
-    persist(saveTimeEntries([]), 'the cleared history');
+    void persist(saveTimeEntries([]), 'the cleared history');
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
-    persist(saveSettings(updated), 'your settings');
+    void persist(saveSettings(updated), 'your settings');
   };
 
   const handleUpdateProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
-    persist(saveProjects(updatedProjects), 'your projects');
+    void persist(saveProjects(updatedProjects), 'your projects');
   };
 
   const handleImportData = (data: ImportedData) => {
     // An import is the most likely way to hit the quota, and it replaces
     // everything at once — so all three writes are reported together rather
     // than letting a later success clear an earlier failure's warning.
-    let allWritesSucceeded = true;
+    const writes: Promise<WriteResult>[] = [];
 
     if (Array.isArray(data.entries) && data.entries.length > 0) {
       setTimeEntries(data.entries);
-      allWritesSucceeded = saveTimeEntries(data.entries) && allWritesSucceeded;
+      writes.push(saveTimeEntries(data.entries));
     }
     if (Array.isArray(data.projects) && data.projects.length > 0) {
       setProjects(data.projects);
-      allWritesSucceeded = saveProjects(data.projects) && allWritesSucceeded;
+      writes.push(saveProjects(data.projects));
     }
     if (data.settings) {
       // Imported settings run through the same migration as stored ones, so a
@@ -236,10 +255,14 @@ export default function App() {
       // keys back into state.
       const updated = migrateSettings(data.settings);
       setSettings(updated);
-      allWritesSucceeded = saveSettings(updated) && allWritesSucceeded;
+      writes.push(saveSettings(updated));
     }
 
-    persist(allWritesSucceeded, 'the imported data');
+    const combined = Promise.all(writes).then(
+      (results): WriteResult => results.find((result) => !result.ok) ?? { ok: true }
+    );
+
+    void persist(combined, 'the imported data');
   };
 
   // The active project is derived, not stored a second time: deleting the
@@ -324,9 +347,9 @@ export default function App() {
             className="flex items-start justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-4 px-5 text-sm text-red-800"
           >
             <p>
-              <strong className="font-semibold">Could not save {persistenceError}.</strong> Local
-              storage is full or unavailable, so this change will be gone after a reload. Export a
-              JSON backup, then clear old sessions to free space.
+              <strong className="font-semibold">Could not save {persistenceError.what}.</strong>{' '}
+              {persistenceError.detail} This change will be gone after a reload — export a JSON
+              backup while it is still on screen.
             </p>
             <button
               type="button"

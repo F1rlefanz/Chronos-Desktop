@@ -38,7 +38,6 @@ export const STORAGE_KEYS = {
   SETTINGS: 'stopwatch_app_settings_v1',
   TIME_ENTRIES: 'stopwatch_app_entries_v1',
   PROJECTS: 'stopwatch_app_projects_v1',
-  CURRENT_DRAFT: 'stopwatch_app_draft_timer_v1',
 } as const;
 
 export const UI_ANIMATION_DURATIONS = {
