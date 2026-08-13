@@ -78,25 +78,36 @@ export function generatePdfReport(
     currentY += 32;
   }
 
-  // Sessions Table
+  // Sessions Table — the Laps and Notes columns are opt-out via export options.
+  const tableHead = ['Session Title', 'Project', 'Date', 'Duration'];
+  if (options.includeLaps) tableHead.push('Laps');
+  if (options.includeNotes) tableHead.push('Notes');
+
   const tableData = filteredEntries.map((entry) => {
     const proj = projectMap.get(entry.project);
     const projName = proj ? proj.name : entry.project || 'General';
     const { mainTime, subTime } = formatTimeDisplay(entry.durationMs, { includeMilliseconds: true });
 
-    return [
+    const row = [
       entry.title || 'Untitled Session',
       projName,
       formatDateOnly(entry.startTime),
       `${mainTime}${subTime}`,
-      entry.laps.length > 0 ? `${entry.laps.length} laps` : '-',
-      entry.notes ? entry.notes.substring(0, 35) + (entry.notes.length > 35 ? '...' : '') : '-',
     ];
+
+    if (options.includeLaps) {
+      row.push(entry.laps.length > 0 ? `${entry.laps.length} laps` : '-');
+    }
+    if (options.includeNotes) {
+      row.push(entry.notes ? entry.notes.substring(0, 35) + (entry.notes.length > 35 ? '...' : '') : '-');
+    }
+
+    return row;
   });
 
   autoTable(doc, {
     startY: currentY,
-    head: [['Session Title', 'Project', 'Date', 'Duration', 'Laps', 'Notes']],
+    head: [tableHead],
     body: tableData,
     theme: 'grid',
     headStyles: {

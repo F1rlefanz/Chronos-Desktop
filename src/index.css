@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+/* Custom animations referenced by the header logo and the modal overlays. */
+@theme {
+  --animate-spin-slow: spin-slow 3s linear infinite;
+  --animate-fade-in: fade-in 180ms ease-out;
+
+  @keyframes spin-slow {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-slow,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
 @layer base {
   body {
     background-color: #F4F7F9;

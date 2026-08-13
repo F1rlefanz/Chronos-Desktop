@@ -21,6 +21,10 @@ export const LapList: React.FC<LapListProps> = ({ laps }) => {
     });
   }
 
+  // With identical lap times min === max, which would tag every lap as both
+  // fastest and slowest. Only highlight when the laps actually differ.
+  const hasSpread = laps.length >= 2 && minLapTime !== maxLapTime;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-5 my-4">
       <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
@@ -36,8 +40,8 @@ export const LapList: React.FC<LapListProps> = ({ laps }) => {
 
       <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
         {laps.map((lap) => {
-          const isFastest = laps.length >= 2 && lap.lapTimeMs === minLapTime;
-          const isSlowest = laps.length >= 2 && lap.lapTimeMs === maxLapTime;
+          const isFastest = hasSpread && lap.lapTimeMs === minLapTime;
+          const isSlowest = hasSpread && lap.lapTimeMs === maxLapTime;
 
           const lapDisplay = formatTimeDisplay(lap.lapTimeMs, { includeMilliseconds: true });
           const splitDisplay = formatTimeDisplay(lap.splitTimeMs, { includeMilliseconds: true });
