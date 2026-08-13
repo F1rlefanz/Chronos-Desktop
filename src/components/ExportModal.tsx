@@ -40,7 +40,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [projectId, setProjectId] = useState('all');
 
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
-    title: 'Time Tracking Report',
+    title: 'Zeiterfassung',
     author: 'Chronos',
     includeNotes: true,
     includeSummary: true,
@@ -190,7 +190,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 match what the file contains, or the export is not a record. */}
             {selection.skippedRunning > 0 && (
               <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                {selection.skippedRunning} running laufende{' '}
+                {selection.skippedRunning} laufende{' '}
                 {selection.skippedRunning === 1 ? 'Erfassung' : 'Erfassungen'} nicht enthalten —
                 eine noch wachsende Dauer würde diesen Bericht bei jedem Export anders machen.
               </p>

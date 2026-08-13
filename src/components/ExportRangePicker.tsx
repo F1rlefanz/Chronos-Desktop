@@ -40,7 +40,7 @@ export const ExportRangePicker: React.FC<ExportRangePickerProps> = ({
   return (
     <div className="space-y-2">
       <label htmlFor="export-range" className="block text-xs font-semibold text-gray-700">
-        Period
+        Zeitraum
       </label>
       <select
         id="export-range"
@@ -58,7 +58,7 @@ export const ExportRangePicker: React.FC<ExportRangePickerProps> = ({
       {value.kind === 'specific-month' && (
         <div className="grid grid-cols-2 gap-2">
           <select
-            aria-label="Month"
+            aria-label="Monat"
             value={value.month}
             onChange={(e) => onChange({ ...value, month: Number(e.target.value) })}
             className={`${FIELD} cursor-pointer`}
@@ -70,7 +70,7 @@ export const ExportRangePicker: React.FC<ExportRangePickerProps> = ({
             ))}
           </select>
           <select
-            aria-label="Year"
+            aria-label="Jahr"
             value={value.year}
             onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
             className={`${FIELD} cursor-pointer`}
@@ -86,7 +86,7 @@ export const ExportRangePicker: React.FC<ExportRangePickerProps> = ({
 
       {value.kind === 'specific-year' && (
         <select
-          aria-label="Year"
+          aria-label="Jahr"
           value={value.year}
           onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
           className={`${FIELD} cursor-pointer`}
@@ -103,14 +103,14 @@ export const ExportRangePicker: React.FC<ExportRangePickerProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <input
             type="date"
-            aria-label="From"
+            aria-label="Von"
             value={value.from}
             onChange={(e) => onChange({ ...value, from: e.target.value })}
             className={FIELD}
           />
           <input
             type="date"
-            aria-label="To"
+            aria-label="Bis"
             value={value.to}
             onChange={(e) => onChange({ ...value, to: e.target.value })}
             className={FIELD}

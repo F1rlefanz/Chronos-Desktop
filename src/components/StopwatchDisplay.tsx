@@ -1,6 +1,10 @@
 import React from 'react';
 import { TimerState } from '../types';
-import { formatTimeDisplay, parseMsToComponents } from '../utils/timeFormatters';
+import {
+  formatDurationHuman,
+  formatTimeDisplay,
+  parseMsToComponents,
+} from '../utils/timeFormatters';
 import { Pause } from 'lucide-react';
 
 interface StopwatchDisplayProps {
@@ -25,8 +29,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
     alwaysShowHours: false,
   });
 
-  const { hours, seconds } = parseMsToComponents(elapsedTimeMs);
-  const totalMinutes = Math.floor(elapsedTimeMs / (1000 * 60));
+  const { hours } = parseMsToComponents(elapsedTimeMs);
 
   return (
     <div className="relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden">
@@ -89,16 +92,14 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
         {/* Secondary Detailed Readouts */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6">
           <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-            Gesamt:{' '}
-            <strong className="text-gray-900">
-              {totalMinutes}m {seconds}s
-            </strong>
+            Gesamt: <strong className="text-gray-900">{formatDurationHuman(elapsedTimeMs)}</strong>
           </span>
           {hours > 0 && (
             <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-              Stunden:{' '}
+              {/* Decimal hours, which is the unit a timesheet is billed in. */}
+              Dezimal:{' '}
               <strong className="text-gray-900">
-                {(elapsedTimeMs / (1000 * 60 * 60)).toFixed(2)}h
+                {(elapsedTimeMs / (1000 * 60 * 60)).toFixed(2).replace('.', ',')} h
               </strong>
             </span>
           )}
