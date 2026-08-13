@@ -192,22 +192,6 @@ export function monthlySeries(entries: TimeEntry[], year: number, now: number): 
   }));
 }
 
-/** Every year that has an entry, oldest first. Empty when there is no data. */
-export function yearlySeries(entries: TimeEntry[], now: number): SeriesPoint[] {
-  if (entries.length === 0) return [];
-
-  const years = entries.map((entry) => new Date(entry.startTime).getFullYear());
-  const first = Math.min(...years);
-  const last = Math.max(...years);
-
-  const points: SeriesPoint[] = [];
-  for (let year = first; year <= last; year++) {
-    points.push({ label: String(year), value: totalInRange(entries, yearRange(year), now) });
-  }
-
-  return points;
-}
-
 /**
  * The cells of a month grid, Monday first, padded to whole weeks.
  *

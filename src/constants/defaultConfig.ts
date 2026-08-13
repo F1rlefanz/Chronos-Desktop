@@ -2,12 +2,8 @@ import { AppSettings, Project } from '../types';
 
 export const TIME_CONSTANTS = {
   MS_PER_SECOND: 1000,
-  SECONDS_PER_MINUTE: 60,
-  MINUTES_PER_HOUR: 60,
-  HOURS_PER_DAY: 24,
   MS_PER_MINUTE: 1000 * 60,
   MS_PER_HOUR: 1000 * 60 * 60,
-  DEFAULT_TIMER_UPDATE_INTERVAL_MS: 10, // 100Hz smooth UI update
 } as const;
 
 /**

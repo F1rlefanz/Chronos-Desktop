@@ -69,5 +69,3 @@ export interface PdfExportOptions {
   includeNotes: boolean;
   includeSummary: boolean;
 }
-
-export type ExportFormat = 'pdf' | 'csv' | 'json';

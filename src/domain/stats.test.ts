@@ -10,7 +10,6 @@ import {
   weekRange,
   weekdayTotals,
   weeklySeries,
-  yearlySeries,
 } from './stats';
 import type { TimeEntry } from '../types';
 
@@ -169,17 +168,6 @@ describe('series', () => {
     expect(points).toHaveLength(12);
     expect(points[2]).toEqual({ label: 'Mär', value: 5 * HOUR });
     expect(points[0].value).toBe(0);
-  });
-
-  it('spans every year between the first and last entry', () => {
-    const points = yearlySeries([entry(at(2024, 0, 1, 9), 1), entry(at(2026, 0, 1, 9), 2)], NOW);
-
-    expect(points.map((p) => p.label)).toEqual(['2024', '2025', '2026']);
-    expect(points[1].value).toBe(0); // a year with no entries is still shown
-  });
-
-  it('has no years to show without entries', () => {
-    expect(yearlySeries([], NOW)).toEqual([]);
   });
 });
 

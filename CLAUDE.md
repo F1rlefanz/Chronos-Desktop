@@ -97,9 +97,20 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
   line. The badge used to be a hardcoded `v1.2.0` that had drifted three minor versions from the
   real number — do not reintroduce a second copy.
-- **Timing accuracy lives in refs, not state.** `src/hooks/useStopwatch.ts` accumulates elapsed
-  time per animation frame and only throttles the state push. Do not "simplify" it into a
-  `setInterval` that stores time in state.
+- **A duration is derived, never stored.** A `TimeEntry` records `startTime`, `endTime` (`null`
+  while it runs) and `breaks`; every length comes from `src/domain/timeEntry.ts`. Do not add a
+  `durationMs` field back. The old model stored one next to the timestamps, filled from an
+  animation-frame accumulator that stopped advancing while the window was minimised, so the same
+  entry carried two disagreeing answers and the JSON import had to guess between them.
+- **Frames set the repaint rate; the wall clock sets the number.** `useLiveDuration` runs a
+  `requestAnimationFrame` loop because a `setInterval` stutters against the refresh rate — but it
+  reads `Date.now()` each time rather than accumulating frame deltas, which are not a measure of
+  elapsed time. `intervalMs` throttles the state push only. Anything that needs a shared "now"
+  across a render takes it from `useNow`, never by calling `Date.now()` during render.
+- **A setting must have a reader** — and so must an entry field. `migrateEntries` in
+  `src/utils/storage/index.ts` is the counterpart to `migrateSettings`: stored entries were written
+  by older builds and go through the same normaliser as an imported file, so a shape change needs a
+  conversion there and a test against a real old record.
 
 ## Tests
 
