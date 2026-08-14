@@ -15,6 +15,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   now written to `%LOCALAPPDATA%\Chronos\exports\`, the folder opens by itself afterwards, and the
   dialog says where the file went — or why it could not be written.
 - **Scrolling in a dialog no longer scrolls the app behind it.**
+- **A day's work is backed up the same day.** The automatic snapshot was taken when the app started,
+  over the state it found there — so everything recorded during a session only reached a snapshot
+  the next time Chronos was opened. There is now also one when the window closes, and the number
+  kept went from ten to twenty so that the second snapshot per day does not halve how far back the
+  folder reaches. The Settings dialog now says plainly when snapshots are taken.
 
 ### Changed
 

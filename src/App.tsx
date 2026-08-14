@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useBackupOnClose } from './hooks/useBackupOnClose';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState } from './types';
@@ -156,6 +157,11 @@ export default function App({ initialState }: AppProps) {
     () => monthlySeries(timeEntries, new Date(now).getFullYear(), now),
     [timeEntries, now]
   );
+
+  // The other half of the daily snapshot: that one captures the state at
+  // startup, so without this the current session's work is in no snapshot until
+  // the next launch.
+  useBackupOnClose(() => buildBackupPayload(timeEntries, projects, settings));
 
   // One snapshot per day, of the state as it was found on disk — the slow
   // counterpart to the snapshots taken before a destructive action. It is

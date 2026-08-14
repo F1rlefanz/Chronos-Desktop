@@ -65,6 +65,7 @@ describe('backupName', () => {
   it('names the reason, so the folder explains itself', () => {
     expect(backupName('before-clear', noon)).toContain('-before-clear.json');
     expect(backupName('before-import', noon)).toContain('-before-import.json');
+    expect(backupName('on-close', noon)).toContain('-on-close.json');
   });
 });
 
@@ -122,6 +123,17 @@ describe('backups on a backend that supports them', () => {
     await ensureDailyBackup(() => '{}', noon);
     await ensureDailyBackup(() => '{}', new Date(2026, 7, 14, 8, 0, 0));
 
+    expect(context.written.size).toBe(2);
+  });
+
+  it('is not cancelled by the snapshot taken when the window last closed', async () => {
+    // The closing snapshot covers the session that just ended; the daily one
+    // covers the state a new day starts from. Neither replaces the other.
+    await writeBackup('on-close', '{}', new Date(2026, 7, 13, 8, 0, 0));
+
+    const result = await ensureDailyBackup(() => '{}', noon);
+
+    expect(result).toEqual({ ok: true });
     expect(context.written.size).toBe(2);
   });
 

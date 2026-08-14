@@ -51,6 +51,29 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     includeSummary: true,
   });
 
+  /**
+   * Clears the "saved as …" line whenever the inputs change.
+   *
+   * That message names one file produced from one set of choices. Left standing
+   * while the format, period or project moves on, it describes something the
+   * dialog is no longer offering — and reads as if the new selection had been
+   * exported too.
+   */
+  const selectTab = (tab: 'pdf' | 'csv' | 'json') => {
+    setActiveTab(tab);
+    setOutcome(null);
+  };
+
+  const selectRange = (next: typeof range) => {
+    setRange(next);
+    setOutcome(null);
+  };
+
+  const selectProject = (id: string) => {
+    setProjectId(id);
+    setOutcome(null);
+  };
+
   const resolved = useMemo(() => resolveExportRange(range, now), [range, now]);
 
   const selection = useMemo(
@@ -126,7 +149,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Tab Buttons */}
         <div className="flex border-b border-gray-200 bg-gray-50/50 p-2 gap-2">
           <button
-            onClick={() => setActiveTab('pdf')}
+            onClick={() => selectTab('pdf')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'pdf'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -137,7 +160,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span>PDF</span>
           </button>
           <button
-            onClick={() => setActiveTab('csv')}
+            onClick={() => selectTab('csv')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'csv'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -148,7 +171,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span>CSV</span>
           </button>
           <button
-            onClick={() => setActiveTab('json')}
+            onClick={() => selectTab('json')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'json'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -166,7 +189,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <ExportRangePicker
                 value={range}
-                onChange={setRange}
+                onChange={selectRange}
                 availableYears={availableYears}
               />
               <div className="space-y-2">
@@ -179,7 +202,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <select
                   id="export-project"
                   value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
+                  onChange={(e) => selectProject(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF] focus:bg-white cursor-pointer"
                 >
                   <option value="all">Alle Projekte</option>

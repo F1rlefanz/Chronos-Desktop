@@ -39,8 +39,9 @@ Nothing above that interface knows which one is in use.
   `Cmd/Ctrl+R` are left to the browser.
 - Configurable display refresh rate, which changes how often the readout is redrawn and not what
   is recorded.
-- Automatic backups (desktop only): a snapshot once a day, and one immediately before clearing the
-  history or importing a file. The last ten are kept.
+- Automatic backups (desktop only): a snapshot at startup (at most once a day), one when the window
+  closes, and one immediately before clearing the history or importing a file. The last twenty are
+  kept. All of them happen while the app runs, which is also the only time the data can change.
 - A log file (desktop only) recording startup, backup outcomes and every failed save, with both
   folders reachable from the Settings dialog.
 
@@ -51,7 +52,7 @@ What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 ```
 %LOCALAPPDATA%\Chronos\           your data — nothing else writes here
   data\                           the live state: sessions, projects, settings
-  backups\                        the last ten snapshots
+  backups\                        the last twenty snapshots
   logs\                           chronos.log, plus one rolled-over generation
   exports\                        generated PDF, CSV and JSON files
 

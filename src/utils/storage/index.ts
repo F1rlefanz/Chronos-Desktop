@@ -149,7 +149,7 @@ export function migrateEntries(stored: unknown): TimeEntry[] {
 /* -------------------------------------------------------------------------- */
 
 /** Why a snapshot was taken. Ends up in the file name, so the user can tell. */
-export type BackupReason = 'daily' | 'before-clear' | 'before-import';
+export type BackupReason = 'daily' | 'on-close' | 'before-clear' | 'before-import';
 
 /** True when the active backend can keep snapshots — false in the browser. */
 export function backupsAvailable(): boolean {

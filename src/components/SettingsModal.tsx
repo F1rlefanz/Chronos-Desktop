@@ -281,8 +281,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     Automatische Sicherungen
                   </span>
                   <span className="text-[11px] text-gray-400">
-                    Täglich sowie vor dem Löschen und vor einem Import. Wiederherstellen über „Datei
-                    wählen" oben.
+                    Beim Start der App (höchstens einmal täglich), beim Schließen des Fensters sowie
+                    vor dem Löschen und vor einem Import — also immer dann, wenn die App läuft. Die
+                    letzten 20 bleiben. Wiederherstellen über „Datei wählen" oben.
                   </span>
                 </div>
                 <button

@@ -74,7 +74,10 @@ const DATA_FOLDER: &str = "Chronos";
 
 /// How many snapshots survive in backups/. Older ones are pruned after each
 /// write, so the folder cannot grow without bound.
-const BACKUP_RETENTION: usize = 10;
+///
+/// Raised from ten when a second snapshot per day was added on window close:
+/// the same number would otherwise have halved how far back the folder reaches.
+const BACKUP_RETENTION: usize = 20;
 
 /// Resolves the folder holding the app's data and its backups/ sibling.
 fn app_folder(app: &tauri::AppHandle) -> Result<PathBuf, StorageError> {
