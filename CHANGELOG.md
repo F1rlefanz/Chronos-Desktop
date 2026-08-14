@@ -6,6 +6,16 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] — 2026-08-14
+
+### Fixed
+
+- **The default project can finally be chosen.** Settings → _Projekte_ → **Standardprojekt** decides
+  which project the app starts on. The setting existed and was being used since the very first
+  version, but there was no way to change it, so it stayed on "Work Project" forever. Deleting the
+  project that is set as the default now moves the setting to another one instead of leaving it
+  pointing at something that no longer exists.
+
 ## [0.4.0] — 2026-08-13
 
 Chronos was built as a stopwatch. This release makes it a time tracker, which
@@ -126,6 +136,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.4.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.1.1...v0.2.0
