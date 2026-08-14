@@ -2,8 +2,32 @@ import React, { useState, useRef } from 'react';
 import { AppSettings, Project } from '../types';
 import { importFromJsonFile, ImportedData } from '../utils/dataExporter';
 import { TIMER_INTERVAL_OPTIONS } from '../constants/defaultConfig';
-import { Settings, Plus, Trash2, Upload, X, FolderOpen, FileWarning } from 'lucide-react';
+import {
+  Settings,
+  Plus,
+  Trash2,
+  Upload,
+  X,
+  FolderOpen,
+  FileWarning,
+  FolderSync,
+  RefreshCw,
+} from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import type { SyncStatus } from '../App';
+
+/**
+ * Everything the sync section needs — absent in a build that cannot sync, which
+ * hides the section rather than showing a switch that fails when it is used.
+ */
+export interface SyncControls {
+  /** Empty when syncing is off. */
+  folder: string;
+  status: SyncStatus;
+  onChooseFolder: () => void;
+  onStopSyncing: () => void;
+  onSyncNow: () => void;
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -17,6 +41,8 @@ interface SettingsModalProps {
   onRevealBackups?: () => void;
   /** Absent when logs only go to the console, which hides the row. */
   onRevealLogs?: () => void;
+  /** Absent on a build that cannot reach a folder — the browser, and a phone. */
+  sync?: SyncControls;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -29,6 +55,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onImportData,
   onRevealBackups,
   onRevealLogs,
+  sync,
 }) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
@@ -314,6 +341,89 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Section: Syncing through a shared folder. Absent where it cannot
+              work at all, rather than present and broken. */}
+          {sync && (
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
+                Abgleich zwischen Geräten
+              </h3>
+
+              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-gray-800 block">
+                      Geteilter Ordner
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Ein Ordner, den ein Dienst deiner Wahl zwischen den Geräten synchron hält —
+                      OneDrive, Syncthing, ein Netzlaufwerk. Chronos legt dort nur eine Datei je
+                      Gerät ab; kein Konto, kein Server.
+                    </span>
+                  </div>
+                  <button
+                    onClick={sync.onChooseFolder}
+                    className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
+                  >
+                    <FolderSync className="w-3.5 h-3.5 text-[#2D5BFF]" />
+                    <span>{sync.folder ? 'Ordner ändern' : 'Ordner wählen'}</span>
+                  </button>
+                </div>
+
+                {sync.folder ? (
+                  <>
+                    <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
+                      {sync.folder}
+                    </p>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-[11px] text-gray-400">
+                        Abgeglichen wird beim Start und beim Schließen. Bei gleichzeitiger
+                        Bearbeitung desselben Eintrags gewinnt die neuere Fassung. Eine laufende
+                        Messung bleibt auf ihrem Gerät.
+                      </p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={sync.onSyncNow}
+                          disabled={sync.status.state === 'running'}
+                          className="px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-default text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 ${sync.status.state === 'running' ? 'animate-spin' : ''}`}
+                          />
+                          <span>Jetzt abgleichen</span>
+                        </button>
+                        <button
+                          onClick={sync.onStopSyncing}
+                          className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                        >
+                          Beenden
+                        </button>
+                      </div>
+                    </div>
+
+                    {sync.status.state !== 'idle' && (
+                      <p
+                        role="status"
+                        className={`text-[11px] ${
+                          sync.status.state === 'failed' ? 'text-rose-600' : 'text-gray-500'
+                        }`}
+                      >
+                        {sync.status.state === 'running'
+                          ? 'Wird abgeglichen…'
+                          : sync.status.message}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-[11px] text-gray-400">
+                    Noch kein Ordner gewählt — die Daten dieses Geräts bleiben hier.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

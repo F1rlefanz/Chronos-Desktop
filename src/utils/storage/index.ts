@@ -7,6 +7,7 @@ import {
 import { AppSettings, Project, TimeEntry, Tombstone } from '../../types';
 import { normalizeTimeEntry } from '../dataExporter';
 import { logInfo, logWarn } from '../logging/logger';
+import { isDeviceId, newDeviceId } from '../sync/deviceId';
 import { localStorageAdapter } from './localStorageAdapter';
 import { StorageAdapter, WriteResult } from './types';
 
@@ -30,6 +31,16 @@ export interface PersistedState {
    * deleted time.
    */
   tombstones: Tombstone[];
+  /**
+   * What this installation calls itself in the shared folder.
+   *
+   * Generated on first read and then never again — a device that renamed itself
+   * would leave its old file behind for every other device to keep merging
+   * forever. Kept out of `AppSettings` on purpose: settings travel in a backup,
+   * and an import that handed this machine another one's id would make two
+   * devices write the same file.
+   */
+  deviceId: string;
 }
 
 /** Copies, so a consumer putting this into state cannot mutate the defaults. */
@@ -39,6 +50,7 @@ export function defaultPersistedState(): PersistedState {
     entries: [],
     projects: [...DEFAULT_PROJECTS],
     tombstones: [],
+    deviceId: newDeviceId(),
   };
 }
 
@@ -176,7 +188,15 @@ export function migrateEntries(stored: unknown): TimeEntry[] {
 /* -------------------------------------------------------------------------- */
 
 /** Why a snapshot was taken. Ends up in the file name, so the user can tell. */
-export type BackupReason = 'daily' | 'on-close' | 'before-clear' | 'before-import';
+export type BackupReason =
+  | 'daily'
+  | 'on-close'
+  | 'before-clear'
+  | 'before-import'
+  // A merge replaces the local set with a reconciled one. That is not
+  // destructive in the way clearing is, but it is the same shape of event: the
+  // state that existed before it only exists in a snapshot afterwards.
+  | 'before-sync';
 
 /** True when the active backend can keep snapshots — false in the browser. */
 export function backupsAvailable(): boolean {
@@ -244,22 +264,24 @@ export async function revealBackups(): Promise<void> {
 
 /** Loads the full application state through the active adapter. */
 export async function loadPersistedState(): Promise<PersistedState> {
-  const [storedSettings, storedEntries, storedProjects, storedTombstones] = await Promise.all([
-    readJsonWithLegacy<Partial<AppSettings>>(
-      STORAGE_KEYS.SETTINGS,
-      LEGACY_STORAGE_KEYS.SETTINGS,
-      {}
-    ),
-    readJsonWithLegacy<unknown>(STORAGE_KEYS.TIME_ENTRIES, LEGACY_STORAGE_KEYS.TIME_ENTRIES, []),
-    readJsonWithLegacy<Project[]>(
-      STORAGE_KEYS.PROJECTS,
-      LEGACY_STORAGE_KEYS.PROJECTS,
-      DEFAULT_PROJECTS
-    ),
-    // No legacy counterpart: deletions were not recorded before this existed,
-    // and there is nothing to reconstruct them from.
-    adapter.read(STORAGE_KEYS.TOMBSTONES),
-  ]);
+  const [storedSettings, storedEntries, storedProjects, storedTombstones, storedDeviceId] =
+    await Promise.all([
+      readJsonWithLegacy<Partial<AppSettings>>(
+        STORAGE_KEYS.SETTINGS,
+        LEGACY_STORAGE_KEYS.SETTINGS,
+        {}
+      ),
+      readJsonWithLegacy<unknown>(STORAGE_KEYS.TIME_ENTRIES, LEGACY_STORAGE_KEYS.TIME_ENTRIES, []),
+      readJsonWithLegacy<Project[]>(
+        STORAGE_KEYS.PROJECTS,
+        LEGACY_STORAGE_KEYS.PROJECTS,
+        DEFAULT_PROJECTS
+      ),
+      // No legacy counterpart: deletions were not recorded before this existed,
+      // and there is nothing to reconstruct them from.
+      adapter.read(STORAGE_KEYS.TOMBSTONES),
+      adapter.read(STORAGE_KEYS.DEVICE_ID),
+    ]);
 
   const settings = migrateSettings(storedSettings.value);
   const entries = migrateEntries(storedEntries.value);
@@ -267,6 +289,11 @@ export async function loadPersistedState(): Promise<PersistedState> {
   const tombstones = migrateTombstones(
     storedTombstones === null ? [] : parseJson(storedTombstones, STORAGE_KEYS.TOMBSTONES, [])
   );
+
+  // Stored as a bare string rather than JSON: it is one token, and quoting it
+  // would only add a way for it to come back unparseable.
+  const knownDevice = isDeviceId(storedDeviceId) ? storedDeviceId : null;
+  const deviceId = knownDevice ?? newDeviceId();
 
   if (storedEntries.fromLegacy) {
     logInfo(`[Storage] Converted ${entries.length} entries from the pre-0.4.0 stopwatch format.`);
@@ -290,6 +317,11 @@ export async function loadPersistedState(): Promise<PersistedState> {
   if (storedProjects.fromLegacy) {
     writeBacks.push(saveProjects(projects).then((r) => ['projects', r]));
   }
+  // A device id that is not written back is not an id: the next start would
+  // generate another one, and the folder would collect a file per launch.
+  if (knownDevice === null) {
+    writeBacks.push(adapter.write(STORAGE_KEYS.DEVICE_ID, deviceId).then((r) => ['device id', r]));
+  }
 
   for (const [what, result] of await Promise.all(writeBacks)) {
     if (!result.ok) {
@@ -297,5 +329,5 @@ export async function loadPersistedState(): Promise<PersistedState> {
     }
   }
 
-  return { settings, entries, projects, tombstones };
+  return { settings, entries, projects, tombstones, deviceId };
 }

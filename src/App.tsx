@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBackupOnClose } from './hooks/useBackupOnClose';
-import { pruneTombstones, tombstoneFor } from './domain/merge';
+import { mergeEntries, pruneTombstones, tombstoneFor } from './domain/merge';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState, Tombstone } from './types';
@@ -29,6 +29,13 @@ import {
   PersistedState,
   WriteResult,
 } from './utils/storage';
+import {
+  pickSyncFolder,
+  pushToSyncFolder,
+  runSync,
+  syncAvailable,
+  SyncOutcome,
+} from './utils/sync';
 
 import { DesktopHeader, MainTab } from './components/DesktopHeader';
 import { StopwatchDisplay } from './components/StopwatchDisplay';
@@ -49,6 +56,35 @@ interface AppProps {
   /** Read from storage in `main.tsx` before the first render. */
   initialState: PersistedState;
 }
+
+/**
+ * What the last sync did, in a sentence.
+ *
+ * "Erfolgreich" would be useless here: the interesting outcomes are that
+ * nothing was found, that something arrived, and that a file could not be read
+ * — and a user who cannot see the difference has no way of telling a working
+ * setup from one where the other device never writes.
+ */
+function describeSync(outcome: Extract<SyncOutcome, { status: 'ok' }>): string {
+  const { summary, peers, unreadable } = outcome;
+
+  const main =
+    peers === 0
+      ? 'Kein anderes Gerät im Ordner gefunden. Die eigenen Daten liegen dort bereit.'
+      : summary.added + summary.updated + summary.deleted === 0
+        ? `Alles auf demselben Stand (${peers === 1 ? 'ein Gerät' : `${peers} Geräte`}).`
+        : `${summary.added} neu, ${summary.updated} aktualisiert, ${summary.deleted} gelöscht.`;
+
+  if (unreadable === 0) return main;
+  return `${main} ${unreadable === 1 ? 'Eine Datei war' : `${unreadable} Dateien waren`} nicht lesbar.`;
+}
+
+/** Where the last sync got to. `idle` also covers "never run in this session". */
+export type SyncStatus =
+  | { state: 'idle' }
+  | { state: 'running' }
+  | { state: 'done'; message: string }
+  | { state: 'failed'; message: string };
 
 export default function App({ initialState }: AppProps) {
   // Application Data Persistence States
@@ -83,6 +119,8 @@ export default function App({ initialState }: AppProps) {
     what: string;
     detail: string;
   } | null>(null);
+
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle' });
 
   // The just-stopped entry awaiting a title. It is already saved by the time
   // this is set, so only the id is held here.
@@ -164,10 +202,39 @@ export default function App({ initialState }: AppProps) {
     [timeEntries, now]
   );
 
+  /**
+   * The current state, readable from something that is not a render.
+   *
+   * Both the closing handler and a sync in flight need what is true *now*, not
+   * what was true when they were set up — a snapshot taken from a stale closure
+   * is a snapshot of the wrong data. Written on every render rather than under a
+   * dependency list, because every one of these values matters and forgetting
+   * one would fail silently.
+   */
+  const liveRef = useRef({ entries: timeEntries, tombstones, projects, settings });
+
+  useEffect(() => {
+    liveRef.current = { entries: timeEntries, tombstones, projects, settings };
+  });
+
   // The other half of the daily snapshot: that one captures the state at
   // startup, so without this the current session's work is in no snapshot until
-  // the next launch.
-  useBackupOnClose(() => buildBackupPayload(timeEntries, projects, settings));
+  // the next launch. The second task hands the same work to the shared folder,
+  // for the same reason — see `pushToSyncFolder` for why it only writes.
+  useBackupOnClose(
+    () => buildBackupPayload(timeEntries, projects, settings),
+    async () => {
+      const live = liveRef.current;
+      if (!syncAvailable() || !live.settings.syncFolder) return;
+
+      await pushToSyncFolder({
+        folder: live.settings.syncFolder,
+        deviceId: initialState.deviceId,
+        entries: live.entries,
+        tombstones: live.tombstones,
+      });
+    }
+  );
 
   // One snapshot per day, of the state as it was found on disk — the slow
   // counterpart to the snapshots taken before a destructive action. It is
@@ -536,18 +603,110 @@ export default function App({ initialState }: AppProps) {
    * either: this is the one moment where knowing there is no safety net can
    * change the decision, so it asks rather than warning afterwards.
    */
-  const backupBefore = async (reason: BackupReason, action: string): Promise<boolean> => {
-    if (!backupsAvailable()) return true;
+  const backupBefore = useCallback(
+    async (reason: BackupReason, action: string): Promise<boolean> => {
+      if (!backupsAvailable()) return true;
 
-    const result = await writeBackup(reason, buildBackupPayload(timeEntries, projects, settings));
-    if (result.ok) {
-      logInfo(`[Backup] Snapshot written before ${action} (${timeEntries.length} sessions).`);
-      return true;
+      // Read from the ref, not from the render's closure: a sync started at
+      // startup would otherwise snapshot the state as it was when the handler
+      // was built rather than the one it is about to replace.
+      const { entries, projects: projs, settings: setts } = liveRef.current;
+
+      const result = await writeBackup(reason, buildBackupPayload(entries, projs, setts));
+      if (result.ok) {
+        logInfo(`[Backup] Snapshot written before ${action} (${entries.length} sessions).`);
+        return true;
+      }
+
+      return window.confirm(
+        `Es konnte keine Sicherung angelegt werden: ${result.message}\n\n${action} trotzdem fortsetzen?`
+      );
+    },
+    []
+  );
+
+  /* ---------------------------------------------------------------------- */
+  /* Syncing through a shared folder                                        */
+  /* ---------------------------------------------------------------------- */
+
+  /**
+   * Reads what the other devices left in the folder and writes ours back.
+   *
+   * The result is merged against the state as it is when the answer arrives,
+   * not against the copy the sync started from: a sync is not instant, and an
+   * entry created while it ran must not be dropped by the reply. `mergeEntries`
+   * being idempotent is what makes that second pass free.
+   */
+  const syncWithFolder = useCallback(
+    async (folder: string): Promise<void> => {
+      if (!syncAvailable() || !folder) return;
+
+      setSyncStatus({ state: 'running' });
+
+      const started = liveRef.current;
+      const outcome = await runSync({
+        folder,
+        deviceId: initialState.deviceId,
+        entries: started.entries,
+        tombstones: started.tombstones,
+        beforeMerge: () => backupBefore('before-sync', 'Der Abgleich'),
+      });
+
+      if (outcome.status === 'aborted') {
+        setSyncStatus({ state: 'idle' });
+        return;
+      }
+
+      if (outcome.status === 'failed') {
+        logWarn(`[Sync] ${outcome.message}`);
+        setSyncStatus({ state: 'failed', message: outcome.message });
+        return;
+      }
+
+      if (outcome.changed) {
+        const live = liveRef.current;
+        const final = mergeEntries(
+          { entries: live.entries, tombstones: live.tombstones },
+          { entries: outcome.entries, tombstones: outcome.tombstones }
+        );
+
+        setTimeEntries(final.entries);
+        setTombstones(final.tombstones);
+        void persist(saveTimeEntries(final.entries), 'die abgeglichenen Daten');
+        void saveTombstones(final.tombstones);
+      }
+
+      setSyncStatus({ state: 'done', message: describeSync(outcome) });
+    },
+    [backupBefore, persist, initialState.deviceId]
+  );
+
+  /**
+   * Syncs once per folder: at startup, and again when a different one is
+   * chosen. Deliberately not on a timer and not on a file watcher — both write
+   * to the user's folder at moments nobody asked for.
+   */
+  const syncedFolderRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const folder = settings.syncFolder;
+
+    if (!folder) {
+      // Switched off again; picking the same folder later must sync anew.
+      syncedFolderRef.current = null;
+      return;
     }
 
-    return window.confirm(
-      `Es konnte keine Sicherung angelegt werden: ${result.message}\n\n${action} trotzdem fortsetzen?`
-    );
+    if (!syncAvailable() || syncedFolderRef.current === folder) return;
+
+    syncedFolderRef.current = folder;
+    void syncWithFolder(folder);
+  }, [settings.syncFolder, syncWithFolder]);
+
+  const handleChooseSyncFolder = async (): Promise<void> => {
+    const folder = await pickSyncFolder();
+    // Cancelling the picker keeps whatever was set before.
+    if (folder) handleUpdateSettings({ syncFolder: folder });
   };
 
   const handleClearAllHistory = async () => {
@@ -588,8 +747,10 @@ export default function App({ initialState }: AppProps) {
     if (data.settings) {
       // Imported settings run through the same migration as stored ones, so a
       // backup from an older build cannot smuggle removed or wrongly-typed
-      // keys back into state.
-      const updated = migrateSettings(data.settings);
+      // keys back into state. The sync folder is kept as it is regardless: it
+      // describes *this* machine, and a path from the machine the backup came
+      // from points at nothing here — or, worse, at somebody else's folder.
+      const updated = { ...migrateSettings(data.settings), syncFolder: settings.syncFolder };
       setSettings(updated);
       writes.push(saveSettings(updated));
     }
@@ -677,6 +838,30 @@ export default function App({ initialState }: AppProps) {
               onClick={() => setPersistenceError(null)}
               aria-label="Hinweis schließen"
               className="shrink-0 rounded-full px-2 text-red-500 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* A folder that cannot be reached is not a data loss — the app keeps
+            working on its own copy — but it is silent, and a sync everyone
+            believes is running is worse than none at all. */}
+        {syncStatus.state === 'failed' && (
+          <div
+            role="status"
+            className="flex items-start justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 px-5 text-sm text-amber-900"
+          >
+            <p>
+              <strong className="font-semibold">Der Abgleich hat nicht geklappt.</strong>{' '}
+              {syncStatus.message} Die App arbeitet normal weiter — nur die anderen Geräte sehen
+              diese Änderungen noch nicht.
+            </p>
+            <button
+              type="button"
+              onClick={() => setSyncStatus({ state: 'idle' })}
+              aria-label="Hinweis schließen"
+              className="shrink-0 rounded-full px-2 text-amber-600 hover:text-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
             >
               ✕
             </button>
@@ -797,6 +982,17 @@ export default function App({ initialState }: AppProps) {
           backupsAvailable() && !isMobilePlatform() ? () => void revealBackups() : undefined
         }
         onRevealLogs={loggingToFile() && !isMobilePlatform() ? () => void revealLogs() : undefined}
+        sync={
+          syncAvailable()
+            ? {
+                folder: settings.syncFolder,
+                status: syncStatus,
+                onChooseFolder: () => void handleChooseSyncFolder(),
+                onStopSyncing: () => handleUpdateSettings({ syncFolder: '' }),
+                onSyncNow: () => void syncWithFolder(settings.syncFolder),
+              }
+            : undefined
+        }
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />

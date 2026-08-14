@@ -22,6 +22,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
+# The one dependency syncing added: picking the shared folder needs the system's
+# own folder chooser, and a path typed into a text field is a path with a typo
+# in it that only shows up at the first sync.
+tauri-plugin-dialog = "2"
 
 [profile.release]
 # A time tracker does not need to ship debug symbols; this keeps the installer

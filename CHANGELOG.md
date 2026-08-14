@@ -6,6 +6,38 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-08-14
+
+### Added
+
+- **Zwei Geräte können sich denselben Bestand teilen — über einen Ordner deiner Wahl.** In den
+  Einstellungen lässt sich unter _Abgleich zwischen Geräten_ ein Ordner wählen, den ein Dienst
+  deiner Wahl synchron hält: OneDrive, Syncthing, ein Netzlaufwerk. Chronos legt dort eine kleine
+  Datei je Gerät ab und liest die der anderen — kein Konto, kein Server, keine laufenden Kosten.
+  Abgeglichen wird beim Start der App, beim Schließen des Fensters und auf Knopfdruck
+  (_Jetzt abgleichen_). Wer keinen Ordner wählt, merkt von alldem nichts.
+- **Vor jedem Zusammenführen wird gesichert** — dieselbe automatische Sicherung wie vor dem Löschen
+  und vor einem Import, und nur dann, wenn tatsächlich Daten eines anderen Geräts dazukommen.
+
+### Changed
+
+- **Bei gleichzeitiger Bearbeitung desselben Eintrags auf zwei Geräten gewinnt die neuere
+  Fassung.** Bewusst so und nicht als Rückfrage: die ältere Änderung geht dabei verloren, dafür
+  gibt es keinen Dialog, der bei jedem Abgleich zur Entscheidung zwingt. Vermischt werden zwei
+  Fassungen nie — es gewinnt immer eine ganze.
+- **Eine laufende Messung bleibt auf ihrem Gerät.** Geteilt wird nur, was fertig erfasst ist; sonst
+  zeigten zwei Geräte dieselbe laufende Stoppuhr und keines wüsste, wann die Arbeit endete.
+- **Gelöschtes bleibt gelöscht**, auch nach mehrfachem Abgleich und auch dann, wenn ein anderes
+  Gerät den Eintrag noch kannte.
+- **Ein Ordner, der nicht erreichbar ist, hält nichts auf.** Chronos sagt es und arbeitet mit seiner
+  eigenen Kopie weiter — nur die anderen Geräte sehen die Änderungen dann noch nicht.
+
+### Note
+
+Der Abgleich gibt es zunächst nur in der Desktop-App. Auf Android darf eine App keinen beliebigen
+Ordner frei lesen und schreiben, und ein halb funktionierender Abgleich wäre schlechter als
+gar keiner — deshalb fehlt der Abschnitt in den Einstellungen dort ganz.
+
 ## [0.6.1] — 2026-08-14
 
 ### Fixed

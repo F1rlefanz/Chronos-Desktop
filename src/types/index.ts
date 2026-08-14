@@ -77,6 +77,15 @@ export interface AppSettings {
   defaultProject: string;
   keyShortcutsEnabled: boolean;
   timerIntervalMs: number;
+  /**
+   * The folder two devices exchange their records through — empty when off.
+   *
+   * A path, not an account: whatever keeps that folder in step (OneDrive,
+   * Syncthing, a network drive) is the user's business, and Chronos only reads
+   * and writes in it. Deliberately *not* carried over by an import: a path from
+   * another machine points nowhere on this one.
+   */
+  syncFolder: string;
 }
 
 /**
