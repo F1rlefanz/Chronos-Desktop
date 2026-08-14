@@ -40,20 +40,38 @@ jobs:
       - name: Check out
         uses: actions/checkout@v7
 
+      # The tag is resolved in the shell rather than in an expression: an
+      # empty-string fallback inside ${{ }} has to be quoted through YAML as
+      # well, and getting that wrong produces a script that does not parse.
       - name: Work out what this run is
         id: resolve
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          tag='${{ inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '''' }}'
+          if [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          elif [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"
+          else
+            tag=""
+          fi
+
           if [ -n "$tag" ]; then
-            echo "publishing=true" >> "$GITHUB_OUTPUT"
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
-            echo "ref=$tag" >> "$GITHUB_OUTPUT"
+            {
+              echo "publishing=true"
+              echo "tag=$tag"
+              echo "ref=$tag"
+            } >> "$GITHUB_OUTPUT"
             echo "Publishing $tag."
           else
-            echo "publishing=false" >> "$GITHUB_OUTPUT"
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "Dry run on ${{ github.ref_name }} — building, not publishing."
+            {
+              echo "publishing=false"
+              echo "tag="
+              echo "ref=$REF_NAME"
+            } >> "$GITHUB_OUTPUT"
+            echo "Dry run on $REF_NAME - building, not publishing."
           fi
 
       - name: Take the notes from the changelog
