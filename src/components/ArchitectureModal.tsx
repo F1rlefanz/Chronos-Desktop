@@ -76,6 +76,11 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               wäre der schlimmste Fall: die Änderung wäre nach einem Neustart weg, ohne dass es
               jemand bemerkt.
             </p>
+            <p>
+              Wer zwei Rechner abgleicht, wählt dafür selbst einen Ordner — auch das ist kein Konto
+              und kein Server: Chronos legt dort eine kleine Datei je Gerät ab und liest die der
+              anderen. Wer das Feld leer lässt, gibt nichts heraus.
+            </p>
           </section>
 
           <section className="space-y-2">
@@ -103,6 +108,14 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
                 <span className="font-sans">
                   Die laufende Anzeige. Neu gezeichnet wird im Takt der Bildwiederholung, gezählt
                   wird nach der Wanduhr — Bilder sind kein Maß für vergangene Zeit.
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
+                <span className="text-emerald-600 font-bold block mb-1">/src/utils/sync</span>
+                <span className="font-sans">
+                  Der Abgleich über einen Ordner. Zusammengeführt wird nach einer reinen Regel: die
+                  neuere Fassung gewinnt, gelöscht bleibt gelöscht, und zweimal abgleichen ändert
+                  nichts mehr.
                 </span>
               </div>
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
