@@ -6,6 +6,14 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] — 2026-08-14
+
+### Fixed
+
+- The log's last line before the app closes — the one saying whether the closing backup was
+  written — could be lost, because the process exited before the entry reached the file. The backup
+  itself was never affected.
+
 ## [0.6.0] — 2026-08-14
 
 ### Added
@@ -201,6 +209,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.6.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.1...v0.5.0
