@@ -228,6 +228,10 @@ export function normalizeTimeEntry(raw: unknown): TimeEntry | null {
     breaks,
     notes: typeof raw.notes === 'string' ? raw.notes : undefined,
     createdAt: asNumber(raw.createdAt, Date.now()),
+    // Records written before this field existed get the best answer available:
+    // when the entry ended, or failing that when it was created. Dating them
+    // "now" would make every old entry look newer than a genuine recent edit.
+    updatedAt: asNumber(raw.updatedAt, endTime ?? asNumber(raw.createdAt, startTime)),
     source: raw.source === 'manual' ? 'manual' : 'stopwatch',
   };
 }

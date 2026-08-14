@@ -31,6 +31,7 @@ function entry(startTime: number, hours: number, overrides: Partial<TimeEntry> =
     endTime: startTime + hours * HOUR,
     breaks: [],
     createdAt: startTime,
+    updatedAt: startTime,
     source: 'manual',
     ...overrides,
   };

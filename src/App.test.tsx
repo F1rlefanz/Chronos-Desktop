@@ -17,6 +17,9 @@ const writeBackup = vi.fn<(reason: string, contents: string, at?: Date) => Promi
   () => Promise.resolve(ok)
 );
 const backupsAvailable = vi.fn(() => true);
+const saveTombstones = vi.fn<(stones: { id: string; deletedAt: number }[]) => Promise<WriteResult>>(
+  () => Promise.resolve(ok)
+);
 
 vi.mock('./utils/storage', async () => {
   const actual = await vi.importActual<typeof import('./utils/storage')>('./utils/storage');
@@ -31,6 +34,7 @@ vi.mock('./utils/storage', async () => {
       return saveTimeEntries();
     },
     backupsAvailable: () => backupsAvailable(),
+    saveTombstones: (...args: Parameters<typeof actual.saveTombstones>) => saveTombstones(...args),
     writeBackup: (...args: Parameters<typeof actual.writeBackup>) => writeBackup(...args),
     ensureDailyBackup: () => Promise.resolve(null),
   };
@@ -40,6 +44,7 @@ const initialState: PersistedState = {
   settings: DEFAULT_APP_SETTINGS,
   entries: [],
   projects: DEFAULT_PROJECTS,
+  tombstones: [],
 };
 
 const withOneEntry: PersistedState = {
@@ -54,6 +59,7 @@ const withOneEntry: PersistedState = {
       endTime: 2,
       breaks: [],
       createdAt: 1,
+      updatedAt: 1,
       source: 'stopwatch',
     },
   ],
@@ -251,6 +257,43 @@ describe('App backups before destructive actions', () => {
     expect(writeBackup).not.toHaveBeenCalled();
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(saveTimeEntries).toHaveBeenCalled();
+  });
+});
+
+describe('App deletions leave a record', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveTimeEntries.mockResolvedValue(ok);
+    saveTombstones.mockResolvedValue(ok);
+    writeBackup.mockResolvedValue(ok);
+    backupsAvailable.mockReturnValue(true);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.restoreAllMocks();
+  });
+
+  // Dropping the entry is what the user asked for. The tombstone is what stops
+  // another device from handing it straight back on the next merge, because
+  // "deleted here" and "never seen here" look identical without one.
+  it('records a tombstone when an entry is deleted', async () => {
+    const user = userEvent.setup();
+    renderApp(withOneEntry);
+
+    await user.click(screen.getByTitle('Eintrag löschen'));
+
+    expect(saveTombstones).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry-1' })]);
+  });
+
+  it('records one for every entry when the list is cleared', async () => {
+    const user = userEvent.setup();
+    renderApp(withOneEntry);
+
+    await user.click(screen.getByRole('button', { name: 'Alle löschen' }));
+
+    expect(saveTombstones).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry-1' })]);
   });
 });
 

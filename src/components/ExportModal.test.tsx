@@ -17,6 +17,7 @@ const entry: TimeEntry = {
   endTime: new Date(2026, 7, 14, 11, 0, 0).getTime(),
   breaks: [],
   createdAt: 1,
+  updatedAt: 1,
   source: 'stopwatch',
 };
 

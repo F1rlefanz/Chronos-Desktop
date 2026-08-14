@@ -14,6 +14,7 @@ function runningEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     endTime: null,
     breaks: [],
     createdAt: Date.now() - 90 * 60 * 1000,
+    updatedAt: Date.now() - 90 * 60 * 1000,
     source: 'stopwatch',
     ...overrides,
   };

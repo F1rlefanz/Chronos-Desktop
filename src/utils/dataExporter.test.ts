@@ -38,6 +38,7 @@ function makeEntry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     endTime: 1_700_000_060_000,
     breaks: [],
     createdAt: 1_700_000_060_000,
+    updatedAt: 1_700_000_060_000,
     source: 'stopwatch',
     ...overrides,
   };

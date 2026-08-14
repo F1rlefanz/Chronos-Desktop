@@ -17,6 +17,7 @@ function entry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     endTime: new Date(2026, 0, 16, 1, 0).getTime(),
     breaks: [],
     createdAt: Date.now(),
+    updatedAt: Date.now(),
     source: 'manual',
     ...overrides,
   };

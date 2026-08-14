@@ -9,8 +9,13 @@ import {
 import { Clock, Folder, FileText, Plus, Save, Tag, Trash2, X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
-/** What the form hands back; the caller supplies id, createdAt and source. */
-export type EntryDraft = Omit<TimeEntry, 'id' | 'createdAt' | 'source'>;
+/**
+ * What the form hands back; the caller supplies id, createdAt, updatedAt and
+ * source. `updatedAt` in particular is the caller's to set: the form does not
+ * know whether this is a new entry or a correction, and stamping it here would
+ * mean trusting a component to get the merge-relevant field right.
+ */
+export type EntryDraft = Omit<TimeEntry, 'id' | 'createdAt' | 'updatedAt' | 'source'>;
 
 interface EntryFormModalProps {
   isOpen: boolean;

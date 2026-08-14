@@ -46,6 +46,7 @@ export const STORAGE_KEYS = {
   SETTINGS: 'chronos_settings_v2',
   TIME_ENTRIES: 'chronos_entries_v2',
   PROJECTS: 'chronos_projects_v2',
+  TOMBSTONES: 'chronos_tombstones_v1',
 } as const;
 
 /**
