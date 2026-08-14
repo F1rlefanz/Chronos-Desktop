@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { isTauri } from '@tauri-apps/api/core';
 import { backupsAvailable, writeBackup } from '../utils/storage';
-import { logInfo, logWarn } from '../utils/logging/logger';
+import { flushLogs, logInfo, logWarn } from '../utils/logging/logger';
 
 /** A hung snapshot must never leave the user unable to close the window. */
 const CLOSE_TIMEOUT_MS = 3000;
@@ -63,6 +63,11 @@ export function useBackupOnClose(buildContents: () => string): void {
             logWarn('[Backup] Closing snapshot failed:', error);
           }
 
+          // The log writes are chained and asynchronous, so without this the
+          // process exits first and the very last line — the one that says
+          // whether the closing snapshot worked — never reaches the file. That
+          // is precisely the line someone goes looking for.
+          await flushLogs();
           await appWindow.destroy();
         });
 
