@@ -32,6 +32,7 @@ describe('migrateEntries', () => {
         pauseDurationMs: 600_000,
         laps: [{ id: 'lap-1', lapNumber: 1, lapTimeMs: 500, splitTimeMs: 500 }],
         createdAt: START,
+        updatedAt: START,
       },
     ]);
 
@@ -56,6 +57,7 @@ describe('migrateEntries', () => {
       endTime: START + 1000,
       breaks: [{ id: 'b1', startTime: START + 100, endTime: START + 300 }],
       createdAt: START,
+      updatedAt: START,
       source: 'manual' as const,
     };
 

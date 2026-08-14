@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBackupOnClose } from './hooks/useBackupOnClose';
+import { pruneTombstones, tombstoneFor } from './domain/merge';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
-import { AppSettings, Project, TimeEntry, TimerState } from './types';
+import { AppSettings, Project, TimeEntry, TimerState, Tombstone } from './types';
 import { closeOpenBreak, hasRunningBreak, isRunning } from './domain/timeEntry';
 import {
   monthlySeries,
@@ -18,6 +19,7 @@ import {
   saveTimeEntries,
   saveProjects,
   migrateSettings,
+  saveTombstones,
   backupsAvailable,
   ensureDailyBackup,
   writeBackup,
@@ -51,6 +53,9 @@ export default function App({ initialState }: AppProps) {
   // Application Data Persistence States
   const [settings, setSettings] = useState<AppSettings>(initialState.settings);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>(initialState.entries);
+  // What has been deleted. Kept so a second device can be told; without it a
+  // merge cannot tell a deletion from an entry the other side never had.
+  const [tombstones, setTombstones] = useState<Tombstone[]>(initialState.tombstones);
   const [projects, setProjects] = useState<Project[]>(initialState.projects);
 
   // Selected Active Project for current timer session
@@ -278,10 +283,35 @@ export default function App({ initialState }: AppProps) {
     setPersistenceError(result.ok ? null : { what, detail: result.message });
   }, []);
 
+  /**
+   * Removes entries and records that they were removed.
+   *
+   * Both halves matter: dropping the entry is what the user asked for, the
+   * tombstone is what lets another device learn about it instead of handing
+   * the entry back on the next merge.
+   */
+  const removeEntries = (doomed: TimeEntry[], what: string) => {
+    if (doomed.length === 0) return;
+
+    const at = Date.now();
+    const goneIds = new Set(doomed.map((entry) => entry.id));
+    const remaining = timeEntries.filter((entry) => !goneIds.has(entry.id));
+    const recorded = pruneTombstones(
+      [...tombstones, ...doomed.map((entry) => tombstoneFor(entry.id, at))],
+      remaining
+    );
+
+    setTimeEntries(remaining);
+    setTombstones(recorded);
+    void persist(saveTimeEntries(remaining), what);
+    void saveTombstones(recorded);
+  };
+
   const handleDeleteEntry = (id: string) => {
-    const updated = timeEntries.filter((e) => e.id !== id);
-    setTimeEntries(updated);
-    void persist(saveTimeEntries(updated), 'die Änderung');
+    removeEntries(
+      timeEntries.filter((entry) => entry.id === id),
+      'die Änderung'
+    );
   };
 
   const openEntryForm = (entry: TimeEntry | null) => {
@@ -298,15 +328,18 @@ export default function App({ initialState }: AppProps) {
    * correction would train the user to click through it.
    */
   const handleSaveEntryDraft = (draft: EntryDraft) => {
+    const now = Date.now();
+
     const updated = entryUnderEdit
       ? timeEntries.map((entry) =>
-          entry.id === entryUnderEdit.id ? { ...entryUnderEdit, ...draft } : entry
+          entry.id === entryUnderEdit.id ? { ...entryUnderEdit, ...draft, updatedAt: now } : entry
         )
       : [
           {
             ...draft,
-            id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            createdAt: Date.now(),
+            id: `entry-${now}-${Math.random().toString(36).substring(2, 6)}`,
+            createdAt: now,
+            updatedAt: now,
             source: 'manual' as const,
           },
           ...timeEntries,
@@ -332,8 +365,12 @@ export default function App({ initialState }: AppProps) {
    */
   const patchRunningEntry = useCallback(
     (patch: (entry: TimeEntry) => TimeEntry, what: string): void => {
+      const changedAt = Date.now();
+
       setTimeEntries((current) => {
-        const updated = current.map((entry) => (isRunning(entry) ? patch(entry) : entry));
+        const updated = current.map((entry) =>
+          isRunning(entry) ? { ...patch(entry), updatedAt: changedAt } : entry
+        );
         void persist(saveTimeEntries(updated), what);
         return updated;
       });
@@ -354,6 +391,7 @@ export default function App({ initialState }: AppProps) {
       endTime: null,
       breaks: [],
       createdAt: startedAt,
+      updatedAt: startedAt,
       source: 'stopwatch',
     };
 
@@ -514,8 +552,7 @@ export default function App({ initialState }: AppProps) {
   const handleClearAllHistory = async () => {
     if (!(await backupBefore('before-clear', 'Das Löschen aller Einträge'))) return;
 
-    setTimeEntries([]);
-    void persist(saveTimeEntries([]), 'das Leeren der Liste');
+    removeEntries(timeEntries, 'das Leeren der Liste');
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {

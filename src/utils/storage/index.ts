@@ -4,7 +4,7 @@ import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_PROJECTS,
 } from '../../constants/defaultConfig';
-import { AppSettings, Project, TimeEntry } from '../../types';
+import { AppSettings, Project, TimeEntry, Tombstone } from '../../types';
 import { normalizeTimeEntry } from '../dataExporter';
 import { logInfo, logWarn } from '../logging/logger';
 import { localStorageAdapter } from './localStorageAdapter';
@@ -21,6 +21,15 @@ export interface PersistedState {
   settings: AppSettings;
   entries: TimeEntry[];
   projects: Project[];
+  /**
+   * What has been deleted, kept so another device can be told.
+   *
+   * Stored beside the entries rather than inside them: every existing reader —
+   * the history, the statistics, every export — would otherwise have to
+   * remember to filter them out, and the one that forgot would quietly count
+   * deleted time.
+   */
+  tombstones: Tombstone[];
 }
 
 /** Copies, so a consumer putting this into state cannot mutate the defaults. */
@@ -29,6 +38,7 @@ export function defaultPersistedState(): PersistedState {
     settings: { ...DEFAULT_APP_SETTINGS },
     entries: [],
     projects: [...DEFAULT_PROJECTS],
+    tombstones: [],
   };
 }
 
@@ -90,6 +100,23 @@ export function saveTimeEntries(entries: TimeEntry[]): Promise<WriteResult> {
 
 export function saveProjects(projects: Project[]): Promise<WriteResult> {
   return writeJson(STORAGE_KEYS.PROJECTS, projects);
+}
+
+export function saveTombstones(tombstones: Tombstone[]): Promise<WriteResult> {
+  return writeJson(STORAGE_KEYS.TOMBSTONES, tombstones);
+}
+
+/** Anything that is not an id plus a time is not a deletion record. */
+export function migrateTombstones(stored: unknown): Tombstone[] {
+  if (!Array.isArray(stored)) return [];
+
+  return stored.filter(
+    (value): value is Tombstone =>
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as Tombstone).id === 'string' &&
+      Number.isFinite((value as Tombstone).deletedAt)
+  );
 }
 
 /**
@@ -217,7 +244,7 @@ export async function revealBackups(): Promise<void> {
 
 /** Loads the full application state through the active adapter. */
 export async function loadPersistedState(): Promise<PersistedState> {
-  const [storedSettings, storedEntries, storedProjects] = await Promise.all([
+  const [storedSettings, storedEntries, storedProjects, storedTombstones] = await Promise.all([
     readJsonWithLegacy<Partial<AppSettings>>(
       STORAGE_KEYS.SETTINGS,
       LEGACY_STORAGE_KEYS.SETTINGS,
@@ -229,11 +256,17 @@ export async function loadPersistedState(): Promise<PersistedState> {
       LEGACY_STORAGE_KEYS.PROJECTS,
       DEFAULT_PROJECTS
     ),
+    // No legacy counterpart: deletions were not recorded before this existed,
+    // and there is nothing to reconstruct them from.
+    adapter.read(STORAGE_KEYS.TOMBSTONES),
   ]);
 
   const settings = migrateSettings(storedSettings.value);
   const entries = migrateEntries(storedEntries.value);
   const projects = storedProjects.value;
+  const tombstones = migrateTombstones(
+    storedTombstones === null ? [] : parseJson(storedTombstones, STORAGE_KEYS.TOMBSTONES, [])
+  );
 
   if (storedEntries.fromLegacy) {
     logInfo(`[Storage] Converted ${entries.length} entries from the pre-0.4.0 stopwatch format.`);
@@ -264,5 +297,5 @@ export async function loadPersistedState(): Promise<PersistedState> {
     }
   }
 
-  return { settings, entries, projects };
+  return { settings, entries, projects, tombstones };
 }

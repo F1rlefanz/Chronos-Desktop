@@ -35,8 +35,29 @@ export interface TimeEntry {
   breaks: Break[];
   notes?: string;
   createdAt: number;
+  /**
+   * When this entry last changed.
+   *
+   * The field that makes two devices reconcilable: without it a merge can see
+   * that two copies differ but not which one is newer, and picking wrong
+   * silently reverts an edit.
+   */
+  updatedAt: number;
   /** How the entry came into being; a manual entry never saw a stopwatch. */
   source: 'stopwatch' | 'manual';
+}
+
+/**
+ * The record a deletion leaves behind.
+ *
+ * Deleting by simply dropping the entry is what makes merging impossible: the
+ * other device cannot tell "deleted here" from "not seen here yet", so a merge
+ * would faithfully resurrect everything ever deleted. A tombstone is an id and
+ * a time, which is small enough to keep indefinitely.
+ */
+export interface Tombstone {
+  id: string;
+  deletedAt: number;
 }
 
 export interface Project {

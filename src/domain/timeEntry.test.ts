@@ -27,6 +27,7 @@ function entry(overrides: Partial<TimeEntry> = {}): TimeEntry {
     endTime: START + 2 * HOUR,
     breaks: [],
     createdAt: START,
+    updatedAt: START,
     source: 'stopwatch',
     ...overrides,
   };
