@@ -30,7 +30,6 @@ export const DEFAULT_PROJECTS: Project[] = [
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   showMilliseconds: false,
   soundEnabled: true,
-  desktopWindowFrame: true,
   defaultProject: 'proj-work',
   keyShortcutsEnabled: true,
   timerIntervalMs: 1000,

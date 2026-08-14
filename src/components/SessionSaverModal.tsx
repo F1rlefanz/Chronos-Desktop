@@ -3,6 +3,7 @@ import { Project, TimeEntry } from '../types';
 import { breakMs, netMs } from '../domain/timeEntry';
 import { formatTimeDisplay, formatDurationHuman } from '../utils/timeFormatters';
 import { Save, Tag, Folder, FileText, Check, Trash2 } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface SessionSaverModalProps {
   isOpen: boolean;
@@ -38,6 +39,8 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
   );
   const [tagInput, setTagInput] = useState<string>(entry.tags.join(', '));
   const [notes, setNotes] = useState<string>(entry.notes ?? '');
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

@@ -100,7 +100,7 @@ describe('App persistence warnings', () => {
     expect(
       await screen.findByText(/Einstellungen konnte nicht gespeichert werden/)
     ).toBeInTheDocument();
-    expect(screen.getByText(/gone after a reload/)).toBeInTheDocument();
+    expect(screen.getByText(/Nach einem Neustart ist diese Änderung weg/)).toBeInTheDocument();
   });
 
   it('shows the reason the backend gave', async () => {
@@ -251,5 +251,48 @@ describe('App backups before destructive actions', () => {
     expect(writeBackup).not.toHaveBeenCalled();
     expect(confirm).toHaveBeenCalledTimes(1);
     expect(saveTimeEntries).toHaveBeenCalled();
+  });
+});
+
+describe('App layout', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    backupsAvailable.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  // The version used to sit in a fake title bar that repeated what Windows
+  // draws itself. It moved to the footer rather than disappearing: it is the
+  // first thing anyone is asked for when reporting a problem.
+  it('shows the version in the footer', () => {
+    renderApp();
+
+    expect(screen.getByText(`Chronos Desktop v${__APP_VERSION__} • Zeiterfassung`)).toBeVisible();
+  });
+
+  it('no longer claims anything about the cloud', () => {
+    renderApp();
+
+    expect(screen.queryByText(/Cloud/i)).not.toBeInTheDocument();
+  });
+
+  it('starts on the recording view and keeps the analysis out of it', () => {
+    renderApp(withOneEntry);
+
+    expect(screen.getByRole('button', { name: /STARTEN/i })).toBeInTheDocument();
+    expect(screen.queryByText('Letzte 12 Wochen')).not.toBeInTheDocument();
+  });
+
+  it('swaps the two halves over when the other tab is chosen', async () => {
+    const user = userEvent.setup();
+    renderApp(withOneEntry);
+
+    await user.click(screen.getByRole('button', { name: 'Auswertung' }));
+
+    expect(screen.getByText('Letzte 12 Wochen')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /STARTEN/i })).not.toBeInTheDocument();
   });
 });

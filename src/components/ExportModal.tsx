@@ -10,7 +10,9 @@ import {
 import { formatDurationHuman } from '../utils/timeFormatters';
 import { totalNetMs } from '../domain/timeEntry';
 import { ExportRangePicker } from './ExportRangePicker';
+import { DeliveryResult, revealExports } from '../utils/fileTarget';
 import { FileText, FileSpreadsheet, FileCode, Download, X, AlertCircle } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -39,12 +41,38 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [range, setRange] = useState(() => defaultExportRange(now));
   const [projectId, setProjectId] = useState('all');
 
+  /** What happened to the last export, shown until the next one starts. */
+  const [outcome, setOutcome] = useState<{ ok: boolean; text: string } | null>(null);
+
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
     title: 'Zeiterfassung',
     author: 'Chronos',
     includeNotes: true,
     includeSummary: true,
   });
+
+  /**
+   * Clears the "saved as …" line whenever the inputs change.
+   *
+   * That message names one file produced from one set of choices. Left standing
+   * while the format, period or project moves on, it describes something the
+   * dialog is no longer offering — and reads as if the new selection had been
+   * exported too.
+   */
+  const selectTab = (tab: 'pdf' | 'csv' | 'json') => {
+    setActiveTab(tab);
+    setOutcome(null);
+  };
+
+  const selectRange = (next: typeof range) => {
+    setRange(next);
+    setOutcome(null);
+  };
+
+  const selectProject = (id: string) => {
+    setProjectId(id);
+    setOutcome(null);
+  };
 
   const resolved = useMemo(() => resolveExportRange(range, now), [range, now]);
 
@@ -62,21 +90,44 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     return [...years].sort((a, b) => b - a);
   }, [entries, now]);
 
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   const blocked = resolved.error !== null || selection.entries.length === 0;
 
-  const handleGeneratePdf = () => {
-    generatePdfReport(selection.entries, projects, pdfOptions, resolved);
+  /**
+   * Reports where the file went, or why it did not.
+   *
+   * On the desktop nothing else would say so: the file is written to a folder
+   * rather than handed over by the browser, and an export that reports nothing
+   * is indistinguishable from the bug this replaced.
+   */
+  const deliver = async (run: () => Promise<DeliveryResult>) => {
+    setOutcome(null);
+    const result = await run();
+
+    if (!result.ok) {
+      setOutcome({ ok: false, text: result.message });
+      return;
+    }
+
+    if (result.where === 'download') {
+      setOutcome({ ok: true, text: 'Die Datei wurde heruntergeladen.' });
+      return;
+    }
+
+    setOutcome({ ok: true, text: `Gespeichert unter ${result.path}` });
+    void revealExports();
   };
 
-  const handleExportCsv = () => {
-    exportToCsv(selection.entries, projects, resolved.slug);
-  };
+  const handleGeneratePdf = () =>
+    deliver(() => generatePdfReport(selection.entries, projects, pdfOptions, resolved));
 
-  const handleExportJson = () => {
-    exportToJsonBackup(entries, projects, settings);
-  };
+  const handleExportCsv = () =>
+    deliver(() => exportToCsv(selection.entries, projects, resolved.slug));
+
+  const handleExportJson = () => deliver(() => exportToJsonBackup(entries, projects, settings));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/30 backdrop-blur-xs animate-fade-in">
@@ -98,7 +149,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         {/* Tab Buttons */}
         <div className="flex border-b border-gray-200 bg-gray-50/50 p-2 gap-2">
           <button
-            onClick={() => setActiveTab('pdf')}
+            onClick={() => selectTab('pdf')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'pdf'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -109,7 +160,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span>PDF</span>
           </button>
           <button
-            onClick={() => setActiveTab('csv')}
+            onClick={() => selectTab('csv')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'csv'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -120,7 +171,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <span>CSV</span>
           </button>
           <button
-            onClick={() => setActiveTab('json')}
+            onClick={() => selectTab('json')}
             className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'json'
                 ? 'bg-[#2D5BFF] text-white shadow-xs'
@@ -138,7 +189,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <ExportRangePicker
                 value={range}
-                onChange={setRange}
+                onChange={selectRange}
                 availableYears={availableYears}
               />
               <div className="space-y-2">
@@ -151,7 +202,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <select
                   id="export-project"
                   value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
+                  onChange={(e) => selectProject(e.target.value)}
                   className="w-full bg-gray-50 border border-gray-200 rounded-full px-3.5 py-2 text-xs text-gray-700 focus:outline-none focus:border-[#2D5BFF] focus:bg-white cursor-pointer"
                 >
                   <option value="all">Alle Projekte</option>
@@ -263,7 +314,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>CSV herunterladen</span>
+                <span>CSV erstellen</span>
               </button>
             </div>
           )}
@@ -281,9 +332,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileCode className="w-4 h-4" />
-                <span>JSON-Sicherung herunterladen</span>
+                <span>JSON-Sicherung erstellen</span>
               </button>
             </div>
+          )}
+
+          {outcome && (
+            <p
+              role="status"
+              className={`mt-4 rounded-2xl border px-4 py-3 text-xs break-all ${
+                outcome.ok
+                  ? 'border-green-200 bg-green-50 text-green-800'
+                  : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+            >
+              {outcome.text}
+            </p>
           )}
         </div>
       </div>

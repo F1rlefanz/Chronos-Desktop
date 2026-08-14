@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useBackupOnClose } from './hooks/useBackupOnClose';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState } from './types';
@@ -26,7 +27,7 @@ import {
   WriteResult,
 } from './utils/storage';
 
-import { DesktopHeader } from './components/DesktopHeader';
+import { DesktopHeader, MainTab } from './components/DesktopHeader';
 import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { BreakList } from './components/BreakList';
@@ -56,6 +57,11 @@ export default function App({ initialState }: AppProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string>(
     settings.defaultProject || projects[0]?.id || 'proj-work'
   );
+
+  // Which half of the app is showing. Local state on purpose: putting it in
+  // AppSettings would create a stored field to migrate and keep a reader for,
+  // and reopening on the view you last used is not worth that.
+  const [activeTab, setActiveTab] = useState<MainTab>('tracking');
 
   // Modal Visibility States
   const [isSaverOpen, setIsSaverOpen] = useState<boolean>(false);
@@ -151,6 +157,11 @@ export default function App({ initialState }: AppProps) {
     () => monthlySeries(timeEntries, new Date(now).getFullYear(), now),
     [timeEntries, now]
   );
+
+  // The other half of the daily snapshot: that one captures the state at
+  // startup, so without this the current session's work is in no snapshot until
+  // the next launch.
+  useBackupOnClose(() => buildBackupPayload(timeEntries, projects, settings));
 
   // One snapshot per day, of the state as it was found on disk — the slow
   // counterpart to the snapshots taken before a destructive action. It is
@@ -603,7 +614,8 @@ export default function App({ initialState }: AppProps) {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenArchitecture={() => setIsArchitectureOpen(true)}
-        activeEntriesCount={timeEntries.length}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
       />
 
       {/* Main Container */}
@@ -619,8 +631,8 @@ export default function App({ initialState }: AppProps) {
               <strong className="font-semibold">
                 {persistenceError.what} konnte nicht gespeichert werden.
               </strong>{' '}
-              {persistenceError.detail} This change will be gone after a reload — export a JSON
-              backup while it is still on screen.
+              {persistenceError.detail} Nach einem Neustart ist diese Änderung weg — solange sie
+              noch am Bildschirm steht, lässt sie sich als JSON-Sicherung exportieren.
             </p>
             <button
               type="button"
@@ -633,79 +645,68 @@ export default function App({ initialState }: AppProps) {
           </div>
         )}
 
-        {/* Project Selector Bar */}
-        <div className="flex items-center justify-between bg-white p-3 px-5 rounded-2xl border border-gray-200/80 shadow-2xs">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 font-medium">Projekt:</span>
-            <select
-              value={activeProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-800 rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#2D5BFF] cursor-pointer"
-            >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Recording: everything needed while a measurement is running or
+            about to be, and the list it lands in. */}
+        {activeTab === 'tracking' && (
+          <>
+            <StopwatchDisplay
+              elapsedTimeMs={elapsedTimeMs}
+              timerState={timerState}
+              showMilliseconds={settings.showMilliseconds}
+              breakCount={runningEntry?.breaks.length ?? 0}
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSelectProject={setSelectedProjectId}
+            />
 
-          <div className="text-xs text-gray-400 hidden sm:block">
-            Wird lokal gespeichert — <strong className="text-[#2D5BFF]">ohne Cloud</strong>
-          </div>
-        </div>
+            <ControlPanel
+              timerState={timerState}
+              onStart={handleStart}
+              onPause={handlePause}
+              onResume={handleResume}
+              onStop={handleStopAndOpenSaver}
+              onDiscard={handleDiscardRunning}
+              shortcutsEnabled={settings.keyShortcutsEnabled}
+            />
 
-        {/* Stopwatch Main Display */}
-        <StopwatchDisplay
-          elapsedTimeMs={elapsedTimeMs}
-          timerState={timerState}
-          showMilliseconds={settings.showMilliseconds}
-          breakCount={runningEntry?.breaks.length ?? 0}
-          selectedProjectName={currentProject.name}
-          selectedProjectColor={currentProject.color}
-        />
+            {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
 
-        {/* Stopwatch Control Panel */}
-        <ControlPanel
-          timerState={timerState}
-          onStart={handleStart}
-          onPause={handlePause}
-          onResume={handleResume}
-          onStop={handleStopAndOpenSaver}
-          onDiscard={handleDiscardRunning}
-          shortcutsEnabled={settings.keyShortcutsEnabled}
-        />
+            <SessionHistory
+              entries={timeEntries}
+              projects={projects}
+              onDeleteEntry={handleDeleteEntry}
+              onEditEntry={(entry) => openEntryForm(entry)}
+              onAddEntry={() => openEntryForm(null)}
+              onClearAll={handleClearAllHistory}
+              onExportPdf={() => setIsExportOpen(true)}
+            />
+          </>
+        )}
 
-        {/* Breaks taken during the measurement in progress */}
-        {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+        {/* Insights: totals, calendar and trends — all derived, nothing stored
+            twice, so this view can never disagree with the one above. */}
+        {activeTab === 'insights' && (
+          <>
+            <StatCards summary={summary} />
 
-        {/* Totals, calendar and trends — all derived, nothing stored twice */}
-        <StatCards summary={summary} />
+            <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
 
-        <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
+              <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
-          <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
-        </div>
-
-        <TimeBarChart title={`Monate ${new Date(now).getFullYear()}`} points={thisYearByMonth} />
-
-        {/* Session History Log & Export Table */}
-        <SessionHistory
-          entries={timeEntries}
-          projects={projects}
-          onDeleteEntry={handleDeleteEntry}
-          onEditEntry={(entry) => openEntryForm(entry)}
-          onAddEntry={() => openEntryForm(null)}
-          onClearAll={handleClearAllHistory}
-          onExportPdf={() => setIsExportOpen(true)}
-        />
+            <TimeBarChart
+              title={`Monate ${new Date(now).getFullYear()}`}
+              points={thisYearByMonth}
+            />
+          </>
+        )}
       </main>
 
       {/* Footer */}
       <footer className="border-t border-gray-200/80 bg-white py-4 text-center text-xs text-gray-400">
-        <p>Chronos Desktop • Zeiterfassung • lokal gespeichert, ohne Cloud</p>
+        <p>Chronos Desktop v{__APP_VERSION__} • Zeiterfassung</p>
       </footer>
 
       {/* Modals */}

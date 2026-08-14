@@ -8,9 +8,10 @@ import {
   formatDateOnly,
   formatDurationHuman,
 } from './timeFormatters';
+import { DeliveryResult, deliverFile } from './fileTarget';
 
 /**
- * Generates and downloads a clean, professional PDF report of tracked time.
+ * Generates a clean, professional PDF report of tracked time and delivers it.
  *
  * `entries` arrive already filtered by `selectEntriesForExport`, so the report
  * and every other export answer the same question about the same period —
@@ -22,7 +23,7 @@ export function generatePdfReport(
   projects: Project[],
   options: PdfExportOptions,
   period: { label: string; slug: string }
-): void {
+): Promise<DeliveryResult> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -138,9 +139,13 @@ export function generatePdfReport(
     });
   }
 
-  // Trigger download
+  // Deliberately not `doc.save()`: that is an `<a download>` click underneath,
+  // which a Tauri WebView ignores. Handing the bytes to `deliverFile` lets the
+  // one place that knows about this build decide download or write-to-disk.
   const sanitizedTitle = (options.title || 'zeiterfassung')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '_');
-  doc.save(`${sanitizedTitle}_${period.slug}.pdf`);
+
+  const bytes = new Uint8Array(doc.output('arraybuffer'));
+  return deliverFile(`${sanitizedTitle}_${period.slug}.pdf`, bytes, 'application/pdf');
 }

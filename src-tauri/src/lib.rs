@@ -74,7 +74,10 @@ const DATA_FOLDER: &str = "Chronos";
 
 /// How many snapshots survive in backups/. Older ones are pruned after each
 /// write, so the folder cannot grow without bound.
-const BACKUP_RETENTION: usize = 10;
+///
+/// Raised from ten when a second snapshot per day was added on window close:
+/// the same number would otherwise have halved how far back the folder reaches.
+const BACKUP_RETENTION: usize = 20;
 
 /// Resolves the folder holding the app's data and its backups/ sibling.
 fn app_folder(app: &tauri::AppHandle) -> Result<PathBuf, StorageError> {
@@ -120,7 +123,7 @@ fn storage_read(app: tauri::AppHandle, key: String) -> Result<Option<String>, St
 /// Writes through a temporary file and renames it into place. A rename is
 /// atomic, so a crash mid-write leaves either the previous file or the new one
 /// — never a truncated file that would fail to parse on the next start.
-fn write_atomically(path: &Path, value: &str) -> Result<(), StorageError> {
+fn write_atomically(path: &Path, value: &[u8]) -> Result<(), StorageError> {
     let directory = path
         .parent()
         .ok_or_else(|| StorageError::rejected("Resolved a path without a parent.".into()))?;
@@ -128,11 +131,12 @@ fn write_atomically(path: &Path, value: &str) -> Result<(), StorageError> {
     fs::create_dir_all(directory).map_err(|error| StorageError::from_io(&error, path))?;
 
     let sequence = WRITE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let temporary = path.with_extension(format!("json.{sequence}.tmp"));
+    // Not tied to the target's extension: this also writes PDFs and CSVs now.
+    let temporary = path.with_extension(format!("{sequence}.tmp"));
 
     let write_temporary = || -> std::io::Result<()> {
         let mut file = fs::File::create(&temporary)?;
-        file.write_all(value.as_bytes())?;
+        file.write_all(value)?;
         // Without this the rename can land before the contents reach the disk,
         // which is exactly the crash window the rename is meant to close.
         file.sync_all()
@@ -152,19 +156,22 @@ fn write_atomically(path: &Path, value: &str) -> Result<(), StorageError> {
 #[tauri::command]
 fn storage_write(app: tauri::AppHandle, key: String, value: String) -> Result<(), StorageError> {
     let path = data_file(&app, &key)?;
-    write_atomically(&path, &value)
+    write_atomically(&path, value.as_bytes())
 }
 
 /* -------------------------------------------------------------------------- */
 /* Backups                                                                    */
 /* -------------------------------------------------------------------------- */
 
-/// Validates a backup file name. The front end composes these, but they arrive
-/// over IPC like any other argument: a name containing a separator or `..`
-/// would turn a snapshot into a write anywhere on disk.
-fn backup_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, StorageError> {
-    let valid = name.ends_with(".json")
-        && name.len() > ".json".len()
+/// Validates a file name the front end composed. These arrive over IPC like any
+/// other argument, so a name containing a separator or `..` would turn a write
+/// into a write anywhere on disk.
+fn checked_name<'a>(name: &'a str, extensions: &[&str]) -> Result<&'a str, StorageError> {
+    let extension_ok = extensions
+        .iter()
+        .any(|ext| name.ends_with(ext) && name.len() > ext.len());
+
+    let valid = extension_ok
         && name
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.' || b == b'+')
@@ -172,10 +179,15 @@ fn backup_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, StorageErr
 
     if !valid {
         return Err(StorageError::rejected(format!(
-            "Rejected the backup name \"{name}\"."
+            "Rejected the file name \"{name}\"."
         )));
     }
 
+    Ok(name)
+}
+
+fn backup_path(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, StorageError> {
+    let name = checked_name(name, &[".json"])?;
     Ok(app_folder(app)?.join("backups").join(name))
 }
 
@@ -209,7 +221,7 @@ fn backup_list(app: tauri::AppHandle) -> Result<Vec<String>, StorageError> {
 #[tauri::command]
 fn backup_write(app: tauri::AppHandle, name: String, contents: String) -> Result<(), StorageError> {
     let path = backup_path(&app, &name)?;
-    write_atomically(&path, &contents)?;
+    write_atomically(&path, contents.as_bytes())?;
 
     // Pruning failures are not reported: the snapshot itself succeeded, which
     // is what the caller asked for, and a folder one file over the limit is not
@@ -224,6 +236,31 @@ fn backup_write(app: tauri::AppHandle, name: String, contents: String) -> Result
     }
 
     Ok(())
+}
+
+/* -------------------------------------------------------------------------- */
+/* Exports                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/// Writes a generated report and answers with the path it landed on.
+///
+/// A desktop build cannot hand a file to the user the way a browser does: the
+/// `<a download>` the web build relies on is simply ignored by the WebView, so
+/// the export appeared to do nothing at all. Writing the file ourselves and
+/// showing the folder replaces that, and needs no dialog plugin.
+///
+/// Takes bytes rather than a string because one of the three formats is a PDF.
+#[tauri::command]
+fn export_write(
+    app: tauri::AppHandle,
+    name: String,
+    bytes: Vec<u8>,
+) -> Result<String, StorageError> {
+    let name = checked_name(&name, &[".pdf", ".csv", ".json"])?;
+    let path = app_folder(&app)?.join("exports").join(name);
+
+    write_atomically(&path, &bytes)?;
+    Ok(path.display().to_string())
 }
 
 /* -------------------------------------------------------------------------- */
@@ -273,7 +310,8 @@ fn log_append(app: tauri::AppHandle, line: String) -> Result<(), StorageError> {
 
 /// Opens one of the app's folders in Explorer: `backups` so the user can copy a
 /// snapshot out or feed it back through the JSON import, `logs` so a log can be
-/// read or attached to a bug report.
+/// read or attached to a bug report, `exports` so a generated report can be
+/// picked up.
 ///
 /// The target is an enumerated name rather than a path — the front end never
 /// gets to say which directory is opened.
@@ -282,6 +320,7 @@ fn reveal_folder(app: tauri::AppHandle, target: String) -> Result<(), StorageErr
     let subfolder = match target.as_str() {
         "backups" => "backups",
         "logs" => "logs",
+        "exports" => "exports",
         other => {
             return Err(StorageError::rejected(format!(
                 "Rejected the folder \"{other}\"."
@@ -312,6 +351,7 @@ pub fn run() {
             storage_write,
             backup_list,
             backup_write,
+            export_write,
             log_append,
             reveal_folder
         ])

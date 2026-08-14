@@ -39,8 +39,9 @@ Nothing above that interface knows which one is in use.
   `Cmd/Ctrl+R` are left to the browser.
 - Configurable display refresh rate, which changes how often the readout is redrawn and not what
   is recorded.
-- Automatic backups (desktop only): a snapshot once a day, and one immediately before clearing the
-  history or importing a file. The last ten are kept.
+- Automatic backups (desktop only): a snapshot at startup (at most once a day), one when the window
+  closes, and one immediately before clearing the history or importing a file. The last twenty are
+  kept. All of them happen while the app runs, which is also the only time the data can change.
 - A log file (desktop only) recording startup, backup outcomes and every failed save, with both
   folders reachable from the Settings dialog.
 
@@ -51,8 +52,9 @@ What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 ```
 %LOCALAPPDATA%\Chronos\           your data — nothing else writes here
   data\                           the live state: sessions, projects, settings
-  backups\                        the last ten snapshots
+  backups\                        the last twenty snapshots
   logs\                           chronos.log, plus one rolled-over generation
+  exports\                        generated PDF, CSV and JSON files
 
 %LOCALAPPDATA%\Chronos Desktop\   the program, put there by the installer
 ```
@@ -129,13 +131,16 @@ src/
     logging/           Console plus, on the desktop, a log file
       logger             logInfo/logWarn/logError, level routing, write ordering
       tauriLogSink       Appends through IPC to logs/chronos.log
+    fileTarget         Where a generated export goes: download or written file
+    tauriFileSink      Writes exports through IPC into exports/
     dataExporter       CSV and JSON export, and validated JSON import
     pdfExporter        jsPDF report generation
   constants/           Defaults, storage keys, time constants
   types/               Shared types
 
 src-tauri/
-  src/lib.rs           The storage_*, backup_*, log_append and reveal_folder commands
+  src/lib.rs           The storage_*, backup_*, export_write, log_append and
+                       reveal_folder commands
   src/main.rs          Desktop entry point over lib.rs
   tauri.conf.json      Window, bundle and CSP configuration
   capabilities/        Permission scopes granted to the window
@@ -178,6 +183,11 @@ Things worth knowing before changing code here:
   deep. Log writes are chained rather than concurrent, because a log whose lines are out of order
   is one you stop trusting, and failures are swallowed: a logger that can break the code it is
   meant to diagnose is worse than no logger.
+- **A desktop build cannot hand the user a file the way a browser can.** The `<a download>` click
+  the web build relies on is ignored by the WebView, which is why every export button silently did
+  nothing until 0.5.0. `src/utils/fileTarget.ts` is the single place that knows the difference:
+  the browser gets its download, the desktop writes the file and opens the folder. An exporter that
+  calls `doc.save()` or builds its own link has reintroduced the bug.
 - **A backup is just an export file.** Snapshots are written in the exact shape
   `importFromJsonFile` reads, so restoring one goes through the import the app already has instead
   of a second restore path with its own bugs. `buildBackupPayload` in `dataExporter.ts` is shared

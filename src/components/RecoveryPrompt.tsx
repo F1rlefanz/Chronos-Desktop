@@ -3,6 +3,7 @@ import { TimeEntry } from '../types';
 import { netMs } from '../domain/timeEntry';
 import { formatDateTime, formatDurationHuman } from '../utils/timeFormatters';
 import { AlertTriangle, Pencil, Play, Square } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface RecoveryPromptProps {
   entry: TimeEntry;
@@ -28,6 +29,10 @@ export const RecoveryPrompt: React.FC<RecoveryPromptProps> = ({
   onStopNow,
   onEdit,
 }) => {
+  // No isOpen prop: the parent mounts this only when there is something to
+  // recover, so being rendered at all means being open.
+  useBodyScrollLock(true);
+
   const elapsed = netMs(entry);
 
   return (
