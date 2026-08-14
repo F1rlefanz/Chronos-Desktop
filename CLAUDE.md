@@ -63,6 +63,16 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   `eslint-config-prettier` last, so it will not argue about style.
 - **Do not add dependencies without a clear need.** Half of this project's original dependency
   list was never imported and had to be removed. Prefer the platform.
+- **There is exactly one Vite, pinned by `overrides` in `package.json`.** Vitest resolves its own
+  copy otherwise, and two copies mean two incompatible sets of Vite types: `vite.config.ts` takes
+  `defineConfig` from `vitest/config` but the plugins from the top-level Vite, so `tsc` rejects a
+  config that builds and tests perfectly well. Two traps come with it — bun keeps the old
+  resolution until `bun install --force`, and `@vitejs/plugin-react` imports `vite/internal`, so it
+  and Vite can only be bumped together.
+- **A setting must have a writer, not only a reader.** `defaultProject` was read from the first
+  version and set by nothing, so it stayed on its generated value forever — the same dead switch as
+  a setting nobody reads, just from the other side. When adding a field to `AppSettings`, wire up
+  both ends.
 - **A setting must have a reader.** Adding a field to `AppSettings` without wiring it up recreates
   the dead-switch problem that `theme`, `timeFormat` and `autoSaveSession` used to be. If you
   remove a field, extend `migrateSettings` in `src/utils/storage/index.ts` so old stored states are
