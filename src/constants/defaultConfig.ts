@@ -33,6 +33,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultProject: 'proj-work',
   keyShortcutsEnabled: true,
   timerIntervalMs: 1000,
+  // Off until a folder is chosen: syncing is something a user opts into, and a
+  // guessed default path would either not exist or be the wrong one.
+  syncFolder: '',
 };
 
 /** Update intervals offered in the settings UI, in milliseconds. */
@@ -47,6 +50,15 @@ export const STORAGE_KEYS = {
   TIME_ENTRIES: 'chronos_entries_v2',
   PROJECTS: 'chronos_projects_v2',
   TOMBSTONES: 'chronos_tombstones_v1',
+  /**
+   * What this installation calls itself in the shared folder.
+   *
+   * Its own key rather than a field in the settings, and that is the point: an
+   * imported backup carries settings, and adopting another machine's id would
+   * make two devices write the same file — the one thing the file-per-device
+   * layout exists to prevent.
+   */
+  DEVICE_ID: 'chronos_device_v1',
 } as const;
 
 /**

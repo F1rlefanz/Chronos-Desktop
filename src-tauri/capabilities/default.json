@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Baseline permissions for the main window. The app's own storage_read/storage_write commands need no entry here — capabilities gate plugin commands, not the ones this app defines. core:window:allow-destroy is needed because closing is intercepted to take a final backup, and the app then has to close the window itself.",
+  "description": "Baseline permissions for the main window. The app's own storage_read/storage_write commands need no entry here — capabilities gate plugin commands, not the ones this app defines. core:window:allow-destroy is needed because closing is intercepted to take a final backup, and the app then has to close the window itself. dialog:allow-open is the folder chooser for syncing, and only that: the plugin's save and message dialogs stay switched off.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-destroy"]
+  "permissions": ["core:default", "core:window:allow-destroy", "dialog:allow-open"]
 }

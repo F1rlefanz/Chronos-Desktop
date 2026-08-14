@@ -2,6 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::Manager;
@@ -43,6 +44,32 @@ impl StorageError {
         Self {
             reason: "io",
             message: format!("Could not write to {}: {error}.", path.display()),
+        }
+    }
+
+    /// The same for a path being *opened* rather than written.
+    ///
+    /// Its own constructor because the shared folder made "could not write to"
+    /// the wrong sentence: the folder someone renamed or unplugged fails on the
+    /// way in, and a message naming an act that never happened sends the reader
+    /// looking for a disk problem instead of a missing drive.
+    fn from_io_opening(error: &std::io::Error, path: &Path) -> Self {
+        match error.kind() {
+            std::io::ErrorKind::NotFound => Self {
+                reason: "unavailable",
+                message: format!(
+                    "{} is not there — has it been renamed, or is the drive disconnected?",
+                    path.display()
+                ),
+            },
+            std::io::ErrorKind::PermissionDenied => Self {
+                reason: "unavailable",
+                message: format!("No permission to read {}.", path.display()),
+            },
+            _ => Self {
+                reason: "io",
+                message: format!("Could not open {}: {error}.", path.display()),
+            },
         }
     }
 
@@ -264,6 +291,122 @@ fn export_write(
 }
 
 /* -------------------------------------------------------------------------- */
+/* The shared folder                                                          */
+/* -------------------------------------------------------------------------- */
+
+/// The one folder outside the app's own directory that may be written to.
+///
+/// Every other command here builds its path itself and only validates a key or
+/// a file name. This is the first place a *path* arrives from the front end,
+/// which is a different kind of argument: an unchecked one turns a sync into a
+/// write anywhere on the disk. So the path is taken exactly once, checked, and
+/// kept — every later call names a file, and that name is resolved against
+/// this and nothing else.
+#[derive(Default)]
+struct SyncRoot(Mutex<Option<PathBuf>>);
+
+/// Files Chronos writes there. Anything else in the folder is the user's.
+const SYNC_PREFIX: &str = "chronos-";
+
+fn sync_root(state: &tauri::State<SyncRoot>) -> Result<PathBuf, StorageError> {
+    let guard = state
+        .0
+        .lock()
+        .map_err(|_| StorageError::rejected("The shared folder setting is unreadable.".into()))?;
+
+    guard
+        .clone()
+        .ok_or_else(|| StorageError::rejected("No folder has been chosen for syncing yet.".into()))
+}
+
+/// Accepts the folder to sync through, or explains why it cannot be used.
+///
+/// Resolved through `canonicalize`, which both fails for a folder that is not
+/// there — the case where a user renamed or unplugged it, and the one worth a
+/// readable message — and flattens any `..` in the path so that what is stored
+/// is the folder itself rather than a route to somewhere else.
+#[tauri::command]
+fn sync_configure(state: tauri::State<SyncRoot>, folder: String) -> Result<(), StorageError> {
+    // A phone cannot offer this: an arbitrary folder is not writable under
+    // scoped storage, so there is no path the front end could pass that would
+    // work. It hides the setting there; this is the second line of defence.
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let _ = (state, folder);
+        return Err(StorageError::rejected(
+            "Syncing through a folder is not something this system does.".into(),
+        ));
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        if folder.trim().is_empty() {
+            return Err(StorageError::rejected("No folder was given.".into()));
+        }
+
+        let path = PathBuf::from(&folder);
+        let resolved = fs::canonicalize(&path)
+            .map_err(|error| StorageError::from_io_opening(&error, &path))?;
+
+        if !resolved.is_dir() {
+            return Err(StorageError::rejected(format!(
+                "{} is not a folder.",
+                resolved.display()
+            )));
+        }
+
+        let mut guard = state.0.lock().map_err(|_| {
+            StorageError::rejected("The shared folder setting is unreadable.".into())
+        })?;
+        *guard = Some(resolved);
+
+        Ok(())
+    }
+}
+
+/// The Chronos files in the shared folder, ours included.
+#[tauri::command]
+fn sync_list(state: tauri::State<SyncRoot>) -> Result<Vec<String>, StorageError> {
+    let directory = sync_root(&state)?;
+
+    let entries = fs::read_dir(&directory)
+        .map_err(|error| StorageError::from_io_opening(&error, &directory))?;
+
+    Ok(entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name.starts_with(SYNC_PREFIX) && name.ends_with(".json"))
+        .collect())
+}
+
+#[tauri::command]
+fn sync_read(state: tauri::State<SyncRoot>, name: String) -> Result<Option<String>, StorageError> {
+    let path = sync_root(&state)?.join(checked_name(&name, &[".json"])?);
+
+    match fs::read_to_string(&path) {
+        Ok(contents) => Ok(Some(contents)),
+        // A device that has not written yet is not an error.
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(StorageError::from_io_opening(&error, &path)),
+    }
+}
+
+/// Writes our own file, through the same temporary-file-and-rename as the rest.
+///
+/// It matters more here than anywhere else: the folder is being watched by a
+/// sync client, and a file caught half-written would be copied to the other
+/// devices in that state.
+#[tauri::command]
+fn sync_write(
+    state: tauri::State<SyncRoot>,
+    name: String,
+    contents: String,
+) -> Result<(), StorageError> {
+    let path = sync_root(&state)?.join(checked_name(&name, &[".json"])?);
+    write_atomically(&path, contents.as_bytes())
+}
+
+/* -------------------------------------------------------------------------- */
 /* Log file                                                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -372,12 +515,18 @@ fn reveal_folder(app: tauri::AppHandle, target: String) -> Result<(), StorageErr
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .manage(SyncRoot::default())
         .invoke_handler(tauri::generate_handler![
             storage_read,
             storage_write,
             backup_list,
             backup_write,
             export_write,
+            sync_configure,
+            sync_list,
+            sync_read,
+            sync_write,
             log_append,
             reveal_folder
         ])

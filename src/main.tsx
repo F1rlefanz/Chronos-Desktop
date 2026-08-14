@@ -6,6 +6,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { loadPersistedState, defaultPersistedState, setStorageAdapter } from './utils/storage';
 import { logError, logInfo, setLogSink } from './utils/logging/logger';
 import { setFileSink } from './utils/fileTarget';
+import { setSyncTransport } from './utils/sync';
+import { isMobilePlatform } from './utils/platform';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -34,6 +36,18 @@ async function selectBackend(): Promise<void> {
   // Without this the export buttons do nothing at all: the WebView ignores the
   // `<a download>` click the browser build relies on.
   setFileSink(tauriFileSink);
+
+  // Syncing through a folder is the one thing that genuinely cannot work on a
+  // phone: under scoped storage there is no folder a user can point at that the
+  // app may then read and write freely, and a folder picker returns a permission
+  // handle rather than a path. So the transport is not installed there at all,
+  // and the settings show what is missing instead of a switch that fails when
+  // it is used. This is the *backend* being chosen, which is this file's job —
+  // storage, backups and the log stay identical on every platform.
+  if (!isMobilePlatform()) {
+    const { tauriSyncTransport } = await import('./utils/sync/tauriSyncTransport');
+    setSyncTransport(tauriSyncTransport);
+  }
 }
 
 // Unhandled failures are the ones nobody thought to log, which makes them

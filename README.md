@@ -10,7 +10,8 @@ The interface is in German; the code is in English.
 It ships as an app for **Windows, macOS, Linux and Android**, built with Tauri from one codebase,
 and the same code still runs as a plain web app in the browser. iOS is not built — see
 [Platforms](#platforms). There is no backend and no account: everything lives on the machine it
-was recorded on, and the JSON backup is how you move data between machines.
+was recorded on. Two desktop machines can nonetheless be kept in step through a folder the user
+already syncs by other means — see [Two devices, one folder](#two-devices-one-folder).
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
@@ -49,8 +50,33 @@ with the totals, the calendar and the charts.
 - A log file (desktop only) recording startup, backup outcomes, exports and every failed save. The
   backup and log folders open from the Settings dialog; the export folder opens by itself after an
   export.
+- Syncing between two machines through a folder they both see (desktop only) — see below.
 
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
+
+## Two devices, one folder
+
+Pick a folder in the Settings dialog that something else already keeps in step — OneDrive,
+Syncthing, a network drive — and Chronos exchanges its records through it. There is no server, no
+account and nothing to pay for; the transport is whatever the user already trusts with their files.
+
+- **One file per device**, `chronos-<id>.json`, holding the finished entries and the record of what
+  was deleted. Two devices never write the same file, so the sync client cannot produce a
+  conflicting copy that would then have to be resolved. Reading is the opposite: every foreign file
+  is merged in, in any order, because `mergeEntries` is idempotent and gives the same answer
+  whichever side asks.
+- The id is twelve random hex characters, generated once per installation. No device name, nothing
+  about the person, and it is deliberately not kept in the settings — a backup restored onto a
+  second machine would otherwise hand it the first one's identity.
+- **Synced at startup, on closing the window, and on request.** No timer and no file watcher: both
+  write into a user's folder at moments nobody asked for. Closing only _writes_ — merging as the
+  app disappears would change data nobody can see.
+- **A backup is taken before the first merge**, exactly as before clearing the history or importing.
+- **Last write wins per entry**, deletions included. Two devices editing the same entry keep the
+  newer edit; fields are never blended, because a half-merged entry is one nobody typed in.
+- **A running measurement stays on its device.** What is shared is a record, not an action.
+- **Android is not included.** An app there cannot freely read and write a folder the user picked,
+  and a half-working sync is worse than none, so the setting is absent rather than broken.
 
 ## Where the desktop app keeps things
 
@@ -171,6 +197,12 @@ src/
       memoryAdapter        In-memory backend used by the tests
       index                Domain layer: loadPersistedState, the save* functions,
                            settings migration, setStorageAdapter, the backup rules
+    sync/              Exchanging records through a folder the user chose
+      types                SyncTransport: configure once, then read and write by file name
+      deviceId             The id this installation writes under, generated once
+      payload              The file format, and reading a foreign one as untrusted input
+      tauriSyncTransport   The desktop transport, over IPC to Rust
+      index                runSync and pushToSyncFolder — which files to read, when to give up
     logging/           Console plus, on the desktop, a log file
       logger             logInfo/logWarn/logError, level routing, write ordering
       tauriLogSink       Appends through IPC to logs/chronos.log
@@ -183,8 +215,8 @@ src/
   types/               Shared types
 
 src-tauri/
-  src/lib.rs           The storage_*, backup_*, export_write, log_append and
-                       reveal_folder commands
+  src/lib.rs           The storage_*, backup_*, sync_*, export_write, log_append
+                       and reveal_folder commands
   src/main.rs          Desktop entry point over lib.rs
   tauri.conf.json      Window, bundle and CSP configuration
   capabilities/        Permission scopes granted to the window

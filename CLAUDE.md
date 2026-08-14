@@ -100,6 +100,28 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   rule itself is `src/domain/merge.ts`, a pure function over two sets, and its two load-bearing
   tests are that merging gives the same answer whichever side asks and that running it twice
   changes nothing.
+- **The shared folder holds one file per device, and that is the whole conflict story.** Two
+  devices never write the same file, so the sync client behind the folder cannot produce a
+  conflicting copy Chronos would have to resolve; reading merges every foreign file in any order,
+  which is safe only because `mergeEntries` is idempotent and symmetric. The device id lives under
+  its own storage key, never in `AppSettings`: settings travel in a backup, and an import that gave
+  this machine another one's id would make two devices write one file. `syncFolder` is a setting,
+  but `handleImportData` keeps the local one for the same reason — a path from another machine
+  points nowhere here. Only finished entries are shared; a running measurement belongs to the
+  device it runs on, or two devices show the same stopwatch and neither knows when work ended.
+- **Exactly one command takes a path from the front end.** `sync_configure` validates it and keeps
+  it; `sync_list`/`sync_read`/`sync_write` name a file that is resolved against that and nothing
+  else. Every other command in `src-tauri/src/lib.rs` builds its own path and only validates a key
+  or a file name — do not add a second command that accepts a directory.
+- **Syncing happens at the two moments something is already written, and on request.** Startup and
+  window close, next to `ensureDailyBackup` and `useBackupOnClose`, plus the button. No timer and
+  no file watcher: both write into a user's folder at moments nobody asked for. Closing only
+  _pushes_ — a merge as the app disappears changes data nobody can see, and the incoming half is
+  worthless with no UI left to show it.
+- **A sync applies its result against the state as it is when the answer arrives**, not against the
+  copy it started from (`liveRef` in `src/App.tsx`). A sync is not instant, and an entry created
+  while it ran must not be dropped by the reply; the second merge is free because merging twice
+  changes nothing.
 - **`isMobilePlatform()` hides doors, never data.** Storage, backups and the log work identically
   on a phone. What does not exist there is a file manager to send someone to, so the folder buttons
   are hidden and `reveal_folder` refuses as a second line of defence. Do not reach for it to decide

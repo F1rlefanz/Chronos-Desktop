@@ -45,6 +45,7 @@ const initialState: PersistedState = {
   entries: [],
   projects: DEFAULT_PROJECTS,
   tombstones: [],
+  deviceId: 'aabbccddeeff',
 };
 
 const withOneEntry: PersistedState = {

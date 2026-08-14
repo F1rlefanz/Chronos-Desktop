@@ -119,12 +119,35 @@ describe('loadPersistedState', () => {
   it('does not rewrite storage when the stored state is already current', async () => {
     const current = { ...DEFAULT_APP_SETTINGS, soundEnabled: false };
     adapter.seed(STORAGE_KEYS.SETTINGS, JSON.stringify(current));
+    // Including the device id: without it, the one write this start *does* owe
+    // storage would be mistaken for the rewrite this test is about.
+    adapter.seed(STORAGE_KEYS.DEVICE_ID, 'aabbccddeeff');
     const write = vi.spyOn(adapter, 'write');
 
     await loadPersistedState();
 
     expect(write).not.toHaveBeenCalled();
     write.mockRestore();
+  });
+
+  describe('the device id', () => {
+    it('is generated once and written back, so the next start reuses it', async () => {
+      const first = await loadPersistedState();
+
+      expect(first.deviceId).toMatch(/^[0-9a-f]{12}$/);
+      expect(adapter.peek(STORAGE_KEYS.DEVICE_ID)).toBe(first.deviceId);
+
+      const second = await loadPersistedState();
+      expect(second.deviceId).toBe(first.deviceId);
+    });
+
+    it('replaces one that is not an id, rather than syncing under it', async () => {
+      adapter.seed(STORAGE_KEYS.DEVICE_ID, '../../elsewhere');
+
+      const { deviceId } = await loadPersistedState();
+
+      expect(deviceId).toMatch(/^[0-9a-f]{12}$/);
+    });
   });
 
   it('starts anyway when the migration write-back is rejected', async () => {
