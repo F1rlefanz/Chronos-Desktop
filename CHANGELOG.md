@@ -126,6 +126,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.4.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.1.0...v0.1.1
