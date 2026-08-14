@@ -51,10 +51,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleDeleteProject = (id: string) => {
     if (projects.length <= 1) {
-      alert('You must keep at least one project.');
+      alert('Es muss mindestens ein Projekt übrig bleiben.');
       return;
     }
-    onUpdateProjects(projects.filter((p) => p.id !== id));
+
+    const remaining = projects.filter((p) => p.id !== id);
+    onUpdateProjects(remaining);
+
+    // Deleting the default would leave the setting pointing at a project that
+    // no longer exists — the dropdown would show a value it has no option for.
+    if (settings.defaultProject === id) {
+      onUpdateSettings({ defaultProject: remaining[0].id });
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,6 +185,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
               Projekte
             </h3>
+
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+              <div>
+                <span className="text-xs font-semibold text-gray-800 block">Standardprojekt</span>
+                <span className="text-[11px] text-gray-400">
+                  Womit die Projektauswahl beim Start der App vorbelegt wird.
+                </span>
+              </div>
+              <select
+                value={settings.defaultProject}
+                onChange={(e) => onUpdateSettings({ defaultProject: e.target.value })}
+                className="bg-white border border-gray-200 text-xs font-semibold text-gray-800 rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#2D5BFF] cursor-pointer"
+              >
+                {projects.map((proj) => (
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
             <div className="space-y-2">
               {projects.map((proj) => (
