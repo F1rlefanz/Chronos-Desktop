@@ -1,5 +1,6 @@
 import React from 'react';
 import { Code2, X, Layers, ShieldCheck, Clock } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface ArchitectureModalProps {
   isOpen: boolean;
@@ -18,6 +19,8 @@ interface ArchitectureModalProps {
  * describes a different program.
  */
 export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, onClose }) => {
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   return (
@@ -37,7 +40,7 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
           </button>
         </div>
 
-        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar text-gray-600 text-xs leading-relaxed">
+        <div className="p-6 space-y-5 overflow-y-auto overscroll-contain custom-scrollbar text-gray-600 text-xs leading-relaxed">
           <section className="space-y-2">
             <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
               <Clock className="w-4 h-4 text-[#2D5BFF]" />

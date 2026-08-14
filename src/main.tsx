@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { loadPersistedState, defaultPersistedState, setStorageAdapter } from './utils/storage';
 import { logError, logInfo, setLogSink } from './utils/logging/logger';
+import { setFileSink } from './utils/fileTarget';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -22,13 +23,17 @@ if (!rootElement) {
 async function selectBackend(): Promise<void> {
   if (!isTauri()) return; // the browser build logs to a console someone can open
 
-  const [{ tauriLogSink }, { tauriAdapter }] = await Promise.all([
+  const [{ tauriLogSink }, { tauriAdapter }, { tauriFileSink }] = await Promise.all([
     import('./utils/logging/tauriLogSink'),
     import('./utils/storage/tauriAdapter'),
+    import('./utils/tauriFileSink'),
   ]);
 
   setLogSink(tauriLogSink);
   setStorageAdapter(tauriAdapter);
+  // Without this the export buttons do nothing at all: the WebView ignores the
+  // `<a download>` click the browser build relies on.
+  setFileSink(tauriFileSink);
 }
 
 // Unhandled failures are the ones nobody thought to log, which makes them

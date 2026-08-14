@@ -41,11 +41,14 @@ describe('migrateSettings', () => {
       theme: 'dark',
       timeFormat: '24h',
       autoSaveSession: true,
+      // Dropped when the fake title bar it controlled was removed.
+      desktopWindowFrame: true,
     });
 
     expect(migrated).not.toHaveProperty('theme');
     expect(migrated).not.toHaveProperty('timeFormat');
     expect(migrated).not.toHaveProperty('autoSaveSession');
+    expect(migrated).not.toHaveProperty('desktopWindowFrame');
     expect(Object.keys(migrated).sort()).toEqual(Object.keys(DEFAULT_APP_SETTINGS).sort());
   });
 

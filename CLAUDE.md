@@ -89,6 +89,12 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything
   worth a `console.warn` is worth a log line; anything the user is expected to act on needs the
   persistence banner as well, because nobody reads a log they have not been told about.
+- **A generated file goes through `src/utils/fileTarget.ts`, never through a download link.** The
+  `<a download>` click a browser understands is ignored by the Tauri WebView, so every export
+  button did nothing at all on the desktop until 0.5.0 — and nothing said so, because the click
+  itself does not fail. `deliverFile` is the one place that knows which build it is in: the browser
+  downloads, the desktop writes into `exports/` and opens the folder. Calling `doc.save()` or
+  building a link in an exporter brings the bug straight back.
 - **A backup must be taken before the thing it protects against.** `backupBefore` in `src/App.tsx`
   runs ahead of clearing the history and ahead of an import, over the state that is about to be
   replaced — a snapshot of the already-cleared state is worthless. When the snapshot fails it asks

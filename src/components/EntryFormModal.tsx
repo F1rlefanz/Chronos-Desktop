@@ -7,6 +7,7 @@ import {
   toDateTimeInputValue,
 } from '../utils/timeFormatters';
 import { Clock, Folder, FileText, Plus, Save, Tag, Trash2, X } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 /** What the form hands back; the caller supplies id, createdAt and source. */
 export type EntryDraft = Omit<TimeEntry, 'id' | 'createdAt' | 'source'>;
@@ -65,6 +66,8 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
 
   const validation = useMemo(() => validateEntryInput(draft), [draft]);
   const preview = validation.errors.length === 0 ? netMs(draft) : null;
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -125,7 +128,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto overscroll-contain">
           {/* Times. Each end carries its own date, so an entry over midnight is
               just two timestamps — no "date of the entry" to contradict. */}
           <div className="grid grid-cols-2 gap-3">

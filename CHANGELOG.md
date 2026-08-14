@@ -6,6 +6,34 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-08-14
+
+### Fixed
+
+- **Exports work in the desktop app.** The PDF, CSV and JSON buttons appeared to do nothing at all:
+  they asked the browser to download a file, and the desktop app has no browser to ask. Exports are
+  now written to `%LOCALAPPDATA%\Chronos\exports\`, the folder opens by itself afterwards, and the
+  dialog says where the file went — or why it could not be written.
+- **Scrolling in a dialog no longer scrolls the app behind it.**
+
+### Changed
+
+- **The main window is split into two views, _Erfassen_ and _Auswertung_.** Recording, the stopwatch
+  and the list of entries on one; totals, calendar and charts on the other. Everything was on a
+  single page before, which meant scrolling past a calendar and three charts to reach the entries.
+- **The title bar is gone.** It repeated the window title Windows already draws, and carried three
+  coloured circles that looked like close, minimise and maximise buttons but were decoration — they
+  had never done anything. The version number moved to the strip at the bottom of the window.
+- **The project is chosen in the stopwatch card**, where it used to only be displayed. The separate
+  bar above it, which offered the same choice and the note "Wird lokal gespeichert — ohne Cloud",
+  is gone.
+- The footer no longer says "lokal gespeichert, ohne Cloud", and the export button no longer carries
+  a count of all entries — the export dialog shows the count for the period you actually picked.
+
+### Removed
+
+- The setting for a custom window frame, which controlled the title bar that no longer exists.
+
 ## [0.4.1] — 2026-08-14
 
 ### Fixed
@@ -136,6 +164,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.5.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.2.0...v0.3.0

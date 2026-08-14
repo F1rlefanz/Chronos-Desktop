@@ -10,7 +10,9 @@ import {
 import { formatDurationHuman } from '../utils/timeFormatters';
 import { totalNetMs } from '../domain/timeEntry';
 import { ExportRangePicker } from './ExportRangePicker';
+import { DeliveryResult, revealExports } from '../utils/fileTarget';
 import { FileText, FileSpreadsheet, FileCode, Download, X, AlertCircle } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -39,6 +41,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [range, setRange] = useState(() => defaultExportRange(now));
   const [projectId, setProjectId] = useState('all');
 
+  /** What happened to the last export, shown until the next one starts. */
+  const [outcome, setOutcome] = useState<{ ok: boolean; text: string } | null>(null);
+
   const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>({
     title: 'Zeiterfassung',
     author: 'Chronos',
@@ -62,21 +67,44 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     return [...years].sort((a, b) => b - a);
   }, [entries, now]);
 
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   const blocked = resolved.error !== null || selection.entries.length === 0;
 
-  const handleGeneratePdf = () => {
-    generatePdfReport(selection.entries, projects, pdfOptions, resolved);
+  /**
+   * Reports where the file went, or why it did not.
+   *
+   * On the desktop nothing else would say so: the file is written to a folder
+   * rather than handed over by the browser, and an export that reports nothing
+   * is indistinguishable from the bug this replaced.
+   */
+  const deliver = async (run: () => Promise<DeliveryResult>) => {
+    setOutcome(null);
+    const result = await run();
+
+    if (!result.ok) {
+      setOutcome({ ok: false, text: result.message });
+      return;
+    }
+
+    if (result.where === 'download') {
+      setOutcome({ ok: true, text: 'Die Datei wurde heruntergeladen.' });
+      return;
+    }
+
+    setOutcome({ ok: true, text: `Gespeichert unter ${result.path}` });
+    void revealExports();
   };
 
-  const handleExportCsv = () => {
-    exportToCsv(selection.entries, projects, resolved.slug);
-  };
+  const handleGeneratePdf = () =>
+    deliver(() => generatePdfReport(selection.entries, projects, pdfOptions, resolved));
 
-  const handleExportJson = () => {
-    exportToJsonBackup(entries, projects, settings);
-  };
+  const handleExportCsv = () =>
+    deliver(() => exportToCsv(selection.entries, projects, resolved.slug));
+
+  const handleExportJson = () => deliver(() => exportToJsonBackup(entries, projects, settings));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/30 backdrop-blur-xs animate-fade-in">
@@ -263,7 +291,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileSpreadsheet className="w-4 h-4" />
-                <span>CSV herunterladen</span>
+                <span>CSV erstellen</span>
               </button>
             </div>
           )}
@@ -281,9 +309,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <FileCode className="w-4 h-4" />
-                <span>JSON-Sicherung herunterladen</span>
+                <span>JSON-Sicherung erstellen</span>
               </button>
             </div>
+          )}
+
+          {outcome && (
+            <p
+              role="status"
+              className={`mt-4 rounded-2xl border px-4 py-3 text-xs break-all ${
+                outcome.ok
+                  ? 'border-green-200 bg-green-50 text-green-800'
+                  : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+            >
+              {outcome.text}
+            </p>
           )}
         </div>
       </div>

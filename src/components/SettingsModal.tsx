@@ -3,6 +3,7 @@ import { AppSettings, Project } from '../types';
 import { importFromJsonFile, ImportedData } from '../utils/dataExporter';
 import { TIMER_INTERVAL_OPTIONS } from '../constants/defaultConfig';
 import { Settings, Plus, Trash2, Upload, X, FolderOpen, FileWarning } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -101,7 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+        <div className="p-6 space-y-6 overflow-y-auto overscroll-contain custom-scrollbar">
           {/* Section: Display & Precision */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
@@ -121,23 +124,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="checkbox"
                 checked={settings.showMilliseconds}
                 onChange={(e) => onUpdateSettings({ showMilliseconds: e.target.checked })}
-                className="w-4 h-4 rounded bg-white border-gray-300 text-[#2D5BFF] focus:ring-0"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
-              <div>
-                <span className="text-xs font-semibold text-gray-800 block">
-                  Eigene Fensterleiste
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  Eigene Titelleiste statt der des Betriebssystems
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.desktopWindowFrame}
-                onChange={(e) => onUpdateSettings({ desktopWindowFrame: e.target.checked })}
                 className="w-4 h-4 rounded bg-white border-gray-300 text-[#2D5BFF] focus:ring-0"
               />
             </label>

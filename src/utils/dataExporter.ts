@@ -1,30 +1,16 @@
 import { TimeEntry, Project, Break } from '../types';
 import { breakMs, netMs } from '../domain/timeEntry';
 import { formatTimeDisplay, formatDateTime } from './timeFormatters';
+import { DeliveryResult, deliverFile, encodeText } from './fileTarget';
 
 /**
- * Hands a generated file to the browser as a download.
- *
- * Blob URLs are used instead of `data:` URIs because the latter must be
- * percent-encoded in full: an un-escaped `#` in a session title would
- * otherwise truncate the file at that point and silently drop every row
- * after it.
+ * Converts time entries into CSV and delivers the file.
  */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-/**
- * Converts time entries into CSV format and triggers browser download.
- */
-export function exportToCsv(entries: TimeEntry[], projects: Project[], slug: string): void {
+export function exportToCsv(
+  entries: TimeEntry[],
+  projects: Project[],
+  slug: string
+): Promise<DeliveryResult> {
   const projectMap = new Map<string, Project>(projects.map((p) => [p.id, p]));
 
   const headers = [
@@ -74,7 +60,7 @@ export function exportToCsv(entries: TimeEntry[], projects: Project[], slug: str
   // comma as the decimal separator, so a comma-delimited file lands entirely in
   // column A; the BOM is what makes it read the umlauts as UTF-8.
   const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
-  downloadBlob(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }), `chronos_${slug}.csv`);
+  return deliverFile(`chronos_${slug}.csv`, encodeText(csvContent), 'text/csv;charset=utf-8');
 }
 
 /**
@@ -115,12 +101,11 @@ export function exportToJsonBackup(
   entries: TimeEntry[],
   projects: Project[],
   settings: unknown
-): void {
-  downloadBlob(
-    new Blob([buildBackupPayload(entries, projects, settings)], {
-      type: 'application/json;charset=utf-8',
-    }),
-    `chronos_backup_${Date.now()}.json`
+): Promise<DeliveryResult> {
+  return deliverFile(
+    `chronos_backup_${Date.now()}.json`,
+    encodeText(buildBackupPayload(entries, projects, settings)),
+    'application/json;charset=utf-8'
   );
 }
 

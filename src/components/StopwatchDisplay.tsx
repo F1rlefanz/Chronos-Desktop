@@ -1,5 +1,5 @@
 import React from 'react';
-import { TimerState } from '../types';
+import { Project, TimerState } from '../types';
 import {
   formatDurationHuman,
   formatTimeDisplay,
@@ -12,8 +12,11 @@ interface StopwatchDisplayProps {
   timerState: TimerState;
   showMilliseconds: boolean;
   breakCount: number;
-  selectedProjectName: string;
-  selectedProjectColor: string;
+  /** The picker lives here rather than in a bar of its own: one control in one
+      place, instead of choosing above and reading the choice back below. */
+  projects: Project[];
+  activeProjectId: string;
+  onSelectProject: (id: string) => void;
 }
 
 export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
@@ -21,8 +24,9 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   timerState,
   showMilliseconds,
   breakCount,
-  selectedProjectName,
-  selectedProjectColor,
+  projects,
+  activeProjectId,
+  onSelectProject,
 }) => {
   const { mainTime, subTime } = formatTimeDisplay(elapsedTimeMs, {
     includeMilliseconds: showMilliseconds,
@@ -30,6 +34,8 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   });
 
   const { hours } = parseMsToComponents(elapsedTimeMs);
+
+  const activeProject = projects.find((project) => project.id === activeProjectId);
 
   return (
     <div className="relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden">
@@ -39,13 +45,24 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
       {/* Top Bar inside Display Card */}
       <div className="relative z-10 flex items-center justify-between mb-8">
-        {/* Project Badge */}
-        <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 shadow-2xs">
+        {/* Project picker */}
+        <div className="flex items-center gap-2 bg-gray-50 pl-3.5 pr-1.5 py-1 rounded-full border border-gray-200/80 shadow-2xs">
           <span
-            className="w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: selectedProjectColor || '#2D5BFF' }}
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: activeProject?.color || '#2D5BFF' }}
           />
-          <span className="text-xs font-semibold text-gray-700">{selectedProjectName}</span>
+          <select
+            value={activeProjectId}
+            onChange={(e) => onSelectProject(e.target.value)}
+            aria-label="Projekt"
+            className="bg-transparent text-xs font-semibold text-gray-700 py-0.5 pr-1 focus:outline-none cursor-pointer"
+          >
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Timer Status Badge */}

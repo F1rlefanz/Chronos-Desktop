@@ -53,7 +53,6 @@ export interface Project {
 export interface AppSettings {
   showMilliseconds: boolean;
   soundEnabled: boolean;
-  desktopWindowFrame: boolean;
   defaultProject: string;
   keyShortcutsEnabled: boolean;
   timerIntervalMs: number;

@@ -39,7 +39,7 @@ export const BreakList: React.FC<BreakListProps> = ({ breaks, now }) => {
         </span>
       </div>
 
-      <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+      <div className="max-h-60 overflow-y-auto overscroll-contain space-y-2 pr-1 custom-scrollbar">
         {breaks.map((pause, index) => {
           const running = isBreakRunning(pause);
           const duration = breakDurationMs(pause, now);
