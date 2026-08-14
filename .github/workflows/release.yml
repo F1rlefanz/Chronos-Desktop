@@ -8,8 +8,9 @@ name: Release
 # out that something no longer compiles on Linux without cutting a release to
 # discover it.
 #
-# Deliberately not on every push: this repository is private, so Actions minutes
-# are billed, and macOS bills at ten times the rate of Linux.
+# Deliberately not on every push: a full matrix build costs tens of minutes of
+# runner time, and on a private repository that time is billed — macOS at ten
+# times the rate of Linux.
 on:
   push:
     tags: ['v*']

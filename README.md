@@ -86,11 +86,17 @@ untouched — deleting your recordings has to be something you do on purpose.
 
 ### In-app updates are not wired up, and cannot be yet
 
-Tauri has an updater that fetches a manifest and a bundle over plain HTTP with no credentials.
-This repository is private, so its release API answers `404` to anyone not signed in — the updater
-would have nothing to reach. Making it work needs a decision rather than code: publish the
-releases, or host the manifest and bundles somewhere public. Android and iOS update through their
-stores regardless.
+Tauri has an updater that fetches a manifest and a bundle over plain HTTP **with no credentials**.
+It therefore needs the releases to be reachable by anyone — which, while this repository is
+private, they are not: its release API answers `404` to a caller who is not signed in.
+
+So this is one switch away rather than a missing feature. Make the repository (or at least its
+releases) public and the updater becomes buildable: generate a signing keypair, put the public key
+in `tauri.conf.json` and the private key in a repository secret, and have the release workflow
+publish the update manifest. Until then it is deliberately not wired up, and no keypair exists —
+a credential for a mechanism that cannot work yet is one more thing that must never be lost.
+
+Android and iOS update through their stores regardless.
 
 ## Requirements
 
@@ -285,8 +291,10 @@ builds everything and attaches the results to the run instead of publishing — 
 something stopped compiling on Linux without cutting a release to discover it. A separate job
 builds the Android APK as a check.
 
-Releases are tag-triggered only on purpose: this repository is private, so Actions minutes are
-billed, and macOS bills at ten times the Linux rate.
+Releases are tag-triggered rather than running on every push, because a full matrix build takes
+tens of minutes of runner time and most pushes do not need one. On a **private** repository that
+time is also billed, with macOS at ten times the Linux rate; on a public one the runners are free
+and the argument is only about wall-clock and noise.
 
 To require CI before merging (needs admin rights on the repository):
 Settings → Branches → Add rule for `main` → enable _Require a pull request before merging_ and
@@ -294,6 +302,7 @@ _Require status checks to pass_, selecting the `Typecheck, lint, test, build` ch
 
 ## License
 
-Proprietary — copyright the repository owner, all rights reserved. This is private software; no
-license to use, copy or distribute it is granted. There is deliberately no `LICENSE` file: absent
+Proprietary — copyright the repository owner, all rights reserved. No license to use, copy or
+distribute it is granted, whether or not the repository itself is publicly readable: being able to
+read source is not permission to use it. There is deliberately no `LICENSE` file: absent
 one, default copyright already reserves every right, which is the intent here.
