@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Project, TimerState } from '../types';
 import {
   formatDurationHuman,
@@ -17,6 +17,11 @@ interface StopwatchDisplayProps {
   projects: Project[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
+  /** The start/pause/stop controls, rendered inside the card rather than
+      below it — they operate on this readout and belong with it. Passed as
+      children so this component stays presentational and knows nothing about
+      the timer's handlers. */
+  children?: ReactNode;
 }
 
 export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
@@ -27,6 +32,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   projects,
   activeProjectId,
   onSelectProject,
+  children,
 }) => {
   const { mainTime, subTime } = formatTimeDisplay(elapsedTimeMs, {
     includeMilliseconds: showMilliseconds,
@@ -38,7 +44,10 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   const activeProject = projects.find((project) => project.id === activeProjectId);
 
   return (
-    <div className="relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden">
+    <section
+      aria-label="Zeiterfassung"
+      className="relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden"
+    >
       {/* Decorative Minimalist Circle Rings */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] sm:w-[460px] sm:h-[460px] border border-gray-100 rounded-full pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] sm:w-[560px] sm:h-[560px] border border-gray-100/60 rounded-full pointer-events-none"></div>
@@ -127,6 +136,8 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
           )}
         </div>
       </div>
-    </div>
+
+      {children && <div className="relative z-10">{children}</div>}
+    </section>
   );
 };

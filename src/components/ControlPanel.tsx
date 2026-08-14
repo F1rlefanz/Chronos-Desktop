@@ -22,7 +22,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   shortcutsEnabled = true,
 }) => {
   return (
-    <div className="flex flex-col items-center gap-4 my-6 select-none">
+    <div className="flex flex-col items-center gap-4 mt-8 select-none">
       <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 w-full">
         {/* START Button */}
         {timerState === 'IDLE' && (

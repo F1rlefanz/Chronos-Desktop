@@ -286,6 +286,16 @@ describe('App layout', () => {
     expect(screen.queryByText('Letzte 12 Wochen')).not.toBeInTheDocument();
   });
 
+  // The controls used to sit below the card, visually detached from the
+  // readout they act on.
+  it('keeps the timer controls inside the card that shows the time', () => {
+    renderApp();
+
+    expect(screen.getByRole('region', { name: 'Zeiterfassung' })).toContainElement(
+      screen.getByRole('button', { name: /STARTEN/i })
+    );
+  });
+
   it('swaps the two halves over when the other tab is chosen', async () => {
     const user = userEvent.setup();
     renderApp(withOneEntry);

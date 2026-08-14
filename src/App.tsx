@@ -657,17 +657,17 @@ export default function App({ initialState }: AppProps) {
               projects={projects}
               activeProjectId={activeProjectId}
               onSelectProject={setSelectedProjectId}
-            />
-
-            <ControlPanel
-              timerState={timerState}
-              onStart={handleStart}
-              onPause={handlePause}
-              onResume={handleResume}
-              onStop={handleStopAndOpenSaver}
-              onDiscard={handleDiscardRunning}
-              shortcutsEnabled={settings.keyShortcutsEnabled}
-            />
+            >
+              <ControlPanel
+                timerState={timerState}
+                onStart={handleStart}
+                onPause={handlePause}
+                onResume={handleResume}
+                onStop={handleStopAndOpenSaver}
+                onDiscard={handleDiscardRunning}
+                shortcutsEnabled={settings.keyShortcutsEnabled}
+              />
+            </StopwatchDisplay>
 
             {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
 
