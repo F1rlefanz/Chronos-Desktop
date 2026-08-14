@@ -17,6 +17,8 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --apk",
     "preview": "vite preview",
     "clean": "rm -rf dist coverage",
     "clean:desktop": "rm -rf src-tauri/target",

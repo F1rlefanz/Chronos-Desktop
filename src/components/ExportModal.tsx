@@ -11,6 +11,7 @@ import { formatDurationHuman } from '../utils/timeFormatters';
 import { totalNetMs } from '../domain/timeEntry';
 import { ExportRangePicker } from './ExportRangePicker';
 import { DeliveryResult, revealExports } from '../utils/fileTarget';
+import { isMobilePlatform } from '../utils/platform';
 import { FileText, FileSpreadsheet, FileCode, Download, X, AlertCircle } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
@@ -118,7 +119,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
 
     setOutcome({ ok: true, text: `Gespeichert unter ${result.path}` });
-    void revealExports();
+    if (!isMobilePlatform()) void revealExports();
   };
 
   const handleGeneratePdf = () =>

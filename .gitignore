@@ -5,9 +5,19 @@ node_modules/
 build/
 dist/
 
-# Tauri: Rust build artefacts and the schemas/bindings Tauri regenerates
+# Tauri: Rust build artefacts, and the schemas Tauri regenerates on every build.
+# gen/android is deliberately NOT ignored — it is the Gradle project, carries
+# the manifest and the signing configuration, and CI has no way to rebuild it.
 src-tauri/target/
-src-tauri/gen/
+src-tauri/gen/schemas/
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/app/build/
+src-tauri/gen/android/build/
+src-tauri/gen/android/local.properties
+
+# Android signing: the key and its passwords are credentials, not source.
+src-tauri/gen/android/keystore.properties
+src-tauri/gen/android/*.keystore
 
 # Test and coverage artifacts
 coverage/

@@ -14,6 +14,7 @@ import {
 } from './domain/stats';
 import { ImportedData, buildBackupPayload } from './utils/dataExporter';
 import { logInfo, logWarn, loggingToFile, revealLogs } from './utils/logging/logger';
+import { isMobilePlatform } from './utils/platform';
 import {
   saveSettings,
   saveTimeEntries,
@@ -742,7 +743,7 @@ export default function App({ initialState }: AppProps) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200/80 bg-white py-4 text-center text-xs text-gray-400">
+      <footer className="border-t border-gray-200/80 bg-white py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-center text-xs text-gray-400">
         <p>Chronos Desktop v{__APP_VERSION__} • Zeiterfassung</p>
       </footer>
 
@@ -792,8 +793,10 @@ export default function App({ initialState }: AppProps) {
         projects={projects}
         onUpdateProjects={handleUpdateProjects}
         onImportData={handleImportData}
-        onRevealBackups={backupsAvailable() ? () => void revealBackups() : undefined}
-        onRevealLogs={loggingToFile() ? () => void revealLogs() : undefined}
+        onRevealBackups={
+          backupsAvailable() && !isMobilePlatform() ? () => void revealBackups() : undefined
+        }
+        onRevealLogs={loggingToFile() && !isMobilePlatform() ? () => void revealLogs() : undefined}
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />

@@ -111,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Anzeige
             </h3>
 
-            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+            <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
                   Millisekunden anzeigen (.00)
@@ -128,7 +128,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </label>
 
-            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+            <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
                   Aktualisierungsrate
@@ -150,7 +150,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </select>
             </label>
 
-            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+            <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">Tastenkürzel</span>
                 <span className="text-[11px] text-gray-400">
@@ -172,7 +172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Projekte
             </h3>
 
-            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
+            <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">Standardprojekt</span>
                 <span className="text-[11px] text-gray-400">
@@ -247,7 +247,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               Daten & Sicherungen
             </h3>
 
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">
                   Aus JSON-Sicherung wiederherstellen
@@ -275,7 +275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Only the desktop build keeps snapshots; the browser has no room
                 for a second copy, so the row is absent rather than disabled. */}
             {onRevealBackups && (
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
                   <span className="text-xs font-semibold text-gray-800 block">
                     Automatische Sicherungen
@@ -297,7 +297,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
 
             {onRevealLogs && (
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
                   <span className="text-xs font-semibold text-gray-800 block">Protokolldatei</span>
                   <span className="text-[11px] text-gray-400">
@@ -322,7 +322,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             onClick={onClose}
             className="px-6 py-2 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white font-bold text-xs cursor-pointer"
           >
-            Done
+            Fertig
           </button>
         </div>
       </div>
