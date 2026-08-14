@@ -13,7 +13,7 @@ import { isDeviceId } from './deviceId';
  * Reading is the opposite: every foreign file is read and merged in, which is
  * safe in any order because `mergeEntries` is idempotent and symmetric.
  */
-export interface SyncPayload {
+interface SyncPayload {
   /** The shape of this file, so a later change can be recognised. */
   version: 1;
   device: string;
