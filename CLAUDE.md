@@ -24,10 +24,12 @@ bun run android:dev     # on a connected device or a running emulator
 bun run android:build   # signed APK
 
 cargo fmt --manifest-path src-tauri/Cargo.toml
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings
 ```
 
-Touching `src-tauri/` means running those two cargo commands as well. `release.yml` runs them on
+`--workspace` matters: the Android plugin under `src-tauri/plugins/` is a member but not a
+dependency on the desktop, so without it a broken plugin lints clean. Touching `src-tauri/` means
+running those two cargo commands as well. `release.yml` runs them on
 all three desktop systems, but only on a tag or a manual dispatch, so a broken Rust side does not
 show up in a pull request.
 
@@ -92,6 +94,14 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   rejected write is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it
   into a banner. Adapters deal in strings so that JSON encoding and the corrupt-data fallback live
   in one place.
+- **Reading reports failure the same way, and for one reason more.** `read` returns a `ReadResult`
+  (`{ ok: true; value: string | null } | { ok: false; message }`), because "the key is not there"
+  and "the backend could not answer" are different facts and used to arrive as the same `null`.
+  That conflation was a data-loss bug, not an inelegance: `loadPersistedState` saw "nothing
+  stored", wrote its defaults back over settings it had merely failed to open, and said nothing.
+  A start that cannot read now writes **nothing** and reports what it could not read through
+  `PersistedState.unreadable`, which `src/App.tsx` turns into a banner that cannot be dismissed —
+  the screen is not the truth, and the next thing recorded would overwrite the truth.
 - **Two devices can only be reconciled because every entry says when it changed.** `updatedAt` is
   stamped where entries are created and edited; `patchRunningEntry` is the single place every
   change to a running measurement passes through, which is what keeps a new handler from silently
@@ -112,7 +122,29 @@ say so in the pull request, rather than padding it with an entry nobody benefits
 - **Exactly one command takes a path from the front end.** `sync_configure` validates it and keeps
   it; `sync_list`/`sync_read`/`sync_write` name a file that is resolved against that and nothing
   else. Every other command in `src-tauri/src/lib.rs` builds its own path and only validates a key
-  or a file name — do not add a second command that accepts a directory.
+  or a file name — do not add a second command that accepts a directory. `ChronosSafPlugin` on
+  Android follows the same shape with `configure` and its `roots` map.
+- **Android reaches a folder through `src-tauri/plugins/chronos-saf/`, not through `std::fs`.**
+  There is no path to be had: the picker grants a permission on a document tree and everything
+  inside goes through a content provider. The plugin is a workspace member and an Android-only
+  dependency, so a desktop build compiles none of it while `cargo clippy --workspace` still lints
+  its desktop half. Two things there are not like a filesystem and must stay commented as such:
+  SAF cannot replace a file in one move (write to `…-part.json`, delete, rename — and the
+  temporary name keeps the real extension, or the provider appends one), and a grant can be
+  withdrawn between two calls, which is why `configure` runs before every operation rather than
+  once. Registering a new command means adding it in four places: `build.rs`, `commands.rs`,
+  `mobile.rs`/`desktop.rs`, and `permissions/default.toml`.
+- **No file operation in that plugin runs on the thread it arrived on.** Everything goes through
+  `background()` onto one worker. A content provider is not a disk — answering can mean waiting on
+  another app, and on a cloud provider on a network — and a folder deleted underneath the app froze
+  the interface for seven seconds before this existed. Only `pickFolder` and the `startActivity` in
+  `openDocument` stay on the main thread, because that is where a launcher belongs.
+- **A phone's own files need a folder before anyone can reach them.** `deviceFilesFolder` is where
+  exports and backups go on Android; with it empty they stay in app-private storage exactly as
+  before, and `androidFileSink`/`androidBackupSupport` wrap the app-private originals rather than
+  replacing them. A snapshot is never dropped because a folder went away — it falls back. The
+  twenty-snapshot limit is written twice on purpose (Rust for the desktop, `androidFiles.ts` for
+  the phone), because the Rust side cannot open that folder at all.
 - **Syncing happens at the two moments something is already written, and on request.** Startup and
   window close, next to `ensureDailyBackup` and `useBackupOnClose`, plus the button. No timer and
   no file watcher: both write into a user's folder at moments nobody asked for. Closing only
@@ -122,10 +154,12 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   copy it started from (`liveRef` in `src/App.tsx`). A sync is not instant, and an entry created
   while it ran must not be dropped by the reply; the second merge is free because merging twice
   changes nothing.
-- **`isMobilePlatform()` hides doors, never data.** Storage, backups and the log work identically
-  on a phone. What does not exist there is a file manager to send someone to, so the folder buttons
-  are hidden and `reveal_folder` refuses as a second line of defence. Do not reach for it to decide
-  anything about how data is kept.
+- **`isMobilePlatform()` picks a backend in `main.tsx`, and hides doors that lead nowhere.** It may
+  not decide anything about how data is kept: storage, backups, the log and the sync rules are
+  identical everywhere, and only the way a folder is reached differs. A door is hidden by asking
+  whether there is something behind it — `onRevealBackups` is absent when no folder has been
+  chosen, not because this is a phone — and `reveal_folder` in Rust still refuses on Android as a
+  second line of defence.
 - **A phone draws the webview edge to edge.** `index.html` carries `viewport-fit=cover` and the
   header and footer pad themselves with `env(safe-area-inset-*)`; without both, the status bar sits
   on top of the tab bar. A row of label-plus-control needs a stacked fallback below `sm`, or the

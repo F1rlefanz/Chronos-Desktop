@@ -39,11 +39,23 @@ export interface BackupSupport {
   reveal(): Promise<void>;
 }
 
+/**
+ * Reading reports failure as a value, for the same reason writing does — and
+ * for one more.
+ *
+ * A backend that cannot answer is not a key that was never written, and the two
+ * used to arrive as the same `null`. That is how a single unreadable settings
+ * file turned into a silent, permanent reset: the startup migration saw
+ * "nothing stored", wrote the defaults back over it, and nobody was told. `ok:
+ * true` with `value: null` means the key genuinely is not there; `ok: false`
+ * means we do not know what is there and must touch nothing.
+ */
+export type ReadResult = { ok: true; value: string | null } | { ok: false; message: string };
+
 export interface StorageAdapter {
   /** Identifies the backend in log output. */
   readonly name: string;
-  /** Resolves to `null` when the key was never written or cannot be read. */
-  read(key: string): Promise<string | null>;
+  read(key: string): Promise<ReadResult>;
   write(key: string, value: string): Promise<WriteResult>;
   /** Absent when the backend cannot keep snapshots. */
   readonly backups?: BackupSupport;

@@ -11,7 +11,13 @@ import { isDeviceId, newDeviceId } from '../sync/deviceId';
 import { localStorageAdapter } from './localStorageAdapter';
 import { StorageAdapter, WriteResult } from './types';
 
-export type { StorageAdapter, BackupSupport, WriteResult, WriteFailureReason } from './types';
+export type {
+  StorageAdapter,
+  BackupSupport,
+  ReadResult,
+  WriteResult,
+  WriteFailureReason,
+} from './types';
 
 /**
  * Everything the app needs before it can render. Loading is a single up-front
@@ -41,6 +47,15 @@ export interface PersistedState {
    * devices write the same file.
    */
   deviceId: string;
+  /**
+   * What could not be read at all, in words a user can be shown.
+   *
+   * Empty on every normal start. When it is not, the app is looking at defaults
+   * for something that may well exist on disk — and the user has to know that
+   * before they record anything, because that is the moment the defaults would
+   * be written over it.
+   */
+  unreadable: string[];
 }
 
 /** Copies, so a consumer putting this into state cannot mutate the defaults. */
@@ -51,6 +66,9 @@ export function defaultPersistedState(): PersistedState {
     projects: [...DEFAULT_PROJECTS],
     tombstones: [],
     deviceId: newDeviceId(),
+    // Nothing was read, so nothing failed to read. A start that never got as
+    // far as storage says so through the log, not through this.
+    unreadable: [],
   };
 }
 
@@ -86,16 +104,26 @@ async function readJsonWithLegacy<T>(
   key: string,
   legacyKey: string,
   defaultValue: T
-): Promise<{ value: T; fromLegacy: boolean }> {
+): Promise<{ value: T; fromLegacy: boolean; failed: boolean }> {
   const current = await adapter.read(key);
-  if (current !== null) {
-    return { value: parseJson(current, key, defaultValue), fromLegacy: false };
+  // A backend that could not answer is not a key that was never written. The
+  // difference travels with the result, because the caller has to decide
+  // between repairing storage and keeping its hands off it.
+  if (!current.ok) return { value: defaultValue, fromLegacy: false, failed: true };
+
+  if (current.value !== null) {
+    return { value: parseJson(current.value, key, defaultValue), fromLegacy: false, failed: false };
   }
 
   const legacy = await adapter.read(legacyKey);
-  if (legacy === null) return { value: defaultValue, fromLegacy: false };
+  if (!legacy.ok) return { value: defaultValue, fromLegacy: false, failed: true };
+  if (legacy.value === null) return { value: defaultValue, fromLegacy: false, failed: false };
 
-  return { value: parseJson(legacy, legacyKey, defaultValue), fromLegacy: true };
+  return {
+    value: parseJson(legacy.value, legacyKey, defaultValue),
+    fromLegacy: true,
+    failed: false,
+  };
 }
 
 function writeJson<T>(key: string, value: T): Promise<WriteResult> {
@@ -287,16 +315,41 @@ export async function loadPersistedState(): Promise<PersistedState> {
   const entries = migrateEntries(storedEntries.value);
   const projects = storedProjects.value;
   const tombstones = migrateTombstones(
-    storedTombstones === null ? [] : parseJson(storedTombstones, STORAGE_KEYS.TOMBSTONES, [])
+    !storedTombstones.ok || storedTombstones.value === null
+      ? []
+      : parseJson(storedTombstones.value, STORAGE_KEYS.TOMBSTONES, [])
   );
 
   // Stored as a bare string rather than JSON: it is one token, and quoting it
   // would only add a way for it to come back unparseable.
-  const knownDevice = isDeviceId(storedDeviceId) ? storedDeviceId : null;
+  const storedId = storedDeviceId.ok ? storedDeviceId.value : null;
+  const knownDevice = isDeviceId(storedId) ? storedId : null;
   const deviceId = knownDevice ?? newDeviceId();
+
+  /**
+   * What the backend could not answer for.
+   *
+   * Everything below hangs on this: a start that cannot read is a start that
+   * must not write. Repairing a stale shape is worth doing when we know what is
+   * there; over a file that merely failed to open, the same repair is a silent,
+   * permanent reset — which is exactly how a phone lost its settings while its
+   * entries survived, because only the settings get written back.
+   */
+  const unreadable = [
+    storedSettings.failed ? 'die Einstellungen' : null,
+    storedEntries.failed ? 'die Einträge' : null,
+    storedProjects.failed ? 'die Projekte' : null,
+    !storedTombstones.ok ? 'die Löschvermerke' : null,
+    !storedDeviceId.ok ? 'die Geräte-Kennung' : null,
+  ].filter((what): what is string => what !== null);
 
   if (storedEntries.fromLegacy) {
     logInfo(`[Storage] Converted ${entries.length} entries from the pre-0.4.0 stopwatch format.`);
+  }
+
+  if (unreadable.length > 0) {
+    logWarn(`[Storage] Could not read: ${unreadable.join(', ')} — writing nothing back.`);
+    return { settings, entries, projects, tombstones, deviceId, unreadable };
   }
 
   // Write the cleaned state back, otherwise the stale shape sits in storage
@@ -329,5 +382,5 @@ export async function loadPersistedState(): Promise<PersistedState> {
     }
   }
 
-  return { settings, entries, projects, tombstones, deviceId };
+  return { settings, entries, projects, tombstones, deviceId, unreadable };
 }

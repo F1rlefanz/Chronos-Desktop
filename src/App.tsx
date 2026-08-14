@@ -36,6 +36,11 @@ import {
   syncAvailable,
   SyncOutcome,
 } from './utils/sync';
+import {
+  openAndroidFilesFolder,
+  pickAndroidFilesFolder,
+  setAndroidFilesFolder,
+} from './utils/androidFiles';
 
 import { DesktopHeader, MainTab } from './components/DesktopHeader';
 import { StopwatchDisplay } from './components/StopwatchDisplay';
@@ -709,6 +714,23 @@ export default function App({ initialState }: AppProps) {
     if (folder) handleUpdateSettings({ syncFolder: folder });
   };
 
+  /* ---------------------------------------------------------------------- */
+  /* Where a phone puts the files it makes                                  */
+  /* ---------------------------------------------------------------------- */
+
+  // Set before the first render in `main.tsx`; this only keeps it in step when
+  // the user picks a different one. Both halves are needed — an export taken
+  // before this effect would otherwise still go to the old folder.
+  useEffect(() => {
+    if (!isMobilePlatform()) return;
+    setAndroidFilesFolder(settings.deviceFilesFolder);
+  }, [settings.deviceFilesFolder]);
+
+  const handleChooseFilesFolder = async (): Promise<void> => {
+    const folder = await pickAndroidFilesFolder();
+    if (folder) handleUpdateSettings({ deviceFilesFolder: folder });
+  };
+
   const handleClearAllHistory = async () => {
     if (!(await backupBefore('before-clear', 'Das Löschen aller Einträge'))) return;
 
@@ -750,7 +772,11 @@ export default function App({ initialState }: AppProps) {
       // keys back into state. The sync folder is kept as it is regardless: it
       // describes *this* machine, and a path from the machine the backup came
       // from points at nothing here — or, worse, at somebody else's folder.
-      const updated = { ...migrateSettings(data.settings), syncFolder: settings.syncFolder };
+      const updated = {
+        ...migrateSettings(data.settings),
+        syncFolder: settings.syncFolder,
+        deviceFilesFolder: settings.deviceFilesFolder,
+      };
       setSettings(updated);
       writes.push(saveSettings(updated));
     }
@@ -841,6 +867,25 @@ export default function App({ initialState }: AppProps) {
             >
               ✕
             </button>
+          </div>
+        )}
+
+        {/* The one warning that must not be dismissible: what is on screen is
+            not what is stored, and the next thing the user records would be
+            written over data this start could not read. */}
+        {initialState.unreadable.length > 0 && (
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-300 bg-red-50 p-4 px-5 text-sm text-red-900"
+          >
+            <p>
+              <strong className="font-semibold">
+                Gespeicherte Daten konnten beim Start nicht gelesen werden
+              </strong>{' '}
+              ({initialState.unreadable.join(', ')}). Was hier steht, ist deshalb nicht
+              zwangsläufig, was gespeichert ist — Chronos hat nichts überschrieben. Am besten die
+              App neu starten, bevor du etwas erfasst.
+            </p>
           </div>
         )}
 
@@ -979,9 +1024,25 @@ export default function App({ initialState }: AppProps) {
         onUpdateProjects={handleUpdateProjects}
         onImportData={handleImportData}
         onRevealBackups={
-          backupsAvailable() && !isMobilePlatform() ? () => void revealBackups() : undefined
+          // Whether there is something to open, not which system this is: a
+          // phone with a folder chosen can show it now, one without cannot.
+          // The log stays app-private either way — a line through a content
+          // provider per log line is not what a log is for.
+          backupsAvailable() && (!isMobilePlatform() || settings.deviceFilesFolder)
+            ? () => void revealBackups()
+            : undefined
         }
         onRevealLogs={loggingToFile() && !isMobilePlatform() ? () => void revealLogs() : undefined}
+        files={
+          isMobilePlatform()
+            ? {
+                folder: settings.deviceFilesFolder,
+                onChooseFolder: () => void handleChooseFilesFolder(),
+                onStopUsing: () => handleUpdateSettings({ deviceFilesFolder: '' }),
+                onOpenFolder: () => void openAndroidFilesFolder(),
+              }
+            : undefined
+        }
         sync={
           syncAvailable()
             ? {

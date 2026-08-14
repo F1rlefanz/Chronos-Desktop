@@ -1,6 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { logError, logWarn } from '../logging/logger';
-import { BackupSupport, StorageAdapter, WriteFailureReason, WriteResult } from './types';
+import {
+  BackupSupport,
+  ReadResult,
+  StorageAdapter,
+  WriteFailureReason,
+  WriteResult,
+} from './types';
 
 /**
  * The shape `StorageError` in `src-tauri/src/lib.rs` serialises to. Errors
@@ -73,14 +79,21 @@ export const tauriAdapter: StorageAdapter = {
 
   name: 'tauri',
 
-  async read(key: string): Promise<string | null> {
+  async read(key: string): Promise<ReadResult> {
     try {
-      return await invoke<string | null>('storage_read', { key });
+      return { ok: true, value: await invoke<string | null>('storage_read', { key }) };
     } catch (error) {
-      // A read that fails must not stop the app from starting; the caller
-      // falls back to the default for this key.
+      // A read that fails must not stop the app from starting — but it must not
+      // pass for an empty storage either, or the startup migration writes the
+      // defaults over a file it merely failed to open.
       logWarn(`[Storage] Error reading key "${key}" from disk:`, error);
-      return null;
+      return {
+        ok: false,
+        message:
+          isRustStorageError(error) && error.message
+            ? error.message
+            : 'Die Desktop-Ablage hat auf das Lesen nicht reagiert.',
+      };
     }
   },
 

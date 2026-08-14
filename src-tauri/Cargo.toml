@@ -1,3 +1,9 @@
+# The plugin is a workspace member rather than only a dependency, so that
+# `cargo clippy --workspace` lints its desktop half on a machine that never
+# builds for Android. It is depended on for Android alone (see below).
+[workspace]
+members = [".", "plugins/chronos-saf"]
+
 [package]
 name = "chronos-desktop"
 # Cargo requires a version, but this is NOT the app version: tauri.conf.json
@@ -26,6 +32,12 @@ serde = { version = "1", features = ["derive"] }
 # own folder chooser, and a path typed into a text field is a path with a typo
 # in it that only shows up at the first sync.
 tauri-plugin-dialog = "2"
+
+# Android reaches the shared folder through the Storage Access Framework, which
+# is Kotlin and has no desktop counterpart — so the plugin is a dependency only
+# where it means something. A desktop build does not compile a line of it.
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-chronos-saf = { path = "plugins/chronos-saf" }
 
 [profile.release]
 # A time tracker does not need to ship debug symbols; this keeps the installer

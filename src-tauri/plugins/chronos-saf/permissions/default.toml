@@ -1,0 +1,20 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """
+Picking a folder, and reading, writing, deleting and opening inside it. They
+belong together: a folder nobody may list is a folder nothing can be synced
+through, and one nothing may delete in cannot keep twenty backups. The gate is
+the picker — the app can only ever reach a folder a user handed it, and only
+for as long as the system says so.
+"""
+permissions = [
+  "allow-pick-folder",
+  "allow-configure",
+  "allow-list-files",
+  "allow-read-file",
+  "allow-write-file",
+  "allow-write-bytes",
+  "allow-delete-file",
+  "allow-open-document",
+]

@@ -130,6 +130,49 @@ describe('loadPersistedState', () => {
     write.mockRestore();
   });
 
+  // Found on a phone: the settings came back as defaults while the entries
+  // survived, because only the settings are ever written back. One unreadable
+  // file had quietly become a permanent reset.
+  describe('when the backend cannot be read', () => {
+    it('writes nothing back over data it could not read', async () => {
+      adapter.seed(STORAGE_KEYS.SETTINGS, JSON.stringify({ soundEnabled: false }));
+      adapter.failReads('Die Ablage antwortet nicht.');
+      const write = vi.spyOn(adapter, 'write');
+
+      await loadPersistedState();
+
+      expect(write).not.toHaveBeenCalled();
+      write.mockRestore();
+    });
+
+    it('leaves the stored value untouched, so a restart can still find it', async () => {
+      const stored = JSON.stringify({ ...DEFAULT_APP_SETTINGS, soundEnabled: false });
+      adapter.seed(STORAGE_KEYS.SETTINGS, stored);
+      adapter.failReads('Die Ablage antwortet nicht.');
+
+      await loadPersistedState();
+      adapter.failReads(null);
+      const { settings } = await loadPersistedState();
+
+      expect(settings.soundEnabled).toBe(false);
+    });
+
+    it('says what it could not read, so the app can warn before anything is recorded', async () => {
+      adapter.failReads('Die Ablage antwortet nicht.');
+
+      const { unreadable } = await loadPersistedState();
+
+      expect(unreadable).toContain('die Einstellungen');
+      expect(unreadable).toContain('die Einträge');
+    });
+
+    it('reports nothing unreadable on an ordinary start', async () => {
+      const { unreadable } = await loadPersistedState();
+
+      expect(unreadable).toEqual([]);
+    });
+  });
+
   describe('the device id', () => {
     it('is generated once and written back, so the next start reuses it', async () => {
       const first = await loadPersistedState();

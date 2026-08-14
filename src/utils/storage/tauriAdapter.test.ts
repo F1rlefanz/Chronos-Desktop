@@ -16,20 +16,39 @@ describe('tauriAdapter', () => {
   it('reads through the storage_read command', async () => {
     invoke.mockResolvedValue('{"soundEnabled":false}');
 
-    expect(await tauriAdapter.read('settings_v1')).toBe('{"soundEnabled":false}');
+    expect(await tauriAdapter.read('settings_v1')).toEqual({
+      ok: true,
+      value: '{"soundEnabled":false}',
+    });
     expect(invoke).toHaveBeenCalledWith('storage_read', { key: 'settings_v1' });
   });
 
-  it('passes a missing key through as null', async () => {
+  it('passes a missing key through as a successful empty read', async () => {
     invoke.mockResolvedValue(null);
 
-    expect(await tauriAdapter.read('never-written')).toBeNull();
+    expect(await tauriAdapter.read('never-written')).toEqual({ ok: true, value: null });
   });
 
-  it('does not let a failed read stop the app from starting', async () => {
+  // The distinction the whole read path exists for: a key that is not there is
+  // an answer, a backend that could not answer is not — and mistaking the
+  // second for the first is what let a startup migration overwrite settings it
+  // had merely failed to open.
+  it('reports a failed read as a failure, not as an empty key', async () => {
     invoke.mockRejectedValue({ reason: 'io', message: 'Disk on fire.' });
 
-    expect(await tauriAdapter.read('settings_v1')).toBeNull();
+    expect(await tauriAdapter.read('settings_v1')).toEqual({
+      ok: false,
+      message: 'Disk on fire.',
+    });
+  });
+
+  it('still answers when the rejection carries no message of its own', async () => {
+    invoke.mockRejectedValue('command storage_read not found');
+
+    expect(await tauriAdapter.read('settings_v1')).toEqual({
+      ok: false,
+      message: 'Die Desktop-Ablage hat auf das Lesen nicht reagiert.',
+    });
   });
 
   it('writes through the storage_write command', async () => {

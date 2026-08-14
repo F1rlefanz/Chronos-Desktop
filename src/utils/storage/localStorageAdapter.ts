@@ -1,5 +1,5 @@
 import { logError, logWarn } from '../logging/logger';
-import { StorageAdapter, WriteResult } from './types';
+import { ReadResult, StorageAdapter, WriteResult } from './types';
 
 /** Legacy numeric codes browsers used before `QuotaExceededError` was named. */
 const LEGACY_QUOTA_CODES = new Set([
@@ -32,15 +32,25 @@ function getStore(): Storage | null {
 export const localStorageAdapter: StorageAdapter = {
   name: 'localStorage',
 
-  read(key: string): Promise<string | null> {
+  read(key: string): Promise<ReadResult> {
     const store = getStore();
-    if (!store) return Promise.resolve(null);
+    // Storage switched off is not an empty storage: answering `null` here would
+    // let the caller conclude nothing was ever saved and write over it.
+    if (!store) {
+      return Promise.resolve({
+        ok: false,
+        message: 'Der Browser-Speicher ist für diese Seite deaktiviert.',
+      });
+    }
 
     try {
-      return Promise.resolve(store.getItem(key));
+      return Promise.resolve({ ok: true, value: store.getItem(key) });
     } catch (error) {
       logWarn(`[Storage] Error reading key "${key}" from localStorage:`, error);
-      return Promise.resolve(null);
+      return Promise.resolve({
+        ok: false,
+        message: 'Der Browser-Speicher hat das Lesen abgelehnt.',
+      });
     }
   },
 

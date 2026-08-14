@@ -328,6 +328,7 @@ dependencies = [
  "serde",
  "tauri",
  "tauri-build",
+ "tauri-plugin-chronos-saf",
  "tauri-plugin-dialog",
 ]
 
@@ -3200,6 +3201,16 @@ dependencies = [
  "serde_json",
  "tauri-utils",
  "walkdir",
+]
+
+[[package]]
+name = "tauri-plugin-chronos-saf"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

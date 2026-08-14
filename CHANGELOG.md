@@ -6,6 +6,42 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-08-14
+
+### Added
+
+- **Der Abgleich funktioniert jetzt auch auf dem Handy.** Was mit 0.7.0 zwischen zwei Rechnern
+  ging, geht damit zwischen Handy und Rechner: Ordner in den Einstellungen wählen, fertig. Ein
+  Dienst deiner Wahl — etwa Syncthing — hält den Ordner auf beiden Seiten gleich; Chronos legt dort
+  weiterhin nur eine kleine Datei je Gerät ab.
+- **Ein Ordner für die eigenen Dateien (nur Handy).** Exporte und automatische Sicherungen landen
+  dort, wo du sie auch wiederfindest. Ohne gewählten Ordner bleibt alles wie bisher im
+  App-Speicher — vorhanden, aber ohne Dateimanager nicht erreichbar.
+- **„Ordner öffnen" gibt es jetzt auch auf dem Handy**, sobald ein Ordner für die eigenen Dateien
+  gewählt ist.
+
+### Changed
+
+- **Ein Ordner, den du dem Handy freigibst, bleibt freigegeben** — auch nach einem Neustart der
+  App. Wird die Freigabe entzogen oder der Ordner gelöscht, sagt Chronos das und arbeitet mit
+  seiner eigenen Kopie weiter, statt still nichts mehr abzugleichen.
+- **Eine Sicherung geht nie verloren, weil ein Ordner weg ist.** Ist der gewählte Ordner gerade
+  nicht erreichbar, schreibt Chronos die Sicherung in den App-Speicher statt sie fallenzulassen.
+
+### Fixed
+
+- **Chronos überschreibt nichts mehr, was es beim Start nicht lesen konnte.** Bisher war „nicht
+  lesbar" von „noch nie gespeichert" nicht zu unterscheiden — die App startete mit
+  Standardwerten und schrieb diese über die Einstellungen, die noch da waren. Beim Testen auf dem
+  Handy ist genau das passiert: Einstellungen weg, Einträge noch da. Jetzt fasst ein solcher Start
+  nichts an und sagt oben im Fenster, was er nicht lesen konnte.
+
+### Note
+
+Auf dem Handy wählst du den Ordner über die Systemauswahl, und Android gibt der App genau diesen
+einen Ordner frei — keinen Zugriff auf den übrigen Speicher. Deshalb steht dort auch kein Pfad,
+sondern der Name des Ordners.
+
 ## [0.7.0] — 2026-08-14
 
 ### Added

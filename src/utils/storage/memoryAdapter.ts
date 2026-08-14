@@ -7,6 +7,8 @@ export interface MemoryAdapter extends StorageAdapter {
   clear(): void;
   /** Makes every subsequent write fail; `null` restores success. */
   failWrites(result: Extract<WriteResult, { ok: false }> | null): void;
+  /** Makes every subsequent read fail; `null` restores success. */
+  failReads(message: string | null): void;
 }
 
 /**
@@ -17,12 +19,14 @@ export interface MemoryAdapter extends StorageAdapter {
 export function createMemoryAdapter(): MemoryAdapter {
   const store = new Map<string, string>();
   let failure: Extract<WriteResult, { ok: false }> | null = null;
+  let readFailure: string | null = null;
 
   return {
     name: 'memory',
 
     read(key) {
-      return Promise.resolve(store.get(key) ?? null);
+      if (readFailure) return Promise.resolve({ ok: false as const, message: readFailure });
+      return Promise.resolve({ ok: true as const, value: store.get(key) ?? null });
     },
 
     write(key, value) {
@@ -42,10 +46,15 @@ export function createMemoryAdapter(): MemoryAdapter {
     clear() {
       store.clear();
       failure = null;
+      readFailure = null;
     },
 
     failWrites(result) {
       failure = result;
+    },
+
+    failReads(message) {
+      readFailure = message;
     },
   };
 }

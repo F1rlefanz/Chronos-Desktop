@@ -36,6 +36,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // Off until a folder is chosen: syncing is something a user opts into, and a
   // guessed default path would either not exist or be the wrong one.
   syncFolder: '',
+  // Nothing is lost by leaving this empty — exports and backups then stay where
+  // they have always been, in the app's own storage.
+  deviceFilesFolder: '',
 };
 
 /** Update intervals offered in the settings UI, in milliseconds. */

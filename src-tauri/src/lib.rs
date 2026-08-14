@@ -459,7 +459,10 @@ fn log_append(app: tauri::AppHandle, line: String) -> Result<(), StorageError> {
 const FILE_MANAGER: &str = "explorer";
 #[cfg(target_os = "macos")]
 const FILE_MANAGER: &str = "open";
-#[cfg(all(unix, not(target_os = "macos")))]
+// Android is unix too, and has none of these — without excluding it here the
+// constant is compiled into the phone's build and warns about being unused,
+// which is a warning nobody sees because clippy only ever runs for a desktop.
+#[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
 const FILE_MANAGER: &str = "xdg-open";
 
 /// Opens one of the app's folders in the system file manager: `backups` so the
@@ -514,9 +517,20 @@ fn reveal_folder(app: tauri::AppHandle, target: String) -> Result<(), StorageErr
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(SyncRoot::default())
+        .manage(SyncRoot::default());
+
+    // The commands below reach the shared folder with a path; a phone has none
+    // to give. There the folder is read through the Storage Access Framework
+    // instead, which is what this plugin is — registered only where it works.
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.plugin(tauri_plugin_chronos_saf::init());
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             storage_read,
             storage_write,

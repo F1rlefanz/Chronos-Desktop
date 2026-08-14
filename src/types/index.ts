@@ -86,6 +86,16 @@ export interface AppSettings {
    * another machine points nowhere on this one.
    */
   syncFolder: string;
+  /**
+   * Where this phone puts the files it makes for its user — empty when it has
+   * not been asked.
+   *
+   * Android only, and not the same folder as `syncFolder`: that one is shared
+   * with another device, this one is this device's own. A desktop needs neither
+   * setting to find its exports, because it has a folder it can simply open.
+   * Like `syncFolder`, it is never carried over by an import.
+   */
+  deviceFilesFolder: string;
 }
 
 /**

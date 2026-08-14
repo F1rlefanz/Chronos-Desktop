@@ -33,11 +33,11 @@ describe('localStorageAdapter', () => {
 
   it('round-trips a value', async () => {
     expect(await localStorageAdapter.write('k', 'hello')).toEqual({ ok: true });
-    expect(await localStorageAdapter.read('k')).toBe('hello');
+    expect(await localStorageAdapter.read('k')).toEqual({ ok: true, value: 'hello' });
   });
 
-  it('reads a key that was never written as null', async () => {
-    expect(await localStorageAdapter.read('never-written')).toBeNull();
+  it('reads a key that was never written as a successful empty read', async () => {
+    expect(await localStorageAdapter.read('never-written')).toEqual({ ok: true, value: null });
   });
 
   it('reports a full quota as such', async () => {
@@ -75,7 +75,9 @@ describe('localStorageAdapter', () => {
         ok: false,
         reason: 'unavailable',
       });
-      expect(await localStorageAdapter.read('k')).toBeNull();
+      // Not `null`: storage switched off is not storage that is empty, and
+      // the caller would otherwise write its defaults over whatever is there.
+      expect(await localStorageAdapter.read('k')).toMatchObject({ ok: false });
     } finally {
       restore();
     }
