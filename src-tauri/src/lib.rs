@@ -308,10 +308,21 @@ fn log_append(app: tauri::AppHandle, line: String) -> Result<(), StorageError> {
 /* Revealing folders                                                          */
 /* -------------------------------------------------------------------------- */
 
-/// Opens one of the app's folders in Explorer: `backups` so the user can copy a
-/// snapshot out or feed it back through the JSON import, `logs` so a log can be
-/// read or attached to a bug report, `exports` so a generated report can be
-/// picked up.
+/// The command each desktop uses to show a folder to its user.
+///
+/// Three different programs for the same idea, and none of them exists on the
+/// other systems — which is why this cannot be a single hardcoded `explorer`.
+#[cfg(target_os = "windows")]
+const FILE_MANAGER: &str = "explorer";
+#[cfg(target_os = "macos")]
+const FILE_MANAGER: &str = "open";
+#[cfg(all(unix, not(target_os = "macos")))]
+const FILE_MANAGER: &str = "xdg-open";
+
+/// Opens one of the app's folders in the system file manager: `backups` so the
+/// user can copy a snapshot out or feed it back through the JSON import, `logs`
+/// so a log can be read or attached to a bug report, `exports` so a generated
+/// report can be picked up.
 ///
 /// The target is an enumerated name rather than a path — the front end never
 /// gets to say which directory is opened.
@@ -331,16 +342,31 @@ fn reveal_folder(app: tauri::AppHandle, target: String) -> Result<(), StorageErr
     let directory = app_folder(&app)?.join(subfolder);
     fs::create_dir_all(&directory).map_err(|error| StorageError::from_io(&error, &directory))?;
 
-    // Explorer exits with a non-zero status even when it succeeds, so the
-    // status is deliberately not checked — only the spawn itself can fail.
-    std::process::Command::new("explorer")
-        .arg(&directory)
-        .spawn()
-        .map_err(|error| {
-            StorageError::rejected(format!("Could not open {}: {error}.", directory.display()))
-        })?;
+    // A phone has no file manager to send the user to, and no expectation of
+    // one. The front end hides the button there; this is the second line of
+    // defence, so a stray call fails with something readable instead of
+    // spawning a process that cannot exist.
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let _ = directory;
+        return Err(StorageError::rejected(
+            "Opening a folder is not something this system does.".into(),
+        ));
+    }
 
-    Ok(())
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        // Explorer exits with a non-zero status even when it succeeds, so the
+        // status is deliberately not checked — only the spawn itself can fail.
+        std::process::Command::new(FILE_MANAGER)
+            .arg(&directory)
+            .spawn()
+            .map_err(|error| {
+                StorageError::rejected(format!("Could not open {}: {error}.", directory.display()))
+            })?;
+
+        Ok(())
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
