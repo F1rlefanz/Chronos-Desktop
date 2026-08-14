@@ -6,6 +6,31 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-08-14
+
+### Added
+
+- **Chronos runs on Android.** The same app, on a phone, from the same code — the stopwatch, manual
+  entries, the calendar, the charts and the exports all work. Installing it is a matter of building
+  and copying the APK across; there is no store listing.
+- **Builds for macOS and Linux.** Tagging a version now produces installers for Windows, macOS and
+  Linux at once, alongside the Windows build that already existed.
+
+### Changed
+
+- **The interface adapts to a phone screen.** Rows that pair a label with a control stack instead of
+  wrapping their description around it, and the app keeps clear of the status bar and the gesture
+  bar. On a phone the two _Ordner öffnen_ buttons are hidden — Android has no file manager to send
+  you to — and an export reports the path it was written to instead.
+- The last English label in the Settings dialog is now German.
+
+### Note
+
+Entries now record when they last changed, and deleting one leaves a small record behind. Neither
+is visible, and nothing about your data changes — it is what a future version needs to be able to
+reconcile two devices without resurrecting entries you deleted or silently reverting an edit. How
+two devices would actually exchange their records is still an open question.
+
 ## [0.5.1] — 2026-08-14
 
 ### Changed
@@ -176,6 +201,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.6.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.4.0...v0.4.1

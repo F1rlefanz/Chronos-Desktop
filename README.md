@@ -7,8 +7,9 @@ named month as PDF, CSV or a portable JSON backup.
 
 The interface is in German; the code is in English.
 
-It ships as a **Windows desktop app** built with Tauri, and the same code still runs as a plain
-web app in the browser. There is no backend and no account: everything lives on the machine it
+It ships as an app for **Windows, macOS, Linux and Android**, built with Tauri from one codebase,
+and the same code still runs as a plain web app in the browser. iOS is not built — see
+[Platforms](#platforms). There is no backend and no account: everything lives on the machine it
 was recorded on, and the JSON backup is how you move data between machines.
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
@@ -72,6 +73,25 @@ per-user and needs no administrator rights, an installer of a newer version upda
 installation rather than adding a second one, and uninstalling leaves `%LOCALAPPDATA%\Chronos`
 untouched — deleting your recordings has to be something you do on purpose.
 
+## Platforms
+
+| Target  | Built by                         | Notes                                                                                                                             |
+| ------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Windows | `release.yml` on a tag           | NSIS installer and MSI                                                                                                            |
+| macOS   | `release.yml` on a tag           | One universal binary for both chips                                                                                               |
+| Linux   | `release.yml` on a tag           | AppImage, deb, rpm                                                                                                                |
+| Android | Locally, `bun run android:build` | CI checks that it compiles; it does not publish an APK, because a release APK needs a signing key that only its owner should hold |
+| iOS     | **Not built**                    | Xcode is macOS-only, and installing on a device needs an Apple Developer account. Neither is a code decision                      |
+| Browser | `bun run build`                  | No app to install, and no automatic backups — the quota has no room for a second copy                                             |
+
+### In-app updates are not wired up, and cannot be yet
+
+Tauri has an updater that fetches a manifest and a bundle over plain HTTP with no credentials.
+This repository is private, so its release API answers `404` to anyone not signed in — the updater
+would have nothing to reach. Making it work needs a decision rather than code: publish the
+releases, or host the manifest and bundles somewhere public. Android and iOS update through their
+stores regardless.
+
 ## Requirements
 
 For the web build: Node.js 20 or newer. [Bun](https://bun.sh) 1.3+ is the project's package
@@ -82,6 +102,17 @@ For the desktop build, additionally:
 - A [Rust](https://rustup.rs) toolchain (stable).
 - Microsoft Visual Studio Build Tools with the C++ workload.
 - WebView2, which is preinstalled on Windows 11 and current Windows 10.
+
+For Android, additionally:
+
+- The Android SDK and NDK, and the Rust targets: `rustup target add aarch64-linux-android
+armv7-linux-androideabi i686-linux-android x86_64-linux-android`.
+- `NDK_HOME` pointing at the installed NDK.
+- **`JAVA_HOME` on a JDK Gradle can read.** Android Studio ships its own Java 25; pointed there,
+  the build fails with `Unsupported class file major version 69` before compiling anything. JDK 21
+  works.
+- A signing key. `src-tauri/gen/android/keystore.properties` names the keystore and its passwords
+  and is ignored by git — an unsigned APK cannot be installed by anyone.
 
 ## Setup
 
@@ -117,6 +148,7 @@ bun run desktop:dev  # desktop app; starts the dev server itself
 src/
   App.tsx              Root container: owns settings, entries and projects; modal orchestration
   domain/              Pure rules, no React and no persistence
+    merge                Reconciling two devices' records: last write wins, deletions included
     timeEntry            Durations derived from start/end/breaks, plus entry validation
     stats                Totals, calendar grids and chart series, none of them cached
     exportRange          Calendar periods for exports, and which entries they select
@@ -136,6 +168,7 @@ src/
     logging/           Console plus, on the desktop, a log file
       logger             logInfo/logWarn/logError, level routing, write ordering
       tauriLogSink       Appends through IPC to logs/chronos.log
+    platform           Whether this is a phone — used to hide doors, never to decide about data
     fileTarget         Where a generated export goes: download or written file
     tauriFileSink      Writes exports through IPC into exports/
     dataExporter       CSV and JSON export, and validated JSON import
@@ -242,9 +275,18 @@ found that way and by nothing else. What a release should cover, beyond the suit
 `main` and every pull request. It does not build the desktop app: a cold Rust build takes minutes,
 and this is the check that gates merging.
 
-`.github/workflows/desktop.yml` checks Rust formatting, runs Clippy, builds the Windows installer
-and uploads it as an artefact. It runs on demand (Actions → Desktop build → Run workflow) and on
-`v*` tags.
+`.github/workflows/release.yml` does the shipping. Push a `v*` tag and it takes the notes from
+`CHANGELOG.md`, creates the release, builds on Linux, Windows and macOS, and uploads every
+installer to it. It also checks Rust formatting and runs Clippy on each system, which is the only
+way a warning that appears solely on Linux would ever be seen here.
+
+Run it by hand **without** a tag (Actions → Release → Run workflow, leaving the tag empty) and it
+builds everything and attaches the results to the run instead of publishing — how to find out that
+something stopped compiling on Linux without cutting a release to discover it. A separate job
+builds the Android APK as a check.
+
+Releases are tag-triggered only on purpose: this repository is private, so Actions minutes are
+billed, and macOS bills at ten times the Linux rate.
 
 To require CI before merging (needs admin rights on the repository):
 Settings → Branches → Add rule for `main` → enable _Require a pull request before merging_ and

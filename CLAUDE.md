@@ -15,19 +15,27 @@ bun run build       # production build
 
 Before pushing, all four should pass — that is exactly what CI runs, plus `format:check`.
 
-The desktop app is a second track over the same code:
+The same code also ships as an app, on the desktop and on Android:
 
 ```bash
 bun run desktop:dev     # Tauri window; starts the dev server itself
-bun run desktop:build   # Windows installer
+bun run desktop:build   # installer for the system you are on
+bun run android:dev     # on a connected device or a running emulator
+bun run android:build   # signed APK
 
 cargo fmt --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
 
-Touching `src-tauri/` means running those two cargo commands as well — `.github/workflows/
-desktop.yml` enforces them, but only on demand and on tags, so a broken Rust side will not show
-up in a pull request.
+Touching `src-tauri/` means running those two cargo commands as well. `release.yml` runs them on
+all three desktop systems, but only on a tag or a manual dispatch, so a broken Rust side does not
+show up in a pull request.
+
+**Android needs `JAVA_HOME` on a JDK that Gradle can read.** Android Studio ships its own Java 25,
+and if `JAVA_HOME` points there the build dies with `Unsupported class file major version 69` —
+before compiling a line. JDK 21 works. Signing details live in `src-tauri/gen/android/
+keystore.properties`, which is ignored by git: the key and its passwords are credentials, and
+without them a release APK cannot be installed by anyone.
 
 ## The changelog is part of the work, not paperwork
 
@@ -84,6 +92,22 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   rejected write is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it
   into a banner. Adapters deal in strings so that JSON encoding and the corrupt-data fallback live
   in one place.
+- **Two devices can only be reconciled because every entry says when it changed.** `updatedAt` is
+  stamped where entries are created and edited; `patchRunningEntry` is the single place every
+  change to a running measurement passes through, which is what keeps a new handler from silently
+  forgetting. Deleting writes a tombstone under its own storage key — without one, "deleted here"
+  and "never seen here" are indistinguishable and a merge resurrects everything ever deleted. The
+  rule itself is `src/domain/merge.ts`, a pure function over two sets, and its two load-bearing
+  tests are that merging gives the same answer whichever side asks and that running it twice
+  changes nothing.
+- **`isMobilePlatform()` hides doors, never data.** Storage, backups and the log work identically
+  on a phone. What does not exist there is a file manager to send someone to, so the folder buttons
+  are hidden and `reveal_folder` refuses as a second line of defence. Do not reach for it to decide
+  anything about how data is kept.
+- **A phone draws the webview edge to edge.** `index.html` carries `viewport-fit=cover` and the
+  header and footer pad themselves with `env(safe-area-inset-*)`; without both, the status bar sits
+  on top of the tab bar. A row of label-plus-control needs a stacked fallback below `sm`, or the
+  description text wraps around the control and interleaves with it.
 - **Log through `src/utils/logging/logger.ts`, not `console.*` directly.** The console does not
   exist in a shipped desktop build, so a bare `console.warn` about a failed save reaches nobody.
   `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything
