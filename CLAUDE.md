@@ -95,6 +95,12 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   itself does not fail. `deliverFile` is the one place that knows which build it is in: the browser
   downloads, the desktop writes into `exports/` and opens the folder. Calling `doc.save()` or
   building a link in an exporter brings the bug straight back.
+- **A snapshot is taken at both ends of a session.** `ensureDailyBackup` runs at startup over the
+  state found on disk; `useBackupOnClose` runs as the window closes, over the state the session
+  produced. Without the second one a whole day of work sits in no snapshot until the next launch.
+  Closing is intercepted to write it, which is why `core:window:allow-destroy` is in the capability
+  list — the app has to close the window itself afterwards, and the first build silently refused to
+  close without it.
 - **A backup must be taken before the thing it protects against.** `backupBefore` in `src/App.tsx`
   runs ahead of clearing the history and ahead of an import, over the state that is about to be
   replaced — a snapshot of the already-cleared state is worthless. When the snapshot fails it asks

@@ -22,9 +22,12 @@ Nothing above that interface knows which one is in use.
 
 ## Features
 
-- Stopwatch with start / pause / resume / stop. A running measurement is written to disk as it
-  starts, so closing the window does not lose it — the next launch asks whether to continue it,
-  stop it, or correct its times.
+The window has two views: **Erfassen**, with the stopwatch and the entries, and **Auswertung**,
+with the totals, the calendar and the charts.
+
+- Stopwatch with start / pause / resume / stop, its controls in the card that shows the time. A
+  running measurement is written to disk as it starts, so closing the window does not lose it — the
+  next launch asks whether to continue it, stop it, or correct its times.
 - Entries can also be typed in from scratch, and any entry can be edited: start, end, breaks,
   title, project, tags and notes. Start and end each carry their own date, so an entry that runs
   past midnight is ordinary rather than impossible.
@@ -42,8 +45,9 @@ Nothing above that interface knows which one is in use.
 - Automatic backups (desktop only): a snapshot at startup (at most once a day), one when the window
   closes, and one immediately before clearing the history or importing a file. The last twenty are
   kept. All of them happen while the app runs, which is also the only time the data can change.
-- A log file (desktop only) recording startup, backup outcomes and every failed save, with both
-  folders reachable from the Settings dialog.
+- A log file (desktop only) recording startup, backup outcomes, exports and every failed save. The
+  backup and log folders open from the Settings dialog; the export folder opens by itself after an
+  export.
 
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -62,7 +66,8 @@ What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 The two are deliberately separate, so removing the program never removes the recordings — see
 [Architecture](#architecture) for why that is worth a paragraph of its own.
 
-Both data folders are reachable from **Settings**, at the bottom of the dialog. Installing is
+The backup and log folders open from **Settings**, at the bottom of the dialog, and the export
+folder opens itself once a file has been written there. Installing is
 per-user and needs no administrator rights, an installer of a newer version updates the existing
 installation rather than adding a second one, and uninstalling leaves `%LOCALAPPDATA%\Chronos`
 untouched — deleting your recordings has to be something you do on purpose.
