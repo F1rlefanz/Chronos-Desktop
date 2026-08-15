@@ -267,6 +267,12 @@ say so in the pull request, rather than padding it with an entry nobody benefits
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
+- **Bumping `package.json` on `main` _is_ the release.** `release.yml` watches the branch, reads the
+  version, and if that tag has no release yet it creates the tag, the release and everything under
+  it. Do not tag by hand any more — the same release simply builds twice. A merge that leaves the
+  version alone stops in `prepare` and costs nothing. This exists because forgetting the tag is the
+  failure that looks exactly like success: merged, CI green, and the change reachable by nobody. It
+  happened twice in one afternoon.
 - **A release is not finished when the installers are uploaded.** `latest.json` and
   `latest-android.json` are written by the `manifests` job _after_ every build has uploaded,
   because a manifest can only name bundles that already exist — and until it exists, every

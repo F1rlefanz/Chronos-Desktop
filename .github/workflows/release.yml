@@ -1,19 +1,27 @@
 name: Release
 
-# A tag is the whole trigger: push v1.2.3 and this produces the release, its
-# notes and an installer for every desktop system.
+# The version in package.json is the trigger. Merge a bump to main and this
+# produces the tag, the release, its notes and an installer for every desktop
+# system; a pushed `v*` tag does the same, which is how a release was cut before
+# and still works.
 #
-# It can also be run by hand without a tag, which builds every platform and
-# attaches the results to the run instead of publishing them — the way to find
-# out that something no longer compiles on Linux without cutting a release to
-# discover it.
+# It watches main rather than only tags because forgetting the tag is the one
+# failure that looks exactly like success: the merge goes in, CI passes green,
+# and the fix sits on main reachable by nobody. That happened twice in one
+# afternoon before this existed.
 #
-# Deliberately not on every push: a full matrix build costs tens of minutes of
-# wall-clock across three systems, and nothing about most pushes needs one.
-# (It used to cost money too, while this repository was private and macOS
-# minutes billed at ten times the Linux rate.)
+# A merge that does *not* change the version stops in `prepare` — the release
+# already exists, and nothing further runs. So the full matrix still only builds
+# when there is something to build, which is what it costs tens of minutes of
+# wall-clock to do. (It cost money too, while this repository was private and
+# macOS minutes billed at ten times the Linux rate.)
+#
+# Running it by hand without a tag builds every platform and attaches the
+# results to the run instead of publishing — the way to find out that something
+# no longer compiles on Linux without cutting a release to discover it.
 on:
   push:
+    branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -38,24 +46,45 @@ jobs:
       ref: ${{ steps.resolve.outputs.ref }}
       tag: ${{ steps.resolve.outputs.tag }}
       publishing: ${{ steps.resolve.outputs.publishing }}
+      building: ${{ steps.resolve.outputs.building }}
     steps:
       - name: Check out
         uses: actions/checkout@v7
 
-      # The tag is resolved in the shell rather than in an expression: an
-      # empty-string fallback inside ${{ }} has to be quoted through YAML as
-      # well, and getting that wrong produces a script that does not parse.
+      # Resolved in the shell rather than in an expression: an empty-string
+      # fallback inside ${{ }} has to be quoted through YAML as well, and
+      # getting that wrong produces a script that does not parse.
       - name: Work out what this run is
         id: resolve
         env:
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
           REF_TYPE: ${{ github.ref_type }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          building=true
+
           if [ -n "$INPUT_TAG" ]; then
             tag="$INPUT_TAG"
           elif [ "$REF_TYPE" = "tag" ]; then
             tag="$REF_NAME"
+          elif [ "$REF_NAME" = "main" ]; then
+            # A merge into main. The version in package.json says whether this
+            # is a release; if its tag is already out, there is nothing here
+            # that has not shipped and the matrix must not spend half an hour
+            # proving it.
+            tag="v$(node -p "require('./package.json').version")"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "$tag is already released - nothing to do."
+              {
+                echo "publishing=false"
+                echo "building=false"
+                echo "tag="
+                echo "ref=$REF_NAME"
+              } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "package.json is at ${tag#v} and that is not released yet."
           else
             tag=""
           fi
@@ -63,6 +92,7 @@ jobs:
           if [ -n "$tag" ]; then
             {
               echo "publishing=true"
+              echo "building=$building"
               echo "tag=$tag"
               echo "ref=$tag"
             } >> "$GITHUB_OUTPUT"
@@ -70,6 +100,7 @@ jobs:
           else
             {
               echo "publishing=false"
+              echo "building=$building"
               echo "tag="
               echo "ref=$REF_NAME"
             } >> "$GITHUB_OUTPUT"
@@ -80,6 +111,9 @@ jobs:
         if: steps.resolve.outputs.publishing == 'true'
         run: python3 .github/scripts/changelog_section.py "${{ steps.resolve.outputs.tag }}" notes.md
 
+      # `gh release create` makes the tag as well when it does not exist, at the
+      # commit this run started from — which is what turns a merge into main
+      # into a released version without anyone having to remember a step.
       - name: Create the release, unless it is already there
         if: steps.resolve.outputs.publishing == 'true'
         env:
@@ -89,12 +123,16 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists, leaving its notes alone."
           else
-            gh release create "$tag" --title "Chronos Desktop ${tag#v}" --notes-file notes.md
+            gh release create "$tag" --target "$GITHUB_SHA" \
+              --title "Chronos Desktop ${tag#v}" --notes-file notes.md
           fi
 
   build:
     name: ${{ matrix.name }}
     needs: prepare
+    # Skipped entirely when the merge carried no version bump: there is nothing
+    # to publish, and half an hour of matrix build would prove only that.
+    if: needs.prepare.outputs.building == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -225,6 +263,7 @@ jobs:
   android:
     name: Android APK
     needs: prepare
+    if: needs.prepare.outputs.building == 'true'
     runs-on: ubuntu-22.04
 
     steps:
