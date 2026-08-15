@@ -9,8 +9,9 @@ name: Release
 # discover it.
 #
 # Deliberately not on every push: a full matrix build costs tens of minutes of
-# runner time, and on a private repository that time is billed — macOS at ten
-# times the rate of Linux.
+# wall-clock across three systems, and nothing about most pushes needs one.
+# (It used to cost money too, while this repository was private and macOS
+# minutes billed at ten times the Linux rate.)
 on:
   push:
     tags: ['v*']

@@ -1,31 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { AvailableUpdate } from '../utils/update';
+import { bulletsFrom } from '../utils/update/notes';
 
 interface UpdateBannerProps {
   update: AvailableUpdate;
   /** On a phone this ends at Android's installer, not at a restart. */
   handsOverToSystem: boolean;
   onDismiss: () => void;
-}
-
-/**
- * Turns the changelog section into something readable in a banner.
- *
- * The notes are the release body, which is the `CHANGELOG.md` section verbatim
- * — Markdown, headings and all. Rendering it properly would mean a Markdown
- * dependency for four lines of text; stripping it to its bullet points says the
- * same thing. Anything that is not a list item is dropped, because the headings
- * are "Added"/"Changed"/"Fixed" and the user is looking at a list of changes
- * either way.
- */
-function bulletsFrom(notes: string): string[] {
-  return notes
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('- '))
-    .map((line) => line.slice(2).replace(/\*\*/g, '').trim())
-    .filter(Boolean);
 }
 
 /**
