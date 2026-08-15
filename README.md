@@ -5,7 +5,9 @@ the breaks between them — and every duration is derived from that, never store
 Entries can be typed in by hand as readily as measured, corrected afterwards, and exported for a
 named month as PDF, CSV or a portable JSON backup.
 
-The interface is in German; the code is in English.
+The interface is in German; the code is in English. **[LIESMICH.md](LIESMICH.md) is the German page
+for people who want to _use_ Chronos** — which file to download, where the data lives, how updating
+works. This file is the developer's half.
 
 It ships as an app for **Windows, macOS, Linux and Android**, built with Tauri from one codebase,
 and the same code still runs as a plain web app in the browser. iOS is not built — see
