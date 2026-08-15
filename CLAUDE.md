@@ -218,6 +218,15 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   like that since Android shipped, and no test could have seen it: jsdom does not lay anything out.
   Any row of fixed-size controls gets `flex-wrap` so the worst case is a second line, never a
   missing button — and check a change at 320 px, not at the emulator's 360.
+- **`shrink-0` next to `min-w-0` is how text ends up underneath other text.** This bit three
+  separate rows before anyone named it: the header, the history's three buttons, and every entry in
+  the list. The shape is always the same — a fixed group that refuses to shrink beside a flexible
+  one that shrinks past its content — and the flexible side then overflows _sideways_, sliding its
+  second line under the fixed group. Truncating the first line hides it: `truncate` on a heading
+  does nothing for the `project • date` row below it. On a phone the answer is not a cleverer
+  single line but **two**: stack with `flex-col`, and go back to `sm:flex-row` where the width
+  exists. Anything staying on one line needs `flex-wrap` or `truncate` on _every_ line, not the
+  first.
 - **The width scale and the type scale are each one lever, in `src/index.css`.** `.app-shell` is
   how wide the app may get, in four steps, and the header and `main` both use it — if they drift
   apart the header stops lining up with the content. The root font size ramps above 1600 px, which
