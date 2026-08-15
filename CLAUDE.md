@@ -164,6 +164,13 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   header and footer pad themselves with `env(safe-area-inset-*)`; without both, the status bar sits
   on top of the tab bar. A row of label-plus-control needs a stacked fallback below `sm`, or the
   description text wraps around the control and interleaves with it.
+- **A phone is narrower than the emulator, and a row that cannot fit must wrap, not overflow.** The
+  emulator reports 360 CSS px; a Fairphone 6 reports **320** (1116 physical pixels at density 558),
+  and at that width the header ran its two right-hand buttons off the screen — including the one
+  that opens the settings, which is to say the whole app was unreachable from there. It had been
+  like that since Android shipped, and no test could have seen it: jsdom does not lay anything out.
+  Any row of fixed-size controls gets `flex-wrap` so the worst case is a second line, never a
+  missing button — and check a change at 320 px, not at the emulator's 360.
 - **Log through `src/utils/logging/logger.ts`, not `console.*` directly.** The console does not
   exist in a shipped desktop build, so a bare `console.warn` about a failed save reaches nobody.
   `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything

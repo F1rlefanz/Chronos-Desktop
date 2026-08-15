@@ -30,6 +30,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Fixed
 
+- **Auf schmalen Telefonen sind Einstellungen und Ton-Schalter wieder erreichbar.** In der obersten
+  Zeile liefen die beiden rechten Knöpfe über den Bildschirmrand hinaus und waren damit einfach
+  weg — auf einem Fairphone 6 zum Beispiel, seit es Chronos für Android gibt. Die Zeile bricht
+  jetzt um, statt abzuschneiden.
 - **Chronos überschreibt nichts mehr, was es beim Start nicht lesen konnte.** Bisher war „nicht
   lesbar" von „noch nie gespeichert" nicht zu unterscheiden — die App startete mit
   Standardwerten und schrieb diese über die Einstellungen, die noch da waren. Beim Testen auf dem
