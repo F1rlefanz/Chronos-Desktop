@@ -44,7 +44,7 @@ import {
 } from './utils/sync';
 import { buildSyncPayload, parseSyncPayload } from './utils/sync/payload';
 import { lanAvailable } from './utils/sync/lan';
-import { AvailableUpdate, checkForUpdate, updatesAvailable } from './utils/update';
+import { useUpdateCheck } from './hooks/useUpdateCheck';
 import {
   openAndroidFilesFolder,
   pickAndroidFilesFolder,
@@ -275,23 +275,12 @@ export default function App({ initialState }: AppProps) {
     });
   }, [initialState]);
 
-  // Looked for once at startup and never again while the app runs.
-  //
-  // Deliberately not on a timer: the app is open while someone is working, and
-  // interrupting that to announce a new version is the mechanism putting itself
-  // ahead of the work. A restart is the natural moment, and there is one every
-  // day. `checkForUpdate` swallows the ordinary failures, so a machine with no
-  // network simply gets `null` and hears nothing about it.
-  const [update, setUpdate] = useState<AvailableUpdate | null>(null);
-  const [updateDismissed, setUpdateDismissed] = useState(false);
-  const updateCheckedRef = useRef(false);
-
-  useEffect(() => {
-    if (updateCheckedRef.current || !updatesAvailable()) return;
-    updateCheckedRef.current = true;
-
-    void checkForUpdate().then(setUpdate);
-  }, []);
+  // At startup, every six hours, and on coming back to the window. Nothing
+  // pushes to this app — there is no server to push from — so asking on a
+  // rhythm is the closest a release can get to reaching a copy that is already
+  // running. See `useUpdateCheck` for why both the rhythm and the return are
+  // needed.
+  const { update, dismiss: dismissUpdate } = useUpdateCheck();
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
@@ -934,11 +923,11 @@ export default function App({ initialState }: AppProps) {
             could not be read is about the user's own work, and a new version is
             not. It sits above the content so it is seen, and can be dismissed
             so it is only seen once. */}
-        {update && !updateDismissed && (
+        {update && (
           <UpdateBanner
             update={update}
             handsOverToSystem={isMobilePlatform()}
-            onDismiss={() => setUpdateDismissed(true)}
+            onDismiss={dismissUpdate}
           />
         )}
 

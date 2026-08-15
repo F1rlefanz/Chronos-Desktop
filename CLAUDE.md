@@ -182,6 +182,16 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   must be refused, not followed. **CI signs Android with the same key every earlier build used** —
   Android refuses an update signed by a different one, and switching means uninstalling, which
   takes the user's recorded time with it.
+- **The update check runs on a timer; syncing still must not.** They look like the same rule and
+  are not. A sync writes into a user's folder, so doing it at a moment nobody asked for is the
+  thing to avoid; an update check reads one small file and changes nothing. `useUpdateCheck` asks
+  at startup, every six hours, and when the window comes back — the last of those because a laptop
+  that was asleep ran no timers, and the copy opened on Monday would otherwise still believe what
+  it learned on Friday. Nothing pushes to this app and nothing should: a server to push from is
+  exactly what "no account, no server" rules out.
+- **Dismissal is remembered by version, not for the session.** With a single check at startup the
+  two were the same thing. With several they are not, and getting it wrong means dismissing 1.2.0
+  silently hides 1.3.0 as well.
 - **The update banner reads `CHANGELOG.md`, and that file wraps at a hundred characters.** A bullet
   in it is not a line: most entries run over two or three, with the rest indented underneath, so
   `bulletsFrom` joins continuations onto the entry above. Filtering for lines starting with `- `
