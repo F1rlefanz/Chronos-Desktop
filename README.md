@@ -405,19 +405,26 @@ found that way and by nothing else. What a release should cover, beyond the suit
 `main` and every pull request. It does not build the desktop app: a cold Rust build takes minutes,
 and this is the check that gates merging.
 
-`.github/workflows/release.yml` does the shipping. Push a `v*` tag and it takes the notes from
-`CHANGELOG.md`, creates the release, builds on Linux, Windows and macOS, and uploads every
-installer to it. It also checks Rust formatting and runs Clippy on each system, which is the only
-way a warning that appears solely on Linux would ever be seen here.
+`.github/workflows/release.yml` does the shipping, and **the version in `package.json` is what
+triggers it**. Merge a bump into `main` and the workflow takes the notes from `CHANGELOG.md`,
+creates the tag and the release, builds on Linux, Windows and macOS, signs everything, builds and
+signs the Android APK, and writes the two update manifests. Tagging by hand is no longer part of
+cutting a release — and doing it anyway just makes the same release build a second time.
+
+It watches `main` rather than only tags because forgetting the tag is the one failure that looks
+exactly like success: the merge goes in, CI passes green, and the change sits on `main` reachable
+by nobody. That happened twice in one afternoon before the workflow learned to notice.
+
+A merge that does **not** change the version stops in `prepare` — its release already exists, so
+nothing else runs. The full matrix still costs tens of minutes across three systems, and it is only
+spent when there is something to ship. Pushing a `v*` tag also still works, which is how every
+release before 1.2.0 was cut.
 
 Run it by hand **without** a tag (Actions → Release → Run workflow, leaving the tag empty) and it
 builds everything and attaches the results to the run instead of publishing — how to find out that
-something stopped compiling on Linux without cutting a release to discover it. A separate job
-builds the Android APK — signed, and published on a tag.
-
-Releases are tag-triggered rather than running on every push, because a full matrix build takes
-tens of minutes of runner time and most pushes do not need one. The repository is public, so those
-runners are free; the argument is about wall-clock and noise rather than money.
+something stopped compiling on Linux without cutting a release to discover it. It also checks Rust
+formatting and runs Clippy on each system, which is the only way a warning that appears solely on
+Linux would ever be seen here.
 
 `main` is behind a ruleset: changes go through a pull request, which the `Typecheck, lint, test,
 build` check gates. Worth knowing if this was ever private — **rulesets only take effect on public
