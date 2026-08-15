@@ -6,6 +6,14 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] — 2026-08-15
+
+### Fixed
+
+- **Der Update-Hinweis schneidet die Änderungen nicht mehr mitten im Satz ab.** Läuft ein Punkt über
+  mehr als eine Zeile — was auf die meisten zutrifft — war nur der Anfang zu sehen und der Rest
+  fehlte kommentarlos.
+
 ## [1.1.1] — 2026-08-15
 
 ### Fixed
@@ -356,6 +364,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.1.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v1.0.0

@@ -182,6 +182,11 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   must be refused, not followed. **CI signs Android with the same key every earlier build used** —
   Android refuses an update signed by a different one, and switching means uninstalling, which
   takes the user's recorded time with it.
+- **The update banner reads `CHANGELOG.md`, and that file wraps at a hundred characters.** A bullet
+  in it is not a line: most entries run over two or three, with the rest indented underneath, so
+  `bulletsFrom` joins continuations onto the entry above. Filtering for lines starting with `- `
+  cut every entry off mid-sentence, and no test caught it because every fixture was one line long
+  — the fixtures now include a real release's notes verbatim.
 - **A version comparison is `isNewer`, never a string comparison.** `1.10.0` sorts before `1.9.0`
   as text, which would make a tenth minor release look like a downgrade and silently strand
   everyone on it. Anything that is not three integers counts as _not newer_, so a broken manifest

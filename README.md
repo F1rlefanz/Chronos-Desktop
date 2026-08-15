@@ -406,16 +406,16 @@ way a warning that appears solely on Linux would ever be seen here.
 Run it by hand **without** a tag (Actions → Release → Run workflow, leaving the tag empty) and it
 builds everything and attaches the results to the run instead of publishing — how to find out that
 something stopped compiling on Linux without cutting a release to discover it. A separate job
-builds the Android APK as a check.
+builds the Android APK — signed, and published on a tag.
 
 Releases are tag-triggered rather than running on every push, because a full matrix build takes
-tens of minutes of runner time and most pushes do not need one. On a **private** repository that
-time is also billed, with macOS at ten times the Linux rate; on a public one the runners are free
-and the argument is only about wall-clock and noise.
+tens of minutes of runner time and most pushes do not need one. The repository is public, so those
+runners are free; the argument is about wall-clock and noise rather than money.
 
-To require CI before merging (needs admin rights on the repository):
-Settings → Branches → Add rule for `main` → enable _Require a pull request before merging_ and
-_Require status checks to pass_, selecting the `Typecheck, lint, test, build` check.
+`main` is behind a ruleset: changes go through a pull request, which the `Typecheck, lint, test,
+build` check gates. Worth knowing if this was ever private — **rulesets only take effect on public
+repositories**, so the rule can sit there configured and unenforced, and then start rejecting
+direct pushes with `GH013` the moment the repository is published.
 
 ## License
 
