@@ -50,7 +50,11 @@ with the totals, the calendar and the charts.
 - A log file (desktop only) recording startup, backup outcomes, exports and every failed save. The
   backup and log folders open from the Settings dialog; the export folder opens by itself after an
   export.
-- Syncing between two devices through a folder they both see — see below.
+- Syncing between two devices, either through a folder they both see or directly over the local
+  network — see below.
+- One layout from a 320-pixel phone to a 55-inch television: the content area widens in steps, the
+  stopwatch and the history sit side by side from tablet width up, and above 1600 pixels the whole
+  scale grows with the screen rather than staying laptop-sized in the middle of it.
 
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -76,6 +80,29 @@ account and nothing to pay for; the transport is whatever the user already trust
   newer edit; fields are never blended, because a half-merged entry is one nobody typed in.
 - **A running measurement stays on its device.** What is shared is a record, not an action.
 - **Android syncs through the same folder**, but reaches it differently — see below.
+
+## Two devices, no folder
+
+A folder is the patient transport: it works between devices that are never awake at the same time,
+and it needs something else — OneDrive, Syncthing — to carry it. When both devices _are_ awake and
+on the same WiFi, that is one program too many, so they can also simply talk to each other.
+
+One side waits and shows an address and a six-digit code; the other types them and presses the
+button. One round trip, both ends merge, done.
+
+- **Everything below the surface is the folder's.** The same payload, the same `mergeEntries`, the
+  same backup before anything foreign is adopted. Only the transport differs, which is the reason
+  that seam exists at all.
+- **No mDNS, no HTTP, no new dependency.** We own both ends, so the wire format is a greeting, a
+  code, a length and a body over raw TCP — about 150 lines of `std::net`. Discovery would have cost
+  a second implementation on Android, where multicast needs its own lock and its own API, to save
+  typing twelve characters.
+- **The same Rust runs on the desktop and on the phone.** No Kotlin and no new permission: `INTERNET`
+  was already in the manifest.
+- **Reachable only while the dialog is open**, only on the local network, and only to someone who
+  read the code off the other screen. Closing the dialog stops the listener.
+- **The honest limit:** both devices have to be on and in the same network at the same time. If that
+  is not your situation, the folder is the answer.
 
 ## The phone, and the folders it cannot see
 

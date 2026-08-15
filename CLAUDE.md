@@ -145,6 +145,18 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   replacing them. A snapshot is never dropped because a folder went away — it falls back. The
   twenty-snapshot limit is written twice on purpose (Rust for the desktop, `androidFiles.ts` for
   the phone), because the Rust side cannot open that folder at all.
+- **There are two transports and exactly one merge.** A folder and a direct network connection
+  differ in how records arrive and in nothing about what happens to them: both build the same
+  payload, both take a backup before adopting anything foreign, both go through `adopt` in
+  `src/App.tsx`, which merges against `liveRef` and persists. A second copy of that sequence is how
+  the two transports start disagreeing about what a sync means. `lan.rs` is reachable from a test
+  without Tauri's state — `answer` and `lan_exchange` are plain functions — so a change to the
+  framing does not need two devices and a WiFi to check.
+- **The network listener lives exactly as long as its dialog.** Opening starts it, closing stops it,
+  and nothing on the machine is reachable while nobody is looking. Six digits are not a password
+  and the comment in `lan.rs` says so: they keep a neighbour already on the WiFi from pushing their
+  hours in, for the minute the dialog is open. Do not "improve" this into a background service —
+  the whole safety argument is that it is not one.
 - **Syncing happens at the two moments something is already written, and on request.** Startup and
   window close, next to `ensureDailyBackup` and `useBackupOnClose`, plus the button. No timer and
   no file watcher: both write into a user's folder at moments nobody asked for. Closing only
@@ -171,6 +183,25 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   like that since Android shipped, and no test could have seen it: jsdom does not lay anything out.
   Any row of fixed-size controls gets `flex-wrap` so the worst case is a second line, never a
   missing button — and check a change at 320 px, not at the emulator's 360.
+- **The width scale and the type scale are each one lever, in `src/index.css`.** `.app-shell` is
+  how wide the app may get, in four steps, and the header and `main` both use it — if they drift
+  apart the header stops lining up with the content. The root font size ramps above 1600 px, which
+  moves type, padding, gaps and corners together because every Tailwind size is in `rem`; setting
+  those individually at four breakpoints is the version that drifts. Breakpoints are unaffected —
+  `rem` inside a media query resolves against the browser's initial 16 px, not against this. Do not
+  reintroduce a `max-w-*` on a page container, and do not write a font size in `px`: a `text-[11px]`
+  is a size that refuses to grow on the one screen that needed it to.
+- **A component sized against the viewport is wrong as soon as it shares a row.** The readout in
+  `StopwatchDisplay` uses `cqi` against its own card, not `vw`, because from `xl` up that card is a
+  column beside the history rather than the width of the screen. Its `clamp()` slope is set so the
+  widest thing it can ever show — `HH:MM:SS` with hundredths — still fits at 320 px; the fixed
+  `text-7xl` it replaced needed 303 px of a 224 px card, and nobody saw it because the readout only
+  gets that wide after an hour.
+- **Check a layout at a real viewport, not a window size.** Chrome's `--window-size` is clamped to a
+  platform minimum and the screenshot is then a crop of a wider layout — which is exactly how you
+  convince yourself a 320 px bug is fixed when it is not. Drive
+  `Emulation.setDeviceMetricsOverride` over the DevTools protocol instead, and assert
+  `document.documentElement.scrollWidth === clientWidth` rather than judging by eye.
 - **Log through `src/utils/logging/logger.ts`, not `console.*` directly.** The console does not
   exist in a shipped desktop build, so a bare `console.warn` about a failed save reaches nobody.
   `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything
