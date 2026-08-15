@@ -6,7 +6,12 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.9.0] — 2026-08-15
+## [1.0.0] — 2026-08-15
+
+Die erste Fassung, die nichts Halbes mehr offen hat: Chronos läuft auf Windows, macOS, Linux,
+Android und im Browser, hält zwei Geräte auf zwei Wegen in Übereinstimmung — über einen geteilten
+Ordner oder direkt im selben WLAN — und passt sich vom 320 Pixel schmalen Telefon bis zum
+Fernseher an. Kein Konto, kein Server, keine Cloud; die Daten bleiben, wo du bist.
 
 ### Added
 
@@ -316,7 +321,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
-[0.9.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v0.9.0
+[1.0.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.0...v0.6.1
