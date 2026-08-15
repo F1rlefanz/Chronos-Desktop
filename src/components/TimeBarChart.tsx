@@ -51,7 +51,7 @@ export const TimeBarChart: React.FC<TimeBarChartProps> = ({ title, points, empty
           {hovered !== null && (
             <div
               role="status"
-              className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 rounded-lg bg-gray-900 text-white text-[11px] px-2.5 py-1 shadow-lg pointer-events-none whitespace-nowrap"
+              className="absolute -top-1 left-1/2 -translate-x-1/2 z-10 rounded-lg bg-gray-900 text-white text-[0.6875rem] px-2.5 py-1 shadow-lg pointer-events-none whitespace-nowrap"
             >
               <strong className="font-semibold">{points[hovered].label}</strong>
               {' — '}
@@ -103,7 +103,7 @@ export const TimeBarChart: React.FC<TimeBarChartProps> = ({ title, points, empty
             {points.map((point, index) => (
               <span
                 key={`${point.label}-label-${index}`}
-                className={`flex-1 text-center text-[9px] tabular-nums truncate ${
+                className={`flex-1 text-center text-[0.5625rem] tabular-nums truncate ${
                   hovered === index ? 'text-gray-900 font-semibold' : 'text-gray-400'
                 }`}
               >

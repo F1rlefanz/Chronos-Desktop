@@ -77,9 +77,11 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               jemand bemerkt.
             </p>
             <p>
-              Wer zwei Rechner abgleicht, wählt dafür selbst einen Ordner — auch das ist kein Konto
-              und kein Server: Chronos legt dort eine kleine Datei je Gerät ab und liest die der
-              anderen. Wer das Feld leer lässt, gibt nichts heraus.
+              Wer zwei Geräte abgleicht, hat die Wahl zwischen zwei Wegen — beide ohne Konto und
+              ohne Server. Entweder ein Ordner, den du selbst wählst: Chronos legt dort eine kleine
+              Datei je Gerät ab und liest die der anderen. Oder direkt im selben WLAN, ohne Ordner
+              und ohne fremden Dienst — ein Gerät wartet, das andere verbindet sich mit Adresse und
+              Code. Wer beides nicht nutzt, gibt nichts heraus.
             </p>
           </section>
 
@@ -88,7 +90,7 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               <Layers className="w-4 h-4 text-[#2D5BFF]" />
               <span>Aufbau</span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-[11px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-[0.6875rem]">
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <span className="text-[#2D5BFF] font-bold block mb-1">/src/domain</span>
                 <span className="font-sans">
@@ -113,9 +115,9 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <span className="text-emerald-600 font-bold block mb-1">/src/utils/sync</span>
                 <span className="font-sans">
-                  Der Abgleich über einen Ordner. Zusammengeführt wird nach einer reinen Regel: die
-                  neuere Fassung gewinnt, gelöscht bleibt gelöscht, und zweimal abgleichen ändert
-                  nichts mehr.
+                  Der Abgleich — über einen Ordner oder direkt im Netz. Zusammengeführt wird in
+                  beiden Fällen nach derselben reinen Regel: die neuere Fassung gewinnt, gelöscht
+                  bleibt gelöscht, und zweimal abgleichen ändert nichts mehr.
                 </span>
               </div>
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">

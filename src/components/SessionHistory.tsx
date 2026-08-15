@@ -103,19 +103,23 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Wraps, and the labels inside the pills do not. Three fixed buttons
+            on one line do not fit a 320px phone: the text broke inside each
+            pill, overflowed it and the three ran into one another — seen on a
+            Fairphone 6. A second line is the worst case now. */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={onAddEntry}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 text-white text-xs font-semibold whitespace-nowrap shadow-xs transition-colors cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 shrink-0" />
             <span>Eintrag hinzufügen</span>
           </button>
           <button
             onClick={onExportPdf}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 text-xs font-semibold whitespace-nowrap shadow-2xs transition-colors cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-[#2D5BFF]" />
+            <Download className="w-3.5 h-3.5 text-[#2D5BFF] shrink-0" />
             <span>PDF-Export</span>
           </button>
           {entries.length > 0 && (
@@ -129,7 +133,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   onClearAll();
                 }
               }}
-              className="text-xs text-rose-500 hover:text-rose-600 px-2.5 py-1 transition-colors cursor-pointer"
+              className="text-xs text-rose-500 hover:text-rose-600 px-2.5 py-1 whitespace-nowrap transition-colors cursor-pointer"
             >
               Alle löschen
             </button>
@@ -199,7 +203,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   />
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-gray-900 truncate">{entry.title}</h4>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                    <div className="flex items-center gap-2 text-[0.6875rem] text-gray-400 mt-0.5">
                       <span className="font-semibold text-gray-600">{projectName}</span>
                       <span>•</span>
                       <span>{formatDateTime(entry.startTime)}</span>
@@ -219,7 +223,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       {mainTime}
                       <span className="text-xs text-[#2D5BFF]">{subTime}</span>
                     </span>
-                    <span className="block text-[10px] text-gray-400">
+                    <span className="block text-[0.625rem] text-gray-400">
                       {formatDurationHuman(entryNetMs)}
                     </span>
                   </div>
@@ -260,7 +264,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   {entry.tags.map((tag, i) => (
                     <span
                       key={i}
-                      className="text-[10px] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200"
+                      className="text-[0.625rem] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200"
                     >
                       #{tag}
                     </span>
@@ -273,7 +277,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 <div className="mt-3 pt-3 border-t border-gray-200 text-xs space-y-2">
                   {entry.notes && (
                     <div className="bg-white p-3 rounded-lg border border-gray-200 text-gray-700">
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                      <strong className="text-gray-400 block text-[0.625rem] uppercase tracking-wider mb-1">
                         Notiz
                       </strong>
                       {entry.notes}
@@ -282,11 +286,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
 
                   {entry.breaks.length > 0 && (
                     <div>
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                      <strong className="text-gray-400 block text-[0.625rem] uppercase tracking-wider mb-1">
                         Pausen ({entry.breaks.length}) — zusammen{' '}
                         {formatDurationHuman(entryBreakMs)}
                       </strong>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[11px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[0.6875rem]">
                         {entry.breaks.map((pause, i) => (
                           <div
                             key={pause.id}

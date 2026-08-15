@@ -203,7 +203,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
               <button
                 type="button"
                 onClick={addBreak}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[#2D5BFF] hover:text-blue-700 cursor-pointer"
+                className="flex items-center gap-1 text-[0.6875rem] font-semibold text-[#2D5BFF] hover:text-blue-700 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Pause hinzufügen</span>
@@ -211,7 +211,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
             </div>
 
             {breaks.length === 0 ? (
-              <p className="text-[11px] text-gray-400">Keine Pausen erfasst.</p>
+              <p className="text-[0.6875rem] text-gray-400">Keine Pausen erfasst.</p>
             ) : (
               <div className="space-y-2">
                 {breaks.map((pause) => (

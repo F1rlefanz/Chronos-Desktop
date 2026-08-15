@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBackupOnClose } from './hooks/useBackupOnClose';
-import { mergeEntries, pruneTombstones, tombstoneFor } from './domain/merge';
+import {
+  MergeInput,
+  MergeResult,
+  mergeEntries,
+  pruneTombstones,
+  tombstoneFor,
+} from './domain/merge';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState, Tombstone } from './types';
@@ -36,6 +42,8 @@ import {
   syncAvailable,
   SyncOutcome,
 } from './utils/sync';
+import { buildSyncPayload, parseSyncPayload } from './utils/sync/payload';
+import { lanAvailable } from './utils/sync/lan';
 import {
   openAndroidFilesFolder,
   pickAndroidFilesFolder,
@@ -56,6 +64,7 @@ import { SessionHistory } from './components/SessionHistory';
 import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { LanSyncModal } from './components/LanSyncModal';
 
 interface AppProps {
   /** Read from storage in `main.tsx` before the first render. */
@@ -115,6 +124,7 @@ export default function App({ initialState }: AppProps) {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
+  const [isLanSyncOpen, setIsLanSyncOpen] = useState<boolean>(false);
 
   // Set when a write to storage failed — usually the browser's 5 MB quota,
   // which a long history plus a large import can reach. The write is the only
@@ -635,6 +645,70 @@ export default function App({ initialState }: AppProps) {
   /* ---------------------------------------------------------------------- */
 
   /**
+   * Takes another device's records into ours, and writes the result.
+   *
+   * Against the state as it is at this moment, not the copy an exchange started
+   * from: neither a folder nor a network is instant, and an entry made while
+   * one was in flight must not be lost to the reply. Merging twice changes
+   * nothing, which is what makes that second pass free.
+   *
+   * Shared by both transports on purpose — a folder and a direct connection
+   * differ in how the records arrive, in nothing about what happens to them.
+   */
+  const adopt = useCallback(
+    (theirs: MergeInput): MergeResult['summary'] => {
+      const live = liveRef.current;
+      const final = mergeEntries({ entries: live.entries, tombstones: live.tombstones }, theirs);
+
+      if (final.summary.added + final.summary.updated + final.summary.deleted > 0) {
+        setTimeEntries(final.entries);
+        setTombstones(final.tombstones);
+        void persist(saveTimeEntries(final.entries), 'die abgeglichenen Daten');
+        void saveTombstones(final.tombstones);
+      }
+
+      return final.summary;
+    },
+    [persist]
+  );
+
+  /**
+   * What arrived over the network, merged in and reported back in a sentence.
+   *
+   * The same snapshot the folder takes before a merge is taken here, for the
+   * same reason: this replaces the local set with a reconciled one, and the
+   * state before it should not exist only in memory.
+   */
+  const receiveOverNetwork = useCallback(
+    async (payload: string): Promise<string> => {
+      const theirs = parseSyncPayload(payload);
+      if (!theirs) return 'Das andere Gerät hat nichts Lesbares geschickt.';
+
+      if (!(await backupBefore('before-sync', 'Der Abgleich'))) {
+        return 'Abgebrochen — es konnte keine Sicherung angelegt werden.';
+      }
+
+      const summary = adopt(theirs);
+      const changed = summary.added + summary.updated + summary.deleted;
+
+      logInfo(
+        `[LAN] Adopted ${summary.added} added, ${summary.updated} updated, ${summary.deleted} deleted.`
+      );
+
+      return changed === 0
+        ? 'Beide Geräte waren schon auf demselben Stand.'
+        : `${summary.added} neu, ${summary.updated} aktualisiert, ${summary.deleted} gelöscht.`;
+    },
+    [adopt, backupBefore]
+  );
+
+  /** What this device offers the other one, in the shape the folder uses too. */
+  const buildOwnPayload = useCallback((): string => {
+    const live = liveRef.current;
+    return buildSyncPayload(initialState.deviceId, live.entries, live.tombstones);
+  }, [initialState.deviceId]);
+
+  /**
    * Reads what the other devices left in the folder and writes ours back.
    *
    * The result is merged against the state as it is when the answer arrives,
@@ -669,21 +743,12 @@ export default function App({ initialState }: AppProps) {
       }
 
       if (outcome.changed) {
-        const live = liveRef.current;
-        const final = mergeEntries(
-          { entries: live.entries, tombstones: live.tombstones },
-          { entries: outcome.entries, tombstones: outcome.tombstones }
-        );
-
-        setTimeEntries(final.entries);
-        setTombstones(final.tombstones);
-        void persist(saveTimeEntries(final.entries), 'die abgeglichenen Daten');
-        void saveTombstones(final.tombstones);
+        adopt({ entries: outcome.entries, tombstones: outcome.tombstones });
       }
 
       setSyncStatus({ state: 'done', message: describeSync(outcome) });
     },
-    [backupBefore, persist, initialState.deviceId]
+    [backupBefore, adopt, initialState.deviceId]
   );
 
   /**
@@ -844,7 +909,7 @@ export default function App({ initialState }: AppProps) {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:py-8 space-y-6">
+      <main className="app-shell flex-1 px-4 py-6 md:py-8 space-y-6">
         {/* Failed write warning — the only copy of the data is the one that
             just failed to save, so this cannot be a console message. */}
         {persistenceError && (
@@ -916,28 +981,36 @@ export default function App({ initialState }: AppProps) {
         {/* Recording: everything needed while a measurement is running or
             about to be, and the list it lands in. */}
         {activeTab === 'tracking' && (
-          <>
-            <StopwatchDisplay
-              elapsedTimeMs={elapsedTimeMs}
-              timerState={timerState}
-              showMilliseconds={settings.showMilliseconds}
-              breakCount={runningEntry?.breaks.length ?? 0}
-              projects={projects}
-              activeProjectId={activeProjectId}
-              onSelectProject={setSelectedProjectId}
-            >
-              <ControlPanel
+          // One column up to `lg`, two from `xl` — the width at which the shell
+          // is wide enough that each half is still a comfortable column rather
+          // than two cramped ones. The readout stays put while the history
+          // scrolls beside it, which is the point of the second column: on a
+          // tall screen the running measurement used to disappear off the top
+          // as soon as there were a dozen entries below it.
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 xl:items-start">
+            <div className="space-y-6 xl:sticky xl:top-6">
+              <StopwatchDisplay
+                elapsedTimeMs={elapsedTimeMs}
                 timerState={timerState}
-                onStart={handleStart}
-                onPause={handlePause}
-                onResume={handleResume}
-                onStop={handleStopAndOpenSaver}
-                onDiscard={handleDiscardRunning}
-                shortcutsEnabled={settings.keyShortcutsEnabled}
-              />
-            </StopwatchDisplay>
+                showMilliseconds={settings.showMilliseconds}
+                breakCount={runningEntry?.breaks.length ?? 0}
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSelectProject={setSelectedProjectId}
+              >
+                <ControlPanel
+                  timerState={timerState}
+                  onStart={handleStart}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  onStop={handleStopAndOpenSaver}
+                  onDiscard={handleDiscardRunning}
+                  shortcutsEnabled={settings.keyShortcutsEnabled}
+                />
+              </StopwatchDisplay>
 
-            {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+              {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+            </div>
 
             <SessionHistory
               entries={timeEntries}
@@ -948,7 +1021,7 @@ export default function App({ initialState }: AppProps) {
               onClearAll={handleClearAllHistory}
               onExportPdf={() => setIsExportOpen(true)}
             />
-          </>
+          </div>
         )}
 
         {/* Insights: totals, calendar and trends — all derived, nothing stored
@@ -957,17 +1030,26 @@ export default function App({ initialState }: AppProps) {
           <>
             <StatCards summary={summary} />
 
-            <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
+            {/* The calendar wants height, the charts want width — so from `xl`
+                the calendar takes the left column at its natural size and the
+                three charts stack beside it, instead of the calendar being
+                stretched across an ultrawide screen with nothing to fill it. */}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-6 xl:items-start">
+              <MonthCalendar
+                entries={timeEntries}
+                now={now}
+                onEditEntry={(e) => openEntryForm(e)}
+              />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
-              <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 gap-4">
+                <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
+                <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+                <TimeBarChart
+                  title={`Monate ${new Date(now).getFullYear()}`}
+                  points={thisYearByMonth}
+                />
+              </div>
             </div>
-
-            <TimeBarChart
-              title={`Monate ${new Date(now).getFullYear()}`}
-              points={thisYearByMonth}
-            />
           </>
         )}
       </main>
@@ -1054,6 +1136,17 @@ export default function App({ initialState }: AppProps) {
               }
             : undefined
         }
+        onLanSync={lanAvailable() ? () => setIsLanSyncOpen(true) : undefined}
+      />
+
+      {/* Over the settings it was opened from, which stay behind it: the two
+          transports belong to the same section, and coming back to it is the
+          natural next step after an exchange. */}
+      <LanSyncModal
+        isOpen={isLanSyncOpen}
+        onClose={() => setIsLanSyncOpen(false)}
+        buildPayload={buildOwnPayload}
+        onReceive={receiveOverNetwork}
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />

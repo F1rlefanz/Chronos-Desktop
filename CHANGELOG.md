@@ -6,6 +6,41 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-08-15
+
+### Added
+
+- **Zwei Geräte im selben WLAN gleichen direkt ab — ohne Ordner und ohne fremden Dienst.** In den
+  Einstellungen unter „Abgleich zwischen Geräten": ein Gerät wartet und zeigt eine Adresse und einen
+  sechsstelligen Code, am anderen tippst du beides ein. Ein Knopfdruck, danach haben beide denselben
+  Stand — es geht nichts ins Internet und nichts durch fremde Hände. Der geteilte Ordner bleibt wie
+  er ist; er ist der geduldige Weg für Geräte, die nie gleichzeitig an sind, dieser hier der
+  schnelle für die, die es sind.
+
+### Changed
+
+- **Chronos füllt jetzt den Bildschirm, den es bekommt — vom Handy bis zum Fernseher.** Bisher war
+  alles in eine 900 Pixel breite Spalte in der Mitte gegossen; auf einem Ultrawide-Monitor war das
+  ein schmaler Streifen mit viel Leere daneben. Jetzt wird die Fläche in Stufen breiter, ab
+  Tablet-Breite stehen Stoppuhr und Liste nebeneinander, und der Kalender bekommt seine Diagramme an
+  die Seite statt untereinander. Ab sehr großen Bildschirmen wächst außerdem die Grundschrift mit —
+  vom Sofa aus lesbar, statt Briefmarkengröße auf einem 55-Zoll-Gerät.
+- **Die laufende Messung bleibt beim Scrollen stehen.** Auf breiten Bildschirmen scrollt nur die
+  Liste; die Stoppuhr verschwindet nicht mehr nach oben aus dem Bild, sobald ein Dutzend Einträge
+  darunter stehen.
+
+### Fixed
+
+- **Die große Zeitanzeige läuft auf schmalen Telefonen nicht mehr über den Kartenrand.** Ab einer
+  Stunde Messdauer — und erst recht mit eingeschalteten Hundertsteln — war sie auf einem 320 Pixel
+  breiten Gerät zu breit für ihre eigene Karte. Sie richtet sich jetzt nach dem Platz, den sie hat.
+- **„Eintrag hinzufügen", „PDF-Export" und „Alle löschen" überlappen sich auf schmalen Telefonen
+  nicht mehr.** Die drei Knöpfe standen auf einer Zeile, die zu kurz dafür war; die Beschriftungen
+  brachen mitten im Knopf um und liefen ineinander. Die Zeile bricht jetzt um.
+- **Das wartende Gerät zeigt das Ergebnis, ohne dass man scrollen muss.** Beim Abgleich im selben
+  Netz stand die Rückmeldung unterhalb des sichtbaren Bereichs — also genau auf dem Gerät, das man
+  ansieht, während man am anderen tippt, und dort sah es aus, als sei nichts passiert.
+
 ## [0.8.0] — 2026-08-14
 
 ### Added
@@ -281,6 +316,9 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.9.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.0...v0.5.1

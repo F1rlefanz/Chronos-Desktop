@@ -47,7 +47,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           settings button were simply gone, and with them every way into the
           settings. Tightening the spacing alone would have bought thirty pixels
           and left the next narrow phone to find the same bug. */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
+      <div className="app-shell px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
         <nav className="flex items-center gap-1" aria-label="Ansicht">
           {TABS.map((tab) => (
             <button

@@ -7,6 +7,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::Manager;
 
+mod lan;
+
 /// Mirrors the failing half of `WriteResult` in `src/utils/storage/types.ts`.
 /// `reason` is one of the `WriteFailureReason` values; `message` is shown to
 /// the user in the persistence banner, so it has to read as a sentence.
@@ -73,7 +75,7 @@ impl StorageError {
         }
     }
 
-    fn rejected(message: String) -> Self {
+    pub(crate) fn rejected(message: String) -> Self {
         Self {
             reason: "io",
             message,
@@ -520,7 +522,8 @@ pub fn run() {
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .manage(SyncRoot::default());
+        .manage(SyncRoot::default())
+        .manage(lan::LanState::default());
 
     // The commands below reach the shared folder with a path; a phone has none
     // to give. There the folder is read through the Storage Access Framework
@@ -541,6 +544,10 @@ pub fn run() {
             sync_list,
             sync_read,
             sync_write,
+            lan::lan_start,
+            lan::lan_stop,
+            lan::lan_received,
+            lan::lan_exchange,
             log_append,
             reveal_folder
         ])

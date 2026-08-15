@@ -30,6 +30,71 @@
   }
 }
 
+/*
+ * One lever for the whole scale.
+ *
+ * Almost every size in this app is a Tailwind class, and those are written in
+ * `rem` — so moving the root font size moves type, padding, gaps and rounded
+ * corners together, and the 320-pixel phone and the 55-inch television end up
+ * with the same proportions rather than the same pixel sizes. Setting each of
+ * them by hand at four breakpoints is the version of this that drifts.
+ *
+ * It stays at 16px until 1600px wide, which is deliberate: every screen anyone
+ * has actually used this on — the phone, a laptop, a 1080p monitor — is below
+ * that and must look exactly as it did. Above it the ramp starts, and by the
+ * time a screen is 3440 or 4K wide the base is 24px, which is what makes the
+ * thing legible from a sofa rather than a desk chair.
+ *
+ * Breakpoints are unaffected: `rem` inside a media query is resolved against
+ * the browser's initial 16px, not against this, so `xl:` still means 1280px.
+ */
+:root {
+  font-size: 16px;
+}
+
+@media (min-width: 1600px) {
+  :root {
+    font-size: clamp(16px, 0.5vw + 8px, 24px);
+  }
+}
+
+/*
+ * How wide the app is allowed to get, in four steps rather than one cap.
+ *
+ * A single `max-w-4xl` was a sensible default when the only target was a
+ * laptop; on an ultrawide monitor it is a column of content with two thirds of
+ * the screen empty beside it. Growing without limit is the opposite mistake —
+ * a line of text stops being readable somewhere around 100 characters — so the
+ * width opens up in stages and stops, and past that the extra room goes to the
+ * margins on purpose.
+ *
+ * Header and main share this class: if they drift apart, the header's contents
+ * no longer line up with the content below them.
+ */
+.app-shell {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 56rem;
+}
+
+@media (min-width: 1280px) {
+  .app-shell {
+    max-width: 72rem;
+  }
+}
+
+@media (min-width: 1536px) {
+  .app-shell {
+    max-width: 88rem;
+  }
+}
+
+@media (min-width: 2200px) {
+  .app-shell {
+    max-width: 100rem;
+  }
+}
+
 @layer base {
   body {
     background-color: #f4f7f9;
