@@ -6,6 +6,18 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] — 2026-08-15
+
+### Added
+
+- **Eine deutsche Kurzanleitung liegt jetzt bei jeder Veröffentlichung.** `LIESMICH.md` sagt, welche
+  der vielen Dateien du tatsächlich brauchst — für Windows, Android, macOS und Linux jeweils genau
+  eine — wo deine Daten liegen, was beim Update und beim Deinstallieren passiert und warum Windows
+  beim ersten Start warnt.
+- **`SHA256SUMS.txt` zum Nachprüfen heruntergeladener Dateien.** Wer den Installer von Hand lädt,
+  kann damit feststellen, ob er unverändert ist. Für den automatischen Update-Weg war das nie
+  nötig — der prüft seit jeher eine Signatur —, für den Weg über den Browser bisher schon.
+
 ## [1.2.0] — 2026-08-15
 
 ### Changed
@@ -375,6 +387,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.2.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.0...v1.1.1

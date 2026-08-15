@@ -397,3 +397,19 @@ jobs:
           shopt -s nullglob
           written=(latest.json latest-android.json)
           gh release upload '${{ needs.prepare.outputs.tag }}' "${written[@]}" --clobber
+
+      # After the manifests, because the list covers everything already
+      # uploaded. Signatures protect the automatic path; this is the one a
+      # person downloading an installer by hand can use.
+      - name: Write the checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/checksums.py "${{ needs.prepare.outputs.tag }}" SHA256SUMS.txt
+
+      # The plain-German page belongs next to the installer, not only in the
+      # repository: someone deciding whether to run an unsigned .exe is not
+      # reading a developer README on another tab.
+      - name: Publish the checksums and the German page
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ needs.prepare.outputs.tag }}' SHA256SUMS.txt LIESMICH.md --clobber
