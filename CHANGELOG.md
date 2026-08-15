@@ -34,6 +34,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 - **Die große Zeitanzeige läuft auf schmalen Telefonen nicht mehr über den Kartenrand.** Ab einer
   Stunde Messdauer — und erst recht mit eingeschalteten Hundertsteln — war sie auf einem 320 Pixel
   breiten Gerät zu breit für ihre eigene Karte. Sie richtet sich jetzt nach dem Platz, den sie hat.
+- **„Eintrag hinzufügen", „PDF-Export" und „Alle löschen" überlappen sich auf schmalen Telefonen
+  nicht mehr.** Die drei Knöpfe standen auf einer Zeile, die zu kurz dafür war; die Beschriftungen
+  brachen mitten im Knopf um und liefen ineinander. Die Zeile bricht jetzt um.
+- **Das wartende Gerät zeigt das Ergebnis, ohne dass man scrollen muss.** Beim Abgleich im selben
+  Netz stand die Rückmeldung unterhalb des sichtbaren Bereichs — also genau auf dem Gerät, das man
+  ansieht, während man am anderen tippt, und dort sah es aus, als sei nichts passiert.
 
 ## [0.8.0] — 2026-08-14
 
@@ -310,6 +316,9 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[0.9.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.5.0...v0.5.1

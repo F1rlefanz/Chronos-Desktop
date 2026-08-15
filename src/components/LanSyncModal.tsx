@@ -62,6 +62,23 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
     receiveRef.current = onReceive;
   }, [buildPayload, onReceive]);
 
+  /**
+   * Brings the report into view when one arrives.
+   *
+   * The waiting device is the one nobody is touching — you press the button on
+   * the other one and look at this screen — and on a phone this dialog is
+   * taller than the screen, so the report appeared below the fold and the whole
+   * exchange looked like nothing had happened. Found on a Fairphone 6: the
+   * merge had run and said so, three hundred pixels further down.
+   */
+  const reportRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    if (!status) return;
+    // jsdom has no layout and no `scrollIntoView`.
+    reportRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  }, [status]);
+
   /** Starts answering, and stops again when the dialog goes away. */
   useEffect(() => {
     if (!isOpen) return;
@@ -224,6 +241,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
 
           {status && (
             <p
+              ref={reportRef}
               role="status"
               className={`text-[0.6875rem] ${status.kind === 'bad' ? 'text-rose-600' : 'text-emerald-700'}`}
             >
