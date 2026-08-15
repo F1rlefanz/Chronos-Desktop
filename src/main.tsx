@@ -8,6 +8,7 @@ import { logError, logInfo, setLogSink } from './utils/logging/logger';
 import { setFileSink } from './utils/fileTarget';
 import { setSyncTransport } from './utils/sync';
 import { isMobilePlatform } from './utils/platform';
+import { androidBackupSupport, androidFileSink, setAndroidFilesFolder } from './utils/androidFiles';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -32,21 +33,35 @@ async function selectBackend(): Promise<void> {
   ]);
 
   setLogSink(tauriLogSink);
-  setStorageAdapter(tauriAdapter);
-  // Without this the export buttons do nothing at all: the WebView ignores the
-  // `<a download>` click the browser build relies on.
-  setFileSink(tauriFileSink);
 
-  // Syncing through a folder is the one thing that genuinely cannot work on a
-  // phone: under scoped storage there is no folder a user can point at that the
-  // app may then read and write freely, and a folder picker returns a permission
-  // handle rather than a path. So the transport is not installed there at all,
-  // and the settings show what is missing instead of a switch that fails when
-  // it is used. This is the *backend* being chosen, which is this file's job —
-  // storage, backups and the log stay identical on every platform.
-  if (!isMobilePlatform()) {
+  // Two backends for one set of interfaces, and the difference is the
+  // platform's, not ours: a desktop hands out a path and writes through a
+  // rename; Android hands out a permission on a document tree and everything
+  // goes through a content provider. Neither `runSync` nor `deliverFile` nor
+  // `ensureDailyBackup` ever learns which one it got — this is the only place
+  // that knows, which is the rule the storage adapter has always followed.
+  if (isMobilePlatform()) {
+    // `androidFiles` is imported statically rather than here: `App.tsx` needs
+    // it during render anyway, so a dynamic import cannot move it into a chunk
+    // of its own and the bundler says as much.
+    const { androidSyncTransport } = await import('./utils/sync/androidSyncTransport');
+
+    setSyncTransport(androidSyncTransport);
+    // Both wrap the app-private originals rather than replacing them: with no
+    // folder chosen the phone behaves exactly as it did before.
+    setFileSink(androidFileSink(tauriFileSink));
+    setStorageAdapter({
+      ...tauriAdapter,
+      backups: tauriAdapter.backups && androidBackupSupport(tauriAdapter.backups),
+    });
+  } else {
     const { tauriSyncTransport } = await import('./utils/sync/tauriSyncTransport');
+
     setSyncTransport(tauriSyncTransport);
+    setStorageAdapter(tauriAdapter);
+    // Without this the export buttons do nothing at all: the WebView ignores
+    // the `<a download>` click the browser build relies on.
+    setFileSink(tauriFileSink);
   }
 }
 
@@ -72,6 +87,13 @@ selectBackend()
     return defaultPersistedState();
   })
   .then((initialState) => {
+    // Before the first render, not in an effect: the daily snapshot is taken as
+    // soon as the app mounts, and a folder installed a moment later would send
+    // the first backup of the day to the app-private fallback instead.
+    if (isMobilePlatform() && initialState.settings.deviceFilesFolder) {
+      setAndroidFilesFolder(initialState.settings.deviceFilesFolder);
+    }
+
     // The first line of every run: which build, and how much it found. Reading
     // a log starts with knowing what was running.
     logInfo(

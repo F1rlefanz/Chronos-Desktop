@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "What the app may do on a phone, and only there. The chronos-saf plugin is how Android reaches the shared folder — a desktop has a path and needs none of this, so the capability is fenced off by platform rather than granted everywhere and ignored.",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": ["chronos-saf:default"]
+}

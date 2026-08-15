@@ -100,7 +100,10 @@ export async function runSync(request: SyncRequest): Promise<SyncOutcome> {
     logWarn('[Sync] Could not open the shared folder:', error);
     return {
       status: 'failed',
-      message: `Der Ordner für den Abgleich ist nicht erreichbar: ${detailOf(error)}`,
+      // "Lässt sich nicht öffnen" rather than "ist nicht erreichbar": a folder
+      // whose permission was withdrawn is perfectly reachable, just not by us,
+      // and the backend's own sentence follows to say which of the two it is.
+      message: `Der Ordner für den Abgleich lässt sich nicht öffnen: ${detailOf(error)}`,
     };
   }
 

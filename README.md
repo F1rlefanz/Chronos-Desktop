@@ -10,8 +10,8 @@ The interface is in German; the code is in English.
 It ships as an app for **Windows, macOS, Linux and Android**, built with Tauri from one codebase,
 and the same code still runs as a plain web app in the browser. iOS is not built — see
 [Platforms](#platforms). There is no backend and no account: everything lives on the machine it
-was recorded on. Two desktop machines can nonetheless be kept in step through a folder the user
-already syncs by other means — see [Two devices, one folder](#two-devices-one-folder).
+was recorded on. Two devices — a phone included — can nonetheless be kept in step through a folder
+the user already syncs by other means, see [Two devices, one folder](#two-devices-one-folder).
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
@@ -44,13 +44,13 @@ with the totals, the calendar and the charts.
   `Cmd/Ctrl+R` are left to the browser.
 - Configurable display refresh rate, which changes how often the readout is redrawn and not what
   is recorded.
-- Automatic backups (desktop only): a snapshot at startup (at most once a day), one when the window
-  closes, and one immediately before clearing the history or importing a file. The last twenty are
-  kept. All of them happen while the app runs, which is also the only time the data can change.
+- Automatic backups (app builds only): a snapshot at startup (at most once a day), one when the
+  window closes, and one immediately before clearing the history or importing a file. The last
+  twenty are kept. All of them happen while the app runs, which is also the only time the data can change.
 - A log file (desktop only) recording startup, backup outcomes, exports and every failed save. The
   backup and log folders open from the Settings dialog; the export folder opens by itself after an
   export.
-- Syncing between two machines through a folder they both see (desktop only) — see below.
+- Syncing between two devices through a folder they both see — see below.
 
 What changed between versions is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -75,8 +75,35 @@ account and nothing to pay for; the transport is whatever the user already trust
 - **Last write wins per entry**, deletions included. Two devices editing the same entry keep the
   newer edit; fields are never blended, because a half-merged entry is one nobody typed in.
 - **A running measurement stays on its device.** What is shared is a record, not an action.
-- **Android is not included.** An app there cannot freely read and write a folder the user picked,
-  and a half-working sync is worse than none, so the setting is absent rather than broken.
+- **Android syncs through the same folder**, but reaches it differently — see below.
+
+## The phone, and the folders it cannot see
+
+Android gives an app no path to a folder a user picked. The system picker hands back a _permission
+on a document tree_ (`content://…/tree/…`) and everything inside it goes through a content
+provider, so `std::fs` is of no use there. That is what `src-tauri/plugins/chronos-saf/` is: a
+small Kotlin plugin speaking the Storage Access Framework, behind the same `SyncTransport`
+interface the desktop implements with a path and a rename. Nothing above that interface knows
+which of the two it got.
+
+Two folders, because they are two different things:
+
+| Setting             | What it is                                      | Chosen by         |
+| ------------------- | ----------------------------------------------- | ----------------- |
+| `syncFolder`        | shared with another device, one file per device | picker, or a path |
+| `deviceFilesFolder` | this phone's own exports and backups (Android)  | picker            |
+
+- **Nothing is lost by not choosing one.** With `deviceFilesFolder` empty, exports and backups go
+  where they always did — into app-private storage, which is real but has no file manager leading
+  to it. That was the whole problem: an export you could not have.
+- **A snapshot never fails because a folder is gone.** If the grant was withdrawn or the folder
+  deleted, the backup goes to app-private storage rather than being dropped.
+- **SAF cannot replace a file in one move.** The plugin writes to `…-part.json`, deletes the old
+  file and renames — the temporary name keeps the real extension, because a provider derives the
+  extension from the MIME type and would otherwise leave `chronos-x.json.part.json` behind. No
+  other device ever reads it: `isSyncFileName` accepts only a bare device id.
+- **No permission in the manifest.** SAF needs none — that is its point over
+  `MANAGE_EXTERNAL_STORAGE`, which asks for the whole device to reach one folder.
 
 ## Where the desktop app keeps things
 
@@ -201,8 +228,11 @@ src/
       types                SyncTransport: configure once, then read and write by file name
       deviceId             The id this installation writes under, generated once
       payload              The file format, and reading a foreign one as untrusted input
+      folderLabel          What to show for a folder Android only names as a URI
       tauriSyncTransport   The desktop transport, over IPC to Rust
+      androidSyncTransport The phone's, over IPC to the Kotlin plugin
       index                runSync and pushToSyncFolder — which files to read, when to give up
+    androidFiles       Exports and backups into a folder the phone's user picked
     logging/           Console plus, on the desktop, a log file
       logger             logInfo/logWarn/logError, level routing, write ordering
       tauriLogSink       Appends through IPC to logs/chronos.log
@@ -218,6 +248,8 @@ src-tauri/
   src/lib.rs           The storage_*, backup_*, sync_*, export_write, log_append
                        and reveal_folder commands
   src/main.rs          Desktop entry point over lib.rs
+  plugins/chronos-saf/ Android-only plugin: one folder, read and written through
+                       the Storage Access Framework (Kotlin), behind a thin Rust API
   tauri.conf.json      Window, bundle and CSP configuration
   capabilities/        Permission scopes granted to the window
 ```

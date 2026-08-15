@@ -14,6 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { describeSyncFolder } from '../utils/sync/folderLabel';
 import type { SyncStatus } from '../App';
 
 /**
@@ -29,6 +30,18 @@ export interface SyncControls {
   onSyncNow: () => void;
 }
 
+/**
+ * The folder a phone puts its own exports and backups in — absent everywhere
+ * else, because a desktop has one it can simply open.
+ */
+export interface FilesControls {
+  /** Empty until the user picks one; then everything lands there instead. */
+  folder: string;
+  onChooseFolder: () => void;
+  onStopUsing: () => void;
+  onOpenFolder: () => void;
+}
+
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,8 +54,10 @@ interface SettingsModalProps {
   onRevealBackups?: () => void;
   /** Absent when logs only go to the console, which hides the row. */
   onRevealLogs?: () => void;
-  /** Absent on a build that cannot reach a folder — the browser, and a phone. */
+  /** Absent on a build that cannot reach a folder — the browser. */
   sync?: SyncControls;
+  /** Present on a phone only. */
+  files?: FilesControls;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -56,6 +71,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRevealBackups,
   onRevealLogs,
   sync,
+  files,
 }) => {
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
@@ -323,6 +339,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
+            {/* A phone has no file manager to send someone to, so what the app
+                writes is out of reach until a folder is picked for it. */}
+            {files && (
+              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-gray-800 block">
+                      Ordner für eigene Dateien
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      Wohin Exporte und automatische Sicherungen geschrieben werden. Ohne einen
+                      gewählten Ordner bleiben sie im App-Speicher — vorhanden, aber ohne
+                      Dateimanager nicht erreichbar.
+                    </span>
+                  </div>
+                  <button
+                    onClick={files.onChooseFolder}
+                    className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-[#2D5BFF]" />
+                    <span>{files.folder ? 'Ordner ändern' : 'Ordner wählen'}</span>
+                  </button>
+                </div>
+
+                {files.folder && (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2 grow">
+                      {describeSyncFolder(files.folder)}
+                    </p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={files.onOpenFolder}
+                        className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                      >
+                        Öffnen
+                      </button>
+                      <button
+                        onClick={files.onStopUsing}
+                        className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                      >
+                        Beenden
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {onRevealLogs && (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
@@ -373,8 +437,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {sync.folder ? (
                   <>
+                    {/* On a phone the setting holds the permission the picker
+                        returned, not a path — unreadable as it is stored. */}
                     <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
-                      {sync.folder}
+                      {describeSyncFolder(sync.folder)}
                     </p>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

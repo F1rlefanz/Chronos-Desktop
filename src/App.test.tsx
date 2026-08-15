@@ -46,6 +46,7 @@ const initialState: PersistedState = {
   projects: DEFAULT_PROJECTS,
   tombstones: [],
   deviceId: 'aabbccddeeff',
+  unreadable: [],
 };
 
 const withOneEntry: PersistedState = {

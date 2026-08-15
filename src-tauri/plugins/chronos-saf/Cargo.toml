@@ -1,0 +1,23 @@
+[package]
+name = "tauri-plugin-chronos-saf"
+# Not a published crate and not the app version: this is a local plugin, and
+# Cargo simply demands a number. The app's version lives in package.json.
+version = "0.0.0"
+authors = ["F1rlefanz"]
+description = "Reading and writing a folder the user picked, through Android's Storage Access Framework"
+edition = "2021"
+rust-version = "1.77.2"
+publish = false
+# The build script announces the Android library through this key: Cargo turns
+# it into DEP_TAURI_PLUGIN_CHRONOS_SAF_ANDROID_LIBRARY_PATH, which is what
+# tauri-build reads to write gen/android/tauri.settings.gradle. Without `links`
+# the Kotlin half is never wired into the Gradle build.
+links = "tauri-plugin-chronos-saf"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
