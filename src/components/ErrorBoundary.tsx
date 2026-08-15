@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
           <details className="text-xs text-gray-500">
             <summary className="cursor-pointer select-none">Technische Details</summary>
-            <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11px] text-gray-600">
+            <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[0.6875rem] text-gray-600">
               {error.message}
             </pre>
           </details>

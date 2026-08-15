@@ -241,7 +241,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             {/* Said out loud rather than quietly dropped: the number has to
                 match what the file contains, or the export is not a record. */}
             {selection.skippedRunning > 0 && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+              <p className="text-[0.6875rem] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                 {selection.skippedRunning} laufende{' '}
                 {selection.skippedRunning === 1 ? 'Erfassung' : 'Erfassungen'} nicht enthalten —
                 eine noch wachsende Dauer würde diesen Bericht bei jedem Export anders machen.

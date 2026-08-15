@@ -71,7 +71,7 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
             <Save className="w-5 h-5" />
             <span>Erfassung benennen</span>
           </div>
-          <span className="text-[11px] text-gray-400">Bereits gespeichert</span>
+          <span className="text-[0.6875rem] text-gray-400">Bereits gespeichert</span>
         </div>
 
         {/* Modal Body / Form */}
@@ -91,7 +91,7 @@ export const SessionSaverModal: React.FC<SessionSaverModalProps> = ({
                 {formatDurationHuman(recordedMs)}
               </span>
               {pausedMs > 0 && (
-                <span className="block text-[10px] text-gray-400">
+                <span className="block text-[0.625rem] text-gray-400">
                   abzüglich {formatDurationHuman(pausedMs)} Pause
                 </span>
               )}

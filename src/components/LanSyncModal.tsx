@@ -159,7 +159,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto overscroll-contain custom-scrollbar">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[0.6875rem] text-gray-500">
             Beide Geräte müssen im selben WLAN sein und Chronos offen haben. Ein Gerät wartet, das
             andere verbindet sich — danach haben beide denselben Stand. Es geht nichts ins Internet
             und nichts durch fremde Hände.
@@ -172,7 +172,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
 
             {where ? (
               <>
-                <p className="text-[11px] text-gray-500">Am anderen Gerät eingeben:</p>
+                <p className="text-[0.6875rem] text-gray-500">Am anderen Gerät eingeben:</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold bg-white border border-gray-200 rounded-xl px-3 py-2">
                     {where}
@@ -183,7 +183,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
                 </div>
               </>
             ) : (
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[0.6875rem] text-gray-400">
                 {status?.kind === 'bad' ? 'Warten nicht möglich.' : 'Wird gestartet…'}
               </p>
             )}
@@ -225,7 +225,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
           {status && (
             <p
               role="status"
-              className={`text-[11px] ${status.kind === 'bad' ? 'text-rose-600' : 'text-emerald-700'}`}
+              className={`text-[0.6875rem] ${status.kind === 'bad' ? 'text-rose-600' : 'text-emerald-700'}`}
             >
               {status.text}
             </p>

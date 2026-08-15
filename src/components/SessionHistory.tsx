@@ -199,7 +199,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   />
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-gray-900 truncate">{entry.title}</h4>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
+                    <div className="flex items-center gap-2 text-[0.6875rem] text-gray-400 mt-0.5">
                       <span className="font-semibold text-gray-600">{projectName}</span>
                       <span>•</span>
                       <span>{formatDateTime(entry.startTime)}</span>
@@ -219,7 +219,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                       {mainTime}
                       <span className="text-xs text-[#2D5BFF]">{subTime}</span>
                     </span>
-                    <span className="block text-[10px] text-gray-400">
+                    <span className="block text-[0.625rem] text-gray-400">
                       {formatDurationHuman(entryNetMs)}
                     </span>
                   </div>
@@ -260,7 +260,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   {entry.tags.map((tag, i) => (
                     <span
                       key={i}
-                      className="text-[10px] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200"
+                      className="text-[0.625rem] bg-white text-gray-600 px-2.5 py-0.5 rounded-full border border-gray-200"
                     >
                       #{tag}
                     </span>
@@ -273,7 +273,7 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 <div className="mt-3 pt-3 border-t border-gray-200 text-xs space-y-2">
                   {entry.notes && (
                     <div className="bg-white p-3 rounded-lg border border-gray-200 text-gray-700">
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                      <strong className="text-gray-400 block text-[0.625rem] uppercase tracking-wider mb-1">
                         Notiz
                       </strong>
                       {entry.notes}
@@ -282,11 +282,11 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
 
                   {entry.breaks.length > 0 && (
                     <div>
-                      <strong className="text-gray-400 block text-[10px] uppercase tracking-wider mb-1">
+                      <strong className="text-gray-400 block text-[0.625rem] uppercase tracking-wider mb-1">
                         Pausen ({entry.breaks.length}) — zusammen{' '}
                         {formatDurationHuman(entryBreakMs)}
                       </strong>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[11px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 font-mono text-[0.6875rem]">
                         {entry.breaks.map((pause, i) => (
                           <div
                             key={pause.id}

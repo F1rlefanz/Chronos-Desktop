@@ -88,7 +88,7 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               <Layers className="w-4 h-4 text-[#2D5BFF]" />
               <span>Aufbau</span>
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-[11px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 font-mono text-[0.6875rem]">
               <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <span className="text-[#2D5BFF] font-bold block mb-1">/src/domain</span>
                 <span className="font-sans">

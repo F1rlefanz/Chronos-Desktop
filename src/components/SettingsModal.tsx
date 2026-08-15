@@ -167,7 +167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs font-semibold text-gray-800 block">
                   Millisekunden anzeigen (.00)
                 </span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[0.6875rem] text-gray-400">
                   Hundertstelsekunden in der laufenden Anzeige
                 </span>
               </div>
@@ -184,7 +184,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs font-semibold text-gray-800 block">
                   Aktualisierungsrate
                 </span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[0.6875rem] text-gray-400">
                   Wie oft die Anzeige neu gezeichnet wird. Die erfasste Zeit bleibt gleich.
                 </span>
               </div>
@@ -204,7 +204,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">Tastenkürzel</span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[0.6875rem] text-gray-400">
                   Leertaste (Start/Pause), S (Beenden), R (Verwerfen)
                 </span>
               </div>
@@ -226,7 +226,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <label className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 cursor-pointer">
               <div>
                 <span className="text-xs font-semibold text-gray-800 block">Standardprojekt</span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[0.6875rem] text-gray-400">
                   Womit die Projektauswahl beim Start der App vorbelegt wird.
                 </span>
               </div>
@@ -303,7 +303,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs font-semibold text-gray-800 block">
                   Aus JSON-Sicherung wiederherstellen
                 </span>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[0.6875rem] text-gray-400">
                   Zuvor exportierte Daten wieder einlesen
                 </span>
               </div>
@@ -331,7 +331,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="text-xs font-semibold text-gray-800 block">
                     Automatische Sicherungen
                   </span>
-                  <span className="text-[11px] text-gray-400">
+                  <span className="text-[0.6875rem] text-gray-400">
                     Beim Start der App (höchstens einmal täglich), beim Schließen des Fensters sowie
                     vor dem Löschen und vor einem Import — also immer dann, wenn die App läuft. Die
                     letzten 20 bleiben. Wiederherstellen über „Datei wählen" oben.
@@ -356,7 +356,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <span className="text-xs font-semibold text-gray-800 block">
                       Ordner für eigene Dateien
                     </span>
-                    <span className="text-[11px] text-gray-400">
+                    <span className="text-[0.6875rem] text-gray-400">
                       Wohin Exporte und automatische Sicherungen geschrieben werden. Ohne einen
                       gewählten Ordner bleiben sie im App-Speicher — vorhanden, aber ohne
                       Dateimanager nicht erreichbar.
@@ -373,7 +373,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {files.folder && (
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2 grow">
+                    <p className="text-[0.6875rem] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2 grow">
                       {describeSyncFolder(files.folder)}
                     </p>
                     <div className="flex items-center gap-2 shrink-0">
@@ -399,7 +399,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
                 <div>
                   <span className="text-xs font-semibold text-gray-800 block">Protokolldatei</span>
-                  <span className="text-[11px] text-gray-400">
+                  <span className="text-[0.6875rem] text-gray-400">
                     Was die App über fehlgeschlagene Speichervorgänge und Fehler notiert hat.
                   </span>
                 </div>
@@ -430,7 +430,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="text-xs font-semibold text-gray-800 block">
                         Geteilter Ordner
                       </span>
-                      <span className="text-[11px] text-gray-400">
+                      <span className="text-[0.6875rem] text-gray-400">
                         Ein Ordner, den ein Dienst deiner Wahl zwischen den Geräten synchron hält —
                         OneDrive, Syncthing, ein Netzlaufwerk. Chronos legt dort nur eine Datei je
                         Gerät ab; kein Konto, kein Server.
@@ -449,12 +449,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <>
                       {/* On a phone the setting holds the permission the picker
                         returned, not a path — unreadable as it is stored. */}
-                      <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
+                      <p className="text-[0.6875rem] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
                         {describeSyncFolder(sync.folder)}
                       </p>
 
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-[11px] text-gray-400">
+                        <p className="text-[0.6875rem] text-gray-400">
                           Abgeglichen wird beim Start und beim Schließen. Bei gleichzeitiger
                           Bearbeitung desselben Eintrags gewinnt die neuere Fassung. Eine laufende
                           Messung bleibt auf ihrem Gerät.
@@ -482,7 +482,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       {sync.status.state !== 'idle' && (
                         <p
                           role="status"
-                          className={`text-[11px] ${
+                          className={`text-[0.6875rem] ${
                             sync.status.state === 'failed' ? 'text-rose-600' : 'text-gray-500'
                           }`}
                         >
@@ -493,7 +493,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       )}
                     </>
                   ) : (
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[0.6875rem] text-gray-400">
                       Noch kein Ordner gewählt — die Daten dieses Geräts bleiben hier.
                     </p>
                   )}
@@ -509,7 +509,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <span className="text-xs font-semibold text-gray-800 block">
                         Direkt im selben WLAN
                       </span>
-                      <span className="text-[11px] text-gray-400">
+                      <span className="text-[0.6875rem] text-gray-400">
                         Ohne Ordner und ohne fremden Dienst: ein Gerät wartet und zeigt eine Adresse
                         und einen Code, das andere tippt beides ein. Beide müssen dafür gleichzeitig
                         an und im selben Netz sein.

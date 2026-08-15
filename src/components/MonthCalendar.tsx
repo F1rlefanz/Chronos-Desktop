@@ -96,7 +96,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
         {WEEKDAY_LABELS.map((label) => (
           <span
             key={label}
-            className="text-center text-[10px] font-semibold uppercase tracking-wider text-gray-400"
+            className="text-center text-[0.625rem] font-semibold uppercase tracking-wider text-gray-400"
           >
             {label}
           </span>
@@ -131,7 +131,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
               style={{ backgroundColor: shadeFor(busiest > 0 ? total / busiest : 0) }}
             >
               <span
-                className={`text-[11px] tabular-nums ${
+                className={`text-[0.6875rem] tabular-nums ${
                   total / (busiest || 1) >= 0.5 ? 'text-white font-semibold' : 'text-gray-600'
                 }`}
               >
@@ -143,7 +143,7 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
       </div>
 
       {/* The rule stated where it can actually mislead someone. */}
-      <p className="mt-3 text-[10px] text-gray-400">
+      <p className="mt-3 text-[0.625rem] text-gray-400">
         Ein Eintrag zählt zu dem Tag, an dem er begonnen hat — Arbeit über Mitternacht bleibt beim
         früheren Tag.
       </p>

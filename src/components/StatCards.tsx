@@ -30,7 +30,7 @@ export const StatCards: React.FC<StatCardsProps> = ({ summary }) => {
           key={key}
           className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs px-4 py-3.5"
         >
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          <span className="block text-[0.625rem] font-semibold uppercase tracking-wider text-gray-400">
             {label}
           </span>
           <span className="block mt-1 text-lg font-semibold text-gray-900 tabular-nums">

@@ -33,7 +33,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Play className="w-5 h-5 fill-white" />
             <span>STARTEN</span>
             {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-2 text-[10px] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
+              <kbd className="hidden sm:inline-block ml-2 text-[0.625rem] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Space
               </kbd>
             )}
@@ -49,7 +49,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Pause className="w-5 h-5 fill-white" />
             <span>PAUSE</span>
             {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-2 text-[10px] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
+              <kbd className="hidden sm:inline-block ml-2 text-[0.625rem] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Space
               </kbd>
             )}
@@ -65,7 +65,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Play className="w-5 h-5 fill-white" />
             <span>WEITER</span>
             {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-2 text-[10px] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
+              <kbd className="hidden sm:inline-block ml-2 text-[0.625rem] font-mono font-normal bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Space
               </kbd>
             )}
@@ -81,7 +81,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Save className="w-4 h-4" />
             <span>BEENDEN</span>
             {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-white/20 text-white px-1.5 py-0.5 rounded-full">
+              <kbd className="hidden sm:inline-block ml-1 text-[0.625rem] font-mono bg-white/20 text-white px-1.5 py-0.5 rounded-full">
                 S
               </kbd>
             )}
@@ -99,7 +99,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             <Trash2 className="w-4 h-4" />
             <span>VERWERFEN</span>
             {shortcutsEnabled && (
-              <kbd className="hidden sm:inline-block ml-1 text-[10px] font-mono bg-white text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
+              <kbd className="hidden sm:inline-block ml-1 text-[0.625rem] font-mono bg-white text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200">
                 R
               </kbd>
             )}

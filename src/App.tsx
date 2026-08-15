@@ -909,7 +909,7 @@ export default function App({ initialState }: AppProps) {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-6 md:py-8 space-y-6">
+      <main className="app-shell flex-1 px-4 py-6 md:py-8 space-y-6">
         {/* Failed write warning — the only copy of the data is the one that
             just failed to save, so this cannot be a console message. */}
         {persistenceError && (
@@ -981,28 +981,36 @@ export default function App({ initialState }: AppProps) {
         {/* Recording: everything needed while a measurement is running or
             about to be, and the list it lands in. */}
         {activeTab === 'tracking' && (
-          <>
-            <StopwatchDisplay
-              elapsedTimeMs={elapsedTimeMs}
-              timerState={timerState}
-              showMilliseconds={settings.showMilliseconds}
-              breakCount={runningEntry?.breaks.length ?? 0}
-              projects={projects}
-              activeProjectId={activeProjectId}
-              onSelectProject={setSelectedProjectId}
-            >
-              <ControlPanel
+          // One column up to `lg`, two from `xl` — the width at which the shell
+          // is wide enough that each half is still a comfortable column rather
+          // than two cramped ones. The readout stays put while the history
+          // scrolls beside it, which is the point of the second column: on a
+          // tall screen the running measurement used to disappear off the top
+          // as soon as there were a dozen entries below it.
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 xl:items-start">
+            <div className="space-y-6 xl:sticky xl:top-6">
+              <StopwatchDisplay
+                elapsedTimeMs={elapsedTimeMs}
                 timerState={timerState}
-                onStart={handleStart}
-                onPause={handlePause}
-                onResume={handleResume}
-                onStop={handleStopAndOpenSaver}
-                onDiscard={handleDiscardRunning}
-                shortcutsEnabled={settings.keyShortcutsEnabled}
-              />
-            </StopwatchDisplay>
+                showMilliseconds={settings.showMilliseconds}
+                breakCount={runningEntry?.breaks.length ?? 0}
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSelectProject={setSelectedProjectId}
+              >
+                <ControlPanel
+                  timerState={timerState}
+                  onStart={handleStart}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  onStop={handleStopAndOpenSaver}
+                  onDiscard={handleDiscardRunning}
+                  shortcutsEnabled={settings.keyShortcutsEnabled}
+                />
+              </StopwatchDisplay>
 
-            {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+              {runningEntry && <BreakList breaks={runningEntry.breaks} now={now} />}
+            </div>
 
             <SessionHistory
               entries={timeEntries}
@@ -1013,7 +1021,7 @@ export default function App({ initialState }: AppProps) {
               onClearAll={handleClearAllHistory}
               onExportPdf={() => setIsExportOpen(true)}
             />
-          </>
+          </div>
         )}
 
         {/* Insights: totals, calendar and trends — all derived, nothing stored
@@ -1022,17 +1030,26 @@ export default function App({ initialState }: AppProps) {
           <>
             <StatCards summary={summary} />
 
-            <MonthCalendar entries={timeEntries} now={now} onEditEntry={(e) => openEntryForm(e)} />
+            {/* The calendar wants height, the charts want width — so from `xl`
+                the calendar takes the left column at its natural size and the
+                three charts stack beside it, instead of the calendar being
+                stretched across an ultrawide screen with nothing to fill it. */}
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-6 xl:items-start">
+              <MonthCalendar
+                entries={timeEntries}
+                now={now}
+                onEditEntry={(e) => openEntryForm(e)}
+              />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
-              <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 gap-4">
+                <TimeBarChart title="Letzte 12 Wochen" points={lastTwelveWeeks} />
+                <TimeBarChart title="Nach Wochentag" points={weekdaySeries} />
+                <TimeBarChart
+                  title={`Monate ${new Date(now).getFullYear()}`}
+                  points={thisYearByMonth}
+                />
+              </div>
             </div>
-
-            <TimeBarChart
-              title={`Monate ${new Date(now).getFullYear()}`}
-              points={thisYearByMonth}
-            />
           </>
         )}
       </main>

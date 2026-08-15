@@ -44,13 +44,17 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   const activeProject = projects.find((project) => project.id === activeProjectId);
 
   return (
+    // `@container` rather than the viewport: from `xl` up this card sits in a
+    // column beside the history, so a readout sized in `vw` would be sized
+    // against a screen it no longer spans. `cqi` asks the card itself.
     <section
       aria-label="Zeiterfassung"
-      className="relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden"
+      className="@container relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden"
     >
-      {/* Decorative Minimalist Circle Rings */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] sm:w-[460px] sm:h-[460px] border border-gray-100 rounded-full pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] h-[420px] sm:w-[560px] sm:h-[560px] border border-gray-100/60 rounded-full pointer-events-none"></div>
+      {/* Decorative Minimalist Circle Rings. In `rem` so they follow the root
+          scale on a very large screen instead of staying laptop-sized. */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[21.25rem] h-[21.25rem] sm:w-[28.75rem] sm:h-[28.75rem] border border-gray-100 rounded-full pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[26.25rem] h-[26.25rem] sm:w-[35rem] sm:h-[35rem] border border-gray-100/60 rounded-full pointer-events-none"></div>
 
       {/* Top Bar inside Display Card */}
       <div className="relative z-10 flex items-center justify-between mb-8">
@@ -99,18 +103,23 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
       {/* Main Digital Clock Display */}
       <div className="relative z-10 text-center py-2 my-2">
         <div className="inline-flex items-baseline justify-center font-extralight tracking-tighter text-[#1A1C1E] select-none">
-          <span className="text-7xl sm:text-8xl md:text-9xl lg:text-[130px] leading-none font-extralight">
+          {/* One curve instead of four steps. The upper bound is the old
+              `130px`; the slope is set so the widest thing this ever shows —
+              `HH:MM:SS` with hundredths beside it — still fits the card at 320
+              pixels, where the fixed sizes ran past the edge once a measurement
+              passed an hour. */}
+          <span className="text-[clamp(2.5rem,23cqi,8rem)] leading-none font-extralight">
             {mainTime}
           </span>
           {showMilliseconds && (
-            <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-[#2D5BFF] font-light ml-1.5 w-16 sm:w-24 text-left font-mono">
+            <span className="text-[clamp(1rem,8cqi,3.75rem)] text-[#2D5BFF] font-light ml-1.5 w-[2.4em] text-left font-mono">
               {subTime}
             </span>
           )}
         </div>
 
         {/* Labels below time */}
-        <div className="mt-3 text-gray-400 uppercase tracking-[0.25em] text-[11px] font-semibold">
+        <div className="mt-3 text-gray-400 uppercase tracking-[0.25em] text-[0.6875rem] font-semibold">
           {mainTime.split(':').length > 2 ? 'Stunden : Minuten : Sekunden' : 'Minuten : Sekunden'}
           {showMilliseconds && <span className="text-[#2D5BFF] font-bold"> : MS</span>}
         </div>
