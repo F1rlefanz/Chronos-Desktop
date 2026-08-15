@@ -635,6 +635,70 @@ export default function App({ initialState }: AppProps) {
   /* ---------------------------------------------------------------------- */
 
   /**
+   * Takes another device's records into ours, and writes the result.
+   *
+   * Against the state as it is at this moment, not the copy an exchange started
+   * from: neither a folder nor a network is instant, and an entry made while
+   * one was in flight must not be lost to the reply. Merging twice changes
+   * nothing, which is what makes that second pass free.
+   *
+   * Shared by both transports on purpose — a folder and a direct connection
+   * differ in how the records arrive, in nothing about what happens to them.
+   */
+  const adopt = useCallback(
+    (theirs: MergeInput): MergeResult['summary'] => {
+      const live = liveRef.current;
+      const final = mergeEntries({ entries: live.entries, tombstones: live.tombstones }, theirs);
+
+      if (final.summary.added + final.summary.updated + final.summary.deleted > 0) {
+        setTimeEntries(final.entries);
+        setTombstones(final.tombstones);
+        void persist(saveTimeEntries(final.entries), 'die abgeglichenen Daten');
+        void saveTombstones(final.tombstones);
+      }
+
+      return final.summary;
+    },
+    [persist]
+  );
+
+  /**
+   * What arrived over the network, merged in and reported back in a sentence.
+   *
+   * The same snapshot the folder takes before a merge is taken here, for the
+   * same reason: this replaces the local set with a reconciled one, and the
+   * state before it should not exist only in memory.
+   */
+  const receiveOverNetwork = useCallback(
+    async (payload: string): Promise<string> => {
+      const theirs = parseSyncPayload(payload);
+      if (!theirs) return 'Das andere Gerät hat nichts Lesbares geschickt.';
+
+      if (!(await backupBefore('before-sync', 'Der Abgleich'))) {
+        return 'Abgebrochen — es konnte keine Sicherung angelegt werden.';
+      }
+
+      const summary = adopt(theirs);
+      const changed = summary.added + summary.updated + summary.deleted;
+
+      logInfo(
+        `[LAN] Adopted ${summary.added} added, ${summary.updated} updated, ${summary.deleted} deleted.`
+      );
+
+      return changed === 0
+        ? 'Beide Geräte waren schon auf demselben Stand.'
+        : `${summary.added} neu, ${summary.updated} aktualisiert, ${summary.deleted} gelöscht.`;
+    },
+    [adopt, backupBefore]
+  );
+
+  /** What this device offers the other one, in the shape the folder uses too. */
+  const buildOwnPayload = useCallback((): string => {
+    const live = liveRef.current;
+    return buildSyncPayload(initialState.deviceId, live.entries, live.tombstones);
+  }, [initialState.deviceId]);
+
+  /**
    * Reads what the other devices left in the folder and writes ours back.
    *
    * The result is merged against the state as it is when the answer arrives,
@@ -669,16 +733,7 @@ export default function App({ initialState }: AppProps) {
       }
 
       if (outcome.changed) {
-        const live = liveRef.current;
-        const final = mergeEntries(
-          { entries: live.entries, tombstones: live.tombstones },
-          { entries: outcome.entries, tombstones: outcome.tombstones }
-        );
-
-        setTimeEntries(final.entries);
-        setTombstones(final.tombstones);
-        void persist(saveTimeEntries(final.entries), 'die abgeglichenen Daten');
-        void saveTombstones(final.tombstones);
+        adopt({ entries: outcome.entries, tombstones: outcome.tombstones });
       }
 
       setSyncStatus({ state: 'done', message: describeSync(outcome) });
