@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 import { logInfo, logWarn } from '../logging/logger';
 
 /**
@@ -15,11 +15,56 @@ import { logInfo, logWarn } from '../logging/logger';
  * seam exists.
  */
 
+/**
+ * Whether this build can open a socket at all.
+ *
+ * Deliberately not `syncAvailable()`, which answers a different question: that
+ * one is about a transport for the *folder*, and a build could plausibly gain
+ * one without gaining the other. Both Tauri builds carry `lan.rs` — the phone
+ * as much as the desktop, because `std::net` needs no picker and no permission
+ * beyond the `INTERNET` one that was already in the manifest. A browser has
+ * neither, so the door is not drawn there.
+ */
+export function lanAvailable(): boolean {
+  return isTauri();
+}
+
+/**
+ * The port the listener asks for first, and the one the other side assumes when
+ * only an address was typed. Written once here and read by both halves — the
+ * dialog would otherwise carry a second copy that could drift from the Rust.
+ */
+export const DEFAULT_PORT = 45888;
+
 /** Where the other device has to point, and what to type there. */
 export interface Listening {
   address: string;
   port: number;
   code: string;
+}
+
+/**
+ * What someone typed, as an address and a port — or nothing.
+ *
+ * `192.168.178.43` and `192.168.178.43:49152` are both things people read off
+ * a screen, and the second one appears whenever the preferred port was taken.
+ * Anything else is refused here rather than sent to Rust to fail there, so the
+ * message names what is wrong with the input instead of the connection.
+ */
+export function parseTarget(input: string): { address: string; port: number } | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const parts = trimmed.split(':');
+  if (parts.length > 2) return null;
+
+  const [address, port] = parts;
+  if (!address) return null;
+
+  const parsed = port === undefined ? DEFAULT_PORT : Number(port);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return null;
+
+  return { address, port: parsed };
 }
 
 /**

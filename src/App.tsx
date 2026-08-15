@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useBackupOnClose } from './hooks/useBackupOnClose';
-import { mergeEntries, pruneTombstones, tombstoneFor } from './domain/merge';
+import {
+  MergeInput,
+  MergeResult,
+  mergeEntries,
+  pruneTombstones,
+  tombstoneFor,
+} from './domain/merge';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
 import { AppSettings, Project, TimeEntry, TimerState, Tombstone } from './types';
@@ -36,6 +42,8 @@ import {
   syncAvailable,
   SyncOutcome,
 } from './utils/sync';
+import { buildSyncPayload, parseSyncPayload } from './utils/sync/payload';
+import { lanAvailable } from './utils/sync/lan';
 import {
   openAndroidFilesFolder,
   pickAndroidFilesFolder,
@@ -56,6 +64,7 @@ import { SessionHistory } from './components/SessionHistory';
 import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ArchitectureModal } from './components/ArchitectureModal';
+import { LanSyncModal } from './components/LanSyncModal';
 
 interface AppProps {
   /** Read from storage in `main.tsx` before the first render. */
@@ -115,6 +124,7 @@ export default function App({ initialState }: AppProps) {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isArchitectureOpen, setIsArchitectureOpen] = useState<boolean>(false);
+  const [isLanSyncOpen, setIsLanSyncOpen] = useState<boolean>(false);
 
   // Set when a write to storage failed — usually the browser's 5 MB quota,
   // which a long history plus a large import can reach. The write is the only
@@ -738,7 +748,7 @@ export default function App({ initialState }: AppProps) {
 
       setSyncStatus({ state: 'done', message: describeSync(outcome) });
     },
-    [backupBefore, persist, initialState.deviceId]
+    [backupBefore, adopt, initialState.deviceId]
   );
 
   /**
@@ -1109,6 +1119,17 @@ export default function App({ initialState }: AppProps) {
               }
             : undefined
         }
+        onLanSync={lanAvailable() ? () => setIsLanSyncOpen(true) : undefined}
+      />
+
+      {/* Over the settings it was opened from, which stay behind it: the two
+          transports belong to the same section, and coming back to it is the
+          natural next step after an exchange. */}
+      <LanSyncModal
+        isOpen={isLanSyncOpen}
+        onClose={() => setIsLanSyncOpen(false)}
+        buildPayload={buildOwnPayload}
+        onReceive={receiveOverNetwork}
       />
 
       <ArchitectureModal isOpen={isArchitectureOpen} onClose={() => setIsArchitectureOpen(false)} />

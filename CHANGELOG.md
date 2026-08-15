@@ -6,6 +6,17 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-08-15
+
+### Added
+
+- **Zwei Geräte im selben WLAN gleichen direkt ab — ohne Ordner und ohne fremden Dienst.** In den
+  Einstellungen unter „Abgleich zwischen Geräten": ein Gerät wartet und zeigt eine Adresse und einen
+  sechsstelligen Code, am anderen tippst du beides ein. Ein Knopfdruck, danach haben beide denselben
+  Stand — es geht nichts ins Internet und nichts durch fremde Hände. Der geteilte Ordner bleibt wie
+  er ist; er ist der geduldige Weg für Geräte, die nie gleichzeitig an sind, dieser hier der
+  schnelle für die, die es sind.
+
 ## [0.8.0] — 2026-08-14
 
 ### Added

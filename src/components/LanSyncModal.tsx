@@ -2,16 +2,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Wifi, X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
+  DEFAULT_PORT,
   Listening,
   exchange,
   newPairingCode,
+  parseTarget,
   startListening,
   stopListening,
   takeReceived,
 } from '../utils/sync/lan';
-
-/** The port the other device assumes when only an address was typed. */
-const DEFAULT_PORT = 45888;
 
 interface LanSyncModalProps {
   isOpen: boolean;
@@ -20,20 +19,6 @@ interface LanSyncModalProps {
   buildPayload: () => string;
   /** Merges what the other device sent; resolves to what to tell the user. */
   onReceive: (payload: string) => Promise<string>;
-}
-
-/** `192.168.178.43` or `192.168.178.43:49152` — both are things people paste. */
-function parseTarget(input: string): { address: string; port: number } | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  const [address, port] = trimmed.split(':');
-  if (!address) return null;
-
-  const parsed = port ? Number(port) : DEFAULT_PORT;
-  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) return null;
-
-  return { address, port: parsed };
 }
 
 function messageOf(error: unknown): string {
@@ -82,7 +67,6 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
     if (!isOpen) return;
 
     let live = true;
-    setStatus(null);
 
     void (async () => {
       try {
@@ -97,9 +81,13 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
       }
     })();
 
+    // Cleared on the way out rather than on the way in: the dialog is not
+    // unmounted when it closes, so a report from the last exchange would
+    // otherwise still be sitting there the next time it opens.
     return () => {
       live = false;
       setListening(null);
+      setStatus(null);
       void stopListening();
     };
   }, [isOpen]);

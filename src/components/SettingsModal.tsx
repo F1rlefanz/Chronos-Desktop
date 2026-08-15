@@ -12,6 +12,7 @@ import {
   FileWarning,
   FolderSync,
   RefreshCw,
+  Wifi,
 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { describeSyncFolder } from '../utils/sync/folderLabel';
@@ -56,6 +57,12 @@ interface SettingsModalProps {
   onRevealLogs?: () => void;
   /** Absent on a build that cannot reach a folder — the browser. */
   sync?: SyncControls;
+  /**
+   * Opens the direct exchange. Absent where no socket can be opened, which is
+   * asked separately from `sync`: the two answer different questions, even
+   * though today's builds happen to answer both the same way.
+   */
+  onLanSync?: () => void;
   /** Present on a phone only. */
   files?: FilesControls;
 }
@@ -71,6 +78,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onRevealBackups,
   onRevealLogs,
   sync,
+  onLanSync,
   files,
 }) => {
   const [newProjectName, setNewProjectName] = useState('');
@@ -406,88 +414,117 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          {/* Section: Syncing through a shared folder. Absent where it cannot
-              work at all, rather than present and broken. */}
-          {sync && (
+          {/* Section: keeping two devices in step, the patient way through a
+              folder and the immediate way over the network. Each half is absent
+              where it cannot work at all, rather than present and broken. */}
+          {(sync || onLanSync) && (
             <div className="space-y-3 pt-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 pb-1">
                 Abgleich zwischen Geräten
               </h3>
 
-              <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <span className="text-xs font-semibold text-gray-800 block">
-                      Geteilter Ordner
-                    </span>
-                    <span className="text-[11px] text-gray-400">
-                      Ein Ordner, den ein Dienst deiner Wahl zwischen den Geräten synchron hält —
-                      OneDrive, Syncthing, ein Netzlaufwerk. Chronos legt dort nur eine Datei je
-                      Gerät ab; kein Konto, kein Server.
-                    </span>
-                  </div>
-                  <button
-                    onClick={sync.onChooseFolder}
-                    className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
-                  >
-                    <FolderSync className="w-3.5 h-3.5 text-[#2D5BFF]" />
-                    <span>{sync.folder ? 'Ordner ändern' : 'Ordner wählen'}</span>
-                  </button>
-                </div>
-
-                {sync.folder ? (
-                  <>
-                    {/* On a phone the setting holds the permission the picker
-                        returned, not a path — unreadable as it is stored. */}
-                    <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
-                      {describeSyncFolder(sync.folder)}
-                    </p>
-
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-[11px] text-gray-400">
-                        Abgeglichen wird beim Start und beim Schließen. Bei gleichzeitiger
-                        Bearbeitung desselben Eintrags gewinnt die neuere Fassung. Eine laufende
-                        Messung bleibt auf ihrem Gerät.
-                      </p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={sync.onSyncNow}
-                          disabled={sync.status.state === 'running'}
-                          className="px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-default text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-                        >
-                          <RefreshCw
-                            className={`w-3.5 h-3.5 ${sync.status.state === 'running' ? 'animate-spin' : ''}`}
-                          />
-                          <span>Jetzt abgleichen</span>
-                        </button>
-                        <button
-                          onClick={sync.onStopSyncing}
-                          className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-                        >
-                          Beenden
-                        </button>
-                      </div>
+              {sync && (
+                <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-gray-800 block">
+                        Geteilter Ordner
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Ein Ordner, den ein Dienst deiner Wahl zwischen den Geräten synchron hält —
+                        OneDrive, Syncthing, ein Netzlaufwerk. Chronos legt dort nur eine Datei je
+                        Gerät ab; kein Konto, kein Server.
+                      </span>
                     </div>
+                    <button
+                      onClick={sync.onChooseFolder}
+                      className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
+                    >
+                      <FolderSync className="w-3.5 h-3.5 text-[#2D5BFF]" />
+                      <span>{sync.folder ? 'Ordner ändern' : 'Ordner wählen'}</span>
+                    </button>
+                  </div>
 
-                    {sync.status.state !== 'idle' && (
-                      <p
-                        role="status"
-                        className={`text-[11px] ${
-                          sync.status.state === 'failed' ? 'text-rose-600' : 'text-gray-500'
-                        }`}
-                      >
-                        {sync.status.state === 'running'
-                          ? 'Wird abgeglichen…'
-                          : sync.status.message}
+                  {sync.folder ? (
+                    <>
+                      {/* On a phone the setting holds the permission the picker
+                        returned, not a path — unreadable as it is stored. */}
+                      <p className="text-[11px] text-gray-500 font-mono break-all bg-white border border-gray-200 rounded-xl px-3 py-2">
+                        {describeSyncFolder(sync.folder)}
                       </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-[11px] text-gray-400">
-                    Noch kein Ordner gewählt — die Daten dieses Geräts bleiben hier.
-                  </p>
-                )}
-              </div>
+
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[11px] text-gray-400">
+                          Abgeglichen wird beim Start und beim Schließen. Bei gleichzeitiger
+                          Bearbeitung desselben Eintrags gewinnt die neuere Fassung. Eine laufende
+                          Messung bleibt auf ihrem Gerät.
+                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={sync.onSyncNow}
+                            disabled={sync.status.state === 'running'}
+                            className="px-3.5 py-1.5 rounded-full bg-[#2D5BFF] hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-default text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <RefreshCw
+                              className={`w-3.5 h-3.5 ${sync.status.state === 'running' ? 'animate-spin' : ''}`}
+                            />
+                            <span>Jetzt abgleichen</span>
+                          </button>
+                          <button
+                            onClick={sync.onStopSyncing}
+                            className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-600 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                          >
+                            Beenden
+                          </button>
+                        </div>
+                      </div>
+
+                      {sync.status.state !== 'idle' && (
+                        <p
+                          role="status"
+                          className={`text-[11px] ${
+                            sync.status.state === 'failed' ? 'text-rose-600' : 'text-gray-500'
+                          }`}
+                        >
+                          {sync.status.state === 'running'
+                            ? 'Wird abgeglichen…'
+                            : sync.status.message}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-gray-400">
+                      Noch kein Ordner gewählt — die Daten dieses Geräts bleiben hier.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* The other transport. A folder waits for a service to carry it;
+                  this needs both devices awake at once and carries itself. */}
+              {onLanSync && (
+                <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-gray-800 block">
+                        Direkt im selben WLAN
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        Ohne Ordner und ohne fremden Dienst: ein Gerät wartet und zeigt eine Adresse
+                        und einen Code, das andere tippt beides ein. Beide müssen dafür gleichzeitig
+                        an und im selben Netz sein.
+                      </span>
+                    </div>
+                    <button
+                      onClick={onLanSync}
+                      className="px-3.5 py-1.5 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs shrink-0"
+                    >
+                      <Wifi className="w-3.5 h-3.5 text-[#2D5BFF]" />
+                      <span>Abgleich starten</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
