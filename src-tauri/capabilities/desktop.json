@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "Checking for and installing a newer version of the app. Fenced off by platform for the same reason the mobile capability is: the updater plugin is a desktop-only dependency, so granting its permissions everywhere would name a plugin an Android build does not contain. `process:allow-restart` is the second half of an update — the new version is in place, and something has to start it.",
+  "platforms": ["macOS", "windows", "linux"],
+  "windows": ["main"],
+  "permissions": ["updater:default", "process:allow-restart"]
+}

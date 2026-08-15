@@ -530,7 +530,20 @@ pub fn run() {
     // instead, which is what this plugin is — registered only where it works.
     #[cfg(target_os = "android")]
     {
-        builder = builder.plugin(tauri_plugin_chronos_saf::init());
+        builder = builder
+            .plugin(tauri_plugin_chronos_saf::init())
+            .plugin(tauri_plugin_chronos_update::init());
+    }
+
+    // Replacing the installed application is something only a desktop install
+    // is; a phone updates through `chronos-update`, which hands an APK to the
+    // system installer instead. Registered where the dependency exists, for the
+    // same reason the plugin above is.
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
     }
 
     builder

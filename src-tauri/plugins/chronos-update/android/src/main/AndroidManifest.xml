@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The one permission this plugin exists for, declared where it is used rather
+  than in the app's manifest: REQUEST_INSTALL_PACKAGES is the right to ask the
+  system to install a package, and it belongs next to the code that asks. The
+  manifest merger folds it into the app.
+
+  It is a request, not a power. Android still shows its own installer screen and
+  the user still has to agree; on Android 8 and newer they must additionally
+  have allowed this app to install from unknown sources, which is a switch in
+  the system settings that no app can flip for itself.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+</manifest>

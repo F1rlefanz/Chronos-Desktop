@@ -10,8 +10,10 @@ The interface is in German; the code is in English.
 It ships as an app for **Windows, macOS, Linux and Android**, built with Tauri from one codebase,
 and the same code still runs as a plain web app in the browser. iOS is not built — see
 [Platforms](#platforms). There is no backend and no account: everything lives on the machine it
-was recorded on. Two devices — a phone included — can nonetheless be kept in step through a folder
-the user already syncs by other means, see [Two devices, one folder](#two-devices-one-folder).
+was recorded on. Two devices — a phone included — can nonetheless be kept in step, either through a
+folder the user already syncs by other means ([one folder](#two-devices-one-folder)) or directly
+over the local network ([no folder](#two-devices-no-folder)). Installed copies keep themselves up to
+date from the GitHub releases, see [Updating itself](#updating-itself).
 
 Persistence sits behind a `StorageAdapter` interface, chosen at startup:
 
@@ -155,28 +157,52 @@ untouched — deleting your recordings has to be something you do on purpose.
 
 ## Platforms
 
-| Target  | Built by                         | Notes                                                                                                                             |
-| ------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Windows | `release.yml` on a tag           | NSIS installer and MSI                                                                                                            |
-| macOS   | `release.yml` on a tag           | One universal binary for both chips                                                                                               |
-| Linux   | `release.yml` on a tag           | AppImage, deb, rpm                                                                                                                |
-| Android | Locally, `bun run android:build` | CI checks that it compiles; it does not publish an APK, because a release APK needs a signing key that only its owner should hold |
-| iOS     | **Not built**                    | Xcode is macOS-only, and installing on a device needs an Apple Developer account. Neither is a code decision                      |
-| Browser | `bun run build`                  | No app to install, and no automatic backups — the quota has no room for a second copy                                             |
+| Target  | Built by               | Notes                                                                                                        |
+| ------- | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Windows | `release.yml` on a tag | NSIS installer and MSI                                                                                       |
+| macOS   | `release.yml` on a tag | One universal binary for both chips                                                                          |
+| Linux   | `release.yml` on a tag | AppImage, deb, rpm                                                                                           |
+| Android | `release.yml` on a tag | A signed universal APK, attached to the release so a phone can update itself                                 |
+| iOS     | **Not built**          | Xcode is macOS-only, and installing on a device needs an Apple Developer account. Neither is a code decision |
+| Browser | `bun run build`        | No app to install, and no automatic backups — the quota has no room for a second copy                        |
 
-### In-app updates are not wired up, and cannot be yet
+### Updating itself
 
-Tauri has an updater that fetches a manifest and a bundle over plain HTTP **with no credentials**.
-It therefore needs the releases to be reachable by anyone — which, while this repository is
-private, they are not: its release API answers `404` to a caller who is not signed in.
+A tag is still the whole trigger. `release.yml` builds the installers, signs them, publishes them
+and then writes two manifests into the release — and an installed copy of Chronos finds them by
+itself, offers the update with the changelog section for that version, and installs it on a button
+press.
 
-So this is one switch away rather than a missing feature. Make the repository (or at least its
-releases) public and the updater becomes buildable: generate a signing keypair, put the public key
-in `tauri.conf.json` and the private key in a repository secret, and have the release workflow
-publish the update manifest. Until then it is deliberately not wired up, and no keypair exists —
-a credential for a mechanism that cannot work yet is one more thing that must never be lost.
+**Two mechanisms, because the platforms are not the same thing.**
 
-Android and iOS update through their stores regardless.
+|           | Desktop                             | Android                                                    |
+| --------- | ----------------------------------- | ---------------------------------------------------------- |
+| Fetches   | `latest.json`                       | `latest-android.json`                                      |
+| Mechanism | `tauri-plugin-updater`              | `src-tauri/plugins/chronos-update/` — our own              |
+| Ends with | files replaced, app restarts itself | Android's installer screen, which the user has to agree to |
+
+Tauri's updater does not support Android — its documentation site shows a tick in the platform
+table, but the plugin's own README says `Android: x` and its install instructions exclude mobile by
+target. So the phone carries its own: a Kotlin plugin that downloads the APK and hands it to the
+system installer. **It cannot be made silent, and should not be** — installing packages is
+Android's to authorise, and an app that could install software unasked is a worse thing than a
+manual tap.
+
+**What makes it safe to fetch over plain HTTP.** The updater sends no credentials, which is why a
+public release works as a feed at all — and therefore nothing about the transport says a bundle is
+ours. The signature does: `tauri.conf.json` carries the public half of a keypair, the private half
+exists only in the `TAURI_SIGNING_PRIVATE_KEY` secret and on its owner's machine, and a bundle
+signed with anything else is refused before a byte of it runs. On Android the same job is done by
+the APK signature, which is why CI signs with **the same key every earlier build used**: Android
+refuses an update signed by a different one, and switching keys would mean uninstalling first —
+taking the recorded time with it.
+
+**Two things that follow from this and surprise people.** A copy installed before 0.6.0 has no
+updater in it and never will; it has to be replaced by hand once. And losing the private key means
+never being able to ship an update that existing installs accept — it is worth a backup somewhere
+that is not one laptop.
+
+iOS would update through the App Store, if it were built.
 
 ## Requirements
 

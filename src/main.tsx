@@ -7,6 +7,7 @@ import { loadPersistedState, defaultPersistedState, setStorageAdapter } from './
 import { logError, logInfo, setLogSink } from './utils/logging/logger';
 import { setFileSink } from './utils/fileTarget';
 import { setSyncTransport } from './utils/sync';
+import { setUpdateChannel } from './utils/update';
 import { isMobilePlatform } from './utils/platform';
 import { androidBackupSupport, androidFileSink, setAndroidFilesFolder } from './utils/androidFiles';
 import './index.css';
@@ -44,9 +45,16 @@ async function selectBackend(): Promise<void> {
     // `androidFiles` is imported statically rather than here: `App.tsx` needs
     // it during render anyway, so a dynamic import cannot move it into a chunk
     // of its own and the bundler says as much.
-    const { androidSyncTransport } = await import('./utils/sync/androidSyncTransport');
+    const [{ androidSyncTransport }, { androidUpdateChannel }] = await Promise.all([
+      import('./utils/sync/androidSyncTransport'),
+      import('./utils/update/androidUpdateChannel'),
+    ]);
 
     setSyncTransport(androidSyncTransport);
+    // The third pair of backends behind one interface, for the same reason as
+    // the other two: a desktop replaces its own install, a phone may only ask
+    // the system to. What is above this line never learns which.
+    setUpdateChannel(androidUpdateChannel(__APP_VERSION__));
     // Both wrap the app-private originals rather than replacing them: with no
     // folder chosen the phone behaves exactly as it did before.
     setFileSink(androidFileSink(tauriFileSink));
@@ -55,9 +63,13 @@ async function selectBackend(): Promise<void> {
       backups: tauriAdapter.backups && androidBackupSupport(tauriAdapter.backups),
     });
   } else {
-    const { tauriSyncTransport } = await import('./utils/sync/tauriSyncTransport');
+    const [{ tauriSyncTransport }, { tauriUpdateChannel }] = await Promise.all([
+      import('./utils/sync/tauriSyncTransport'),
+      import('./utils/update/tauriUpdateChannel'),
+    ]);
 
     setSyncTransport(tauriSyncTransport);
+    setUpdateChannel(tauriUpdateChannel);
     setStorageAdapter(tauriAdapter);
     // Without this the export buttons do nothing at all: the WebView ignores
     // the `<a download>` click the browser build relies on.

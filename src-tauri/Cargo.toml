@@ -2,7 +2,7 @@
 # `cargo clippy --workspace` lints its desktop half on a machine that never
 # builds for Android. It is depended on for Android alone (see below).
 [workspace]
-members = [".", "plugins/chronos-saf"]
+members = [".", "plugins/chronos-saf", "plugins/chronos-update"]
 
 [package]
 name = "chronos-desktop"
@@ -28,6 +28,10 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
+# Not used by a line of our own code: `generate_context!` expands the `plugins`
+# block of tauri.conf.json into `serde_json` calls, so the crate has to be in
+# scope here. Adding the updater's configuration is what made it necessary.
+serde_json = "1"
 # The one dependency syncing added: picking the shared folder needs the system's
 # own folder chooser, and a path typed into a text field is a path with a typo
 # in it that only shows up at the first sync.
@@ -38,6 +42,17 @@ tauri-plugin-dialog = "2"
 # where it means something. A desktop build does not compile a line of it.
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-chronos-saf = { path = "plugins/chronos-saf" }
+tauri-plugin-chronos-update = { path = "plugins/chronos-update" }
+
+# The updater replaces the installed application with a newer one, which is a
+# thing only a desktop install is. Tauri's own documentation site shows Android
+# with a tick in its platform table; the plugin's README says `Android: x` and
+# its install instructions exclude mobile by target — the README is the one
+# telling the truth, and a phone gets the mechanism in `chronos-update`
+# instead. `process` is what restarts the app once the new one is in place.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [profile.release]
 # A time tracker does not need to ship debug symbols; this keeps the installer

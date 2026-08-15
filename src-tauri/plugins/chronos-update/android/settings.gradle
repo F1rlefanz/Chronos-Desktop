@@ -1,0 +1,21 @@
+// Only used when this library is built on its own. Inside the app the project
+// is included by gen/android/tauri.settings.gradle, which tauri-build writes,
+// and ':tauri-android' is already defined there.
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        google()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+include ':tauri-android'
+project(':tauri-android').projectDir = new File('./.tauri/tauri-api')

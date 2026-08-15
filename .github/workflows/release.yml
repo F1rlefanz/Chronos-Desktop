@@ -159,20 +159,36 @@ jobs:
       - name: Lint Rust
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
+      # The private half of the updater's keypair. Without it the build still
+      # succeeds but produces unsigned bundles and no `.sig` files, and the
+      # manifest step downstream then refuses to write a manifest rather than
+      # publishing one nobody's updater will accept.
       - name: Build the app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bun run tauri build ${{ matrix.args }}
 
+      # The `.sig` files and the macOS `.app.tar.gz` are here for the updater,
+      # not for a person: nobody downloads a signature. They are attached to the
+      # release because the manifest has to point at a URL, and the release is
+      # the only public one this project has.
       - name: Collect what was built
         shell: bash
         run: |
           shopt -s nullglob
           files=(
             src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/nsis/*.sig
             src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/msi/*.sig
             src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.sig
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/rpm/*.rpm
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/macos/*.sig
           )
           if [ ${#files[@]} -eq 0 ]; then
             echo "::error::No bundle was produced on ${{ matrix.name }}."
@@ -196,12 +212,13 @@ jobs:
         shell: bash
         run: gh release upload '${{ needs.prepare.outputs.tag }}' artifacts/* --clobber
 
-  # Android is checked, not published. A release APK has to be signed with a key
-  # that only its owner should hold, and this repository deliberately holds no
-  # such secret — so CI proves the app still builds for a phone and stops there.
-  # The signed APK comes from a local `bun run android:build`.
+  # Android is built and, on a tag, signed and published — because a phone that
+  # cannot be handed an APK cannot be updated at all, and Chronos is not in a
+  # store. The signing key is the *same* one that signed every earlier build:
+  # Android refuses an update signed by a different key, and switching would mean
+  # uninstalling first, which takes the recorded time with it.
   android:
-    name: Android (debug APK)
+    name: Android APK
     needs: prepare
     runs-on: ubuntu-22.04
 
@@ -246,12 +263,93 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Restored from secrets into the place Gradle already looks. The file is
+      # gitignored and the properties it needs are the four the local one holds,
+      # so the build script is untouched — CI simply arrives with the same
+      # keystore a local build would find.
+      - name: Restore the signing key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::No signing key. A release APK cannot be built without it."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > src-tauri/gen/android/chronos-dev.keystore
+          {
+            echo "storeFile=chronos-dev.keystore"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > src-tauri/gen/android/keystore.properties
+
+      # Universal rather than one architecture: the release APK is what a phone
+      # downloads and installs itself, and there is nothing at the other end to
+      # pick the right one.
       - name: Build the APK
-        run: bun run tauri android build --target aarch64 --debug --apk
+        run: bun run tauri android build --apk
+
+      - name: Name it after the version
+        id: apk
+        run: |
+          built=$(find src-tauri/gen/android/app/build/outputs/apk -name '*-release*.apk' | head -1)
+          if [ -z "$built" ]; then
+            echo "::error::No release APK was produced."
+            exit 1
+          fi
+          version=$(node -p "require('./package.json').version")
+          mkdir -p artifacts
+          cp "$built" "artifacts/Chronos-$version.apk"
+          echo "path=artifacts/Chronos-$version.apk" >> "$GITHUB_OUTPUT"
 
       - name: Attach it to the run
         uses: actions/upload-artifact@v4
         with:
-          name: chronos-android-debug
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          name: chronos-android
+          path: ${{ steps.apk.outputs.path }}
           if-no-files-found: error
+
+      - name: Publish it to the release
+        if: needs.prepare.outputs.publishing == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ needs.prepare.outputs.tag }}' '${{ steps.apk.outputs.path }}' --clobber
+
+  # Last, because a manifest can only name bundles that are already uploaded.
+  # This is the step that actually turns a release into an update: until
+  # latest.json exists, every installed copy keeps reporting itself current.
+  manifests:
+    name: Update manifests
+    needs: [prepare, build, android]
+    if: needs.prepare.outputs.publishing == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Take the notes from the changelog
+        run: python3 .github/scripts/changelog_section.py "${{ needs.prepare.outputs.tag }}" notes.md
+
+      - name: Build them
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            python3 .github/scripts/update_manifests.py "${{ needs.prepare.outputs.tag }}" notes.md
+
+      # Whichever of the two exists: a desktop-only release writes no Android
+      # manifest, and naming a file that is not there would fail the run over
+      # something the script already warned about.
+      - name: Publish them to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          written=(latest.json latest-android.json)
+          gh release upload '${{ needs.prepare.outputs.tag }}' "${written[@]}" --clobber
