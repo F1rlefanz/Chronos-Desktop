@@ -6,6 +6,17 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] — 2026-08-15
+
+### Fixed
+
+- **Die erfassten Zeiten sind auf dem Handy wieder lesbar.** In jedem Eintrag lagen Dauer, Datum,
+  Titel und Projekt übereinander, und die drei Knöpfe standen mitten im Text. Auf schmalen Geräten
+  steht jetzt die Beschreibung oben und darunter eine eigene Zeile mit der Dauer links und den
+  Knöpfen rechts; ab Tablet-Breite bleibt alles wie bisher auf einer Zeile.
+- **Die Kalender-Überschrift bricht nicht mehr mitten in der Zeitangabe um.** Aus „· 1 Std. 0" und
+  „Min." auf der nächsten Zeile ist wieder eine zusammenhängende Angabe geworden.
+
 ## [1.2.1] — 2026-08-15
 
 ### Added
@@ -387,6 +398,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.2.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.1...v1.1.2

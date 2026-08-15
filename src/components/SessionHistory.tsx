@@ -194,7 +194,16 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                 index === 0 ? 'border-l-4 border-l-[#2D5BFF]' : ''
               }`}
             >
-              <div className="flex items-center justify-between gap-3">
+              {/* Stacked below `sm`, side by side above it.
+
+                  The description and the controls do not fit one line on a
+                  phone: the right-hand group is three buttons plus a duration,
+                  about 220 px, where the whole card is 190. It used to be
+                  `shrink-0` beside a shrinking description whose second line
+                  had nothing to truncate against — so the date slid out of its
+                  own column and came to rest underneath the duration, and the
+                  buttons sat on top of it. Seen on a Fairphone 6. */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-3 h-3 rounded-full shrink-0"
@@ -203,13 +212,15 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   />
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-gray-900 truncate">{entry.title}</h4>
-                    <div className="flex items-center gap-2 text-[0.6875rem] text-gray-400 mt-0.5">
+                    {/* Wraps rather than overflowing: on a narrow screen the
+                        project and the date do not fit one line either. */}
+                    <div className="flex flex-wrap items-center gap-x-2 text-[0.6875rem] text-gray-400 mt-0.5">
                       <span className="font-semibold text-gray-600">{projectName}</span>
-                      <span>•</span>
+                      <span aria-hidden="true">•</span>
                       <span>{formatDateTime(entry.startTime)}</span>
                       {running && (
                         <>
-                          <span>•</span>
+                          <span aria-hidden="true">•</span>
                           <span className="font-semibold text-[#2D5BFF]">läuft</span>
                         </>
                       )}
@@ -217,9 +228,12 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 shrink-0">
-                  <div className="text-right">
-                    <span className="text-base font-mono font-bold text-gray-900">
+                {/* One row of its own on a phone, with the duration at the left
+                    edge and the buttons at the right; back to a tight group at
+                    the end of the line from `sm` up. */}
+                <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4 sm:shrink-0">
+                  <div className="text-left sm:text-right">
+                    <span className="text-base font-mono font-bold text-gray-900 whitespace-nowrap">
                       {mainTime}
                       <span className="text-xs text-[#2D5BFF]">{subTime}</span>
                     </span>
@@ -228,33 +242,35 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
-                    className="p-1.5 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Details ein-/ausblenden"
-                  >
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+                    <button
+                      onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
+                      className="p-1.5 rounded-full bg-white text-gray-400 hover:text-gray-700 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
+                      title="Details ein-/ausblenden"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
 
-                  <button
-                    onClick={() => onEditEntry(entry)}
-                    className="p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2D5BFF] border border-gray-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Eintrag bearbeiten"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => onEditEntry(entry)}
+                      className="p-1.5 rounded-full bg-white text-gray-400 hover:text-[#2D5BFF] border border-gray-200 shadow-2xs transition-colors cursor-pointer"
+                      title="Eintrag bearbeiten"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
 
-                  <button
-                    onClick={() => onDeleteEntry(entry.id)}
-                    className="p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
-                    title="Eintrag löschen"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => onDeleteEntry(entry.id)}
+                      className="p-1.5 rounded-full bg-white text-gray-400 hover:text-rose-500 border border-gray-200 shadow-2xs transition-colors cursor-pointer"
+                      title="Eintrag löschen"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -61,14 +61,19 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({ entries, now, onEd
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200/90 shadow-2xs p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800 flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-[#2D5BFF]" />
-          <span>
-            {MONTH_LABELS[viewMonth]} {viewYear}
+      <div className="flex items-center justify-between gap-2 mb-4">
+        {/* Wraps as two whole parts rather than mid-duration: on a 320px phone
+            "· 1 Std. 0 Min." used to break after the "0" and leave "Min." on a
+            line of its own. */}
+        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800 flex flex-wrap items-center gap-x-2 min-w-0">
+          <span className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 shrink-0 text-[#2D5BFF]" />
+            <span className="whitespace-nowrap">
+              {MONTH_LABELS[viewMonth]} {viewYear}
+            </span>
           </span>
           {monthTotal > 0 && (
-            <span className="font-normal normal-case tracking-normal text-gray-400">
+            <span className="font-normal normal-case tracking-normal whitespace-nowrap text-gray-400">
               · {formatDurationHuman(monthTotal)}
             </span>
           )}
