@@ -6,6 +6,17 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-08-15
+
+### Changed
+
+- **Chronos erfährt von einer neuen Version, ohne dass du es neu starten musst.** Bisher wurde nur
+  beim Start nachgesehen — wer die App tagelang offen lässt, erfuhr tagelang nichts. Jetzt sieht
+  Chronos zusätzlich alle sechs Stunden nach und immer dann, wenn du nach längerer Zeit ins Fenster
+  zurückkehrst. Es geht dabei nur eine kleine Datei über die Leitung, und nichts wird verschickt.
+- **Ein weggeklickter Hinweis verdeckt nicht mehr den nächsten.** „Später" galt bisher für die
+  ganze Sitzung; jetzt gilt es für genau die Version, die du weggeklickt hast.
+
 ## [1.1.2] — 2026-08-15
 
 ### Fixed
@@ -364,6 +375,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.2...v1.2.0
 [1.1.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.0.0...v1.1.0

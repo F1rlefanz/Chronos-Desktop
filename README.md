@@ -173,6 +173,13 @@ and then writes two manifests into the release — and an installed copy of Chro
 itself, offers the update with the changelog section for that version, and installs it on a button
 press.
 
+**When it looks.** At startup, every six hours while it stays open, and when the window comes back
+after an hour away — that last one because a sleeping laptop runs no timers, and the copy opened on
+Monday would otherwise still believe what it learned on Friday. Nothing pushes to the app, and
+nothing should: a server to push from is precisely what "no account, no server" rules out, so a
+rhythm is the closest a release can get to a copy that is already running. Dismissing the banner
+hides that version and only that one.
+
 **Two mechanisms, because the platforms are not the same thing.**
 
 |           | Desktop                             | Android                                                    |

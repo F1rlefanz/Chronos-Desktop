@@ -19,6 +19,15 @@ src-tauri/gen/android/local.properties
 src-tauri/gen/android/keystore.properties
 src-tauri/gen/android/*.keystore
 
+# Updater signing. The private half of this key is what tells an installed copy
+# that a bundle is ours; anyone holding it can ship an update every Chronos
+# install will accept and run. This repository is public, so the rules below are
+# the only thing between it and the world if it is kept in here — which is a
+# convenience, not a good place for it.
+.chronos-keys/
+*.key
+*.key.pub
+
 # Test and coverage artifacts
 coverage/
 test-results/
