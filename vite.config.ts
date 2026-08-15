@@ -21,6 +21,15 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
   },
+  optimizeDeps: {
+    // Vite scans `**/*.html` for entry points by default. This project has
+    // hundreds of other HTML files once anything has been built — Tauri's
+    // codegen assets under `src-tauri/target/`, Gradle's reports under
+    // `gen/android/build/` — and the scan fails on them, which makes it skip
+    // dependency pre-bundling altogether and the dev server start slowly and
+    // noisily. There is exactly one entry point, so say so.
+    entries: ['index.html'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

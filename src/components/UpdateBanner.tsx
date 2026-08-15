@@ -77,7 +77,13 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
             {bullets.slice(0, 4).map((bullet, index) => (
               <li key={index}>{bullet}</li>
             ))}
-            {bullets.length > 4 && <li>… und {bullets.length - 4} weitere Änderungen.</li>}
+            {bullets.length > 4 && (
+              <li>
+                {bullets.length === 5
+                  ? '… und eine weitere Änderung.'
+                  : `… und ${bullets.length - 4} weitere Änderungen.`}
+              </li>
+            )}
           </ul>
         )}
 
