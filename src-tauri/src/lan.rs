@@ -268,3 +268,117 @@ pub fn lan_exchange(
         ))),
     }
 }
+
+/// The whole exchange, against a listener on this machine.
+///
+/// `lan_start` and `lan_stop` need Tauri's state to reach the listener, but
+/// everything that decides whether two devices can talk — the greeting, the
+/// code, the framing — lives below that in `answer` and `lan_exchange`, and
+/// both are reachable from here. The alternative was two devices, a WiFi and a
+/// person, for every change to a line of framing.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Starts a listener on a free port and returns where it is.
+    fn serve(code: &str, payload: &str) -> (u16, Arc<Serving>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+
+        let serving = Arc::new(Serving {
+            code: code.to_string(),
+            payload: payload.to_string(),
+            received: Mutex::new(None),
+            stop: AtomicBool::new(false),
+        });
+
+        let worker = Arc::clone(&serving);
+        thread::spawn(move || accept_loop(listener, worker));
+
+        (port, serving)
+    }
+
+    #[test]
+    fn both_sides_end_up_holding_the_other_one() {
+        let (port, serving) = serve("123456", "{\"device\":\"b\"}");
+
+        let theirs = lan_exchange(
+            "127.0.0.1".into(),
+            port,
+            "123456".into(),
+            "{\"device\":\"a\"}".into(),
+        )
+        .expect("exchange");
+
+        assert_eq!(theirs, "{\"device\":\"b\"}");
+        assert_eq!(
+            serving.received.lock().unwrap().as_deref(),
+            Some("{\"device\":\"a\"}")
+        );
+
+        serving.stop.store(true, Ordering::Relaxed);
+    }
+
+    /// A wrong code must fail *and* leave nothing behind: the point of the code
+    /// is that a stranger on the same WiFi cannot push their hours into the app,
+    /// which is only true if a refused exchange is also not collected.
+    #[test]
+    fn a_wrong_code_is_refused_and_nothing_is_kept() {
+        let (port, serving) = serve("123456", "mine");
+
+        let error = lan_exchange("127.0.0.1".into(), port, "000000".into(), "theirs".into())
+            .expect_err("should be refused");
+
+        assert!(error.message.contains("Code"), "{}", error.message);
+        assert!(serving.received.lock().unwrap().is_none());
+
+        serving.stop.store(true, Ordering::Relaxed);
+    }
+
+    /// The length prefix is what stops a peer from making us allocate our way
+    /// out of memory, so a claim past the limit has to be refused before the
+    /// body is read rather than after.
+    #[test]
+    fn an_oversized_body_is_refused_before_it_is_read() {
+        let (port, serving) = serve("123456", "mine");
+
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+        write!(stream, "{PROTOCOL}\n123456\n{}\n", MAX_BODY + 1).expect("write");
+        stream.flush().expect("flush");
+
+        let peer = stream.try_clone().expect("clone");
+        let mut reader = BufReader::new(&peer);
+        assert_eq!(read_line(&mut reader).expect("greeting"), PROTOCOL);
+        assert_eq!(read_line(&mut reader).expect("header"), "ERR");
+
+        assert!(serving.received.lock().unwrap().is_none());
+        serving.stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn something_that_is_not_chronos_gets_a_polite_no() {
+        let (port, serving) = serve("123456", "mine");
+
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).expect("connect");
+        write!(stream, "GET / HTTP/1.1\n\n").expect("write");
+        stream.flush().expect("flush");
+
+        let peer = stream.try_clone().expect("clone");
+        let mut reader = BufReader::new(&peer);
+        assert_eq!(read_line(&mut reader).expect("greeting"), PROTOCOL);
+        assert_eq!(read_line(&mut reader).expect("header"), "ERR");
+
+        serving.stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_listener_that_stopped_does_not_answer() {
+        let (port, serving) = serve("123456", "mine");
+        serving.stop.store(true, Ordering::Relaxed);
+
+        // The loop wakes at most every 100ms; give it two of those to notice.
+        thread::sleep(Duration::from_millis(250));
+
+        assert!(lan_exchange("127.0.0.1".into(), port, "123456".into(), "theirs".into()).is_err());
+    }
+}
