@@ -1,0 +1,3 @@
+/build
+# Copied here by the CLI when the library is built on its own.
+/.tauri

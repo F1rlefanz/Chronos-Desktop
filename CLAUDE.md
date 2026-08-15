@@ -166,6 +166,26 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   copy it started from (`liveRef` in `src/App.tsx`). A sync is not instant, and an entry created
   while it ran must not be dropped by the reply; the second merge is free because merging twice
   changes nothing.
+- **The updater is the third pair of backends behind one interface, and the only one Tauri does
+  not cover.** `UpdateChannel` in `src/utils/update/` is the seam; the desktop half is
+  `tauri-plugin-updater`, the phone half is `src-tauri/plugins/chronos-update/`, and `main.tsx`
+  picks. Tauri's documentation site shows Android with a tick in the updater's platform table —
+  the plugin's own README says `Android: x` and its install snippet excludes mobile by target, and
+  the README is right. Do not "simplify" the Android half away on the strength of that table.
+  Nothing about the Android path can be made silent: installing a package is Android's to
+  authorise, and the plugin ends at the system installer on purpose.
+- **What is fetched over the network is input, and a signature is the only thing that says it is
+  ours.** The updater sends no credentials — that is what lets a public release be a feed — so the
+  pubkey in `tauri.conf.json` is the whole trust story on the desktop, and the APK signature is on
+  Android. `readManifest` still validates shape, scheme, host and extension before a URL reaches
+  the installer, for the same reason imported JSON goes through the normalisers: a mangled file
+  must be refused, not followed. **CI signs Android with the same key every earlier build used** —
+  Android refuses an update signed by a different one, and switching means uninstalling, which
+  takes the user's recorded time with it.
+- **A version comparison is `isNewer`, never a string comparison.** `1.10.0` sorts before `1.9.0`
+  as text, which would make a tenth minor release look like a downgrade and silently strand
+  everyone on it. Anything that is not three integers counts as _not newer_, so a broken manifest
+  fails towards "no update" rather than towards offering one.
 - **`isMobilePlatform()` picks a backend in `main.tsx`, and hides doors that lead nowhere.** It may
   not decide anything about how data is kept: storage, backups, the log and the sync rules are
   identical everywhere, and only the way a folder is reached differs. A door is hidden by asking
@@ -232,6 +252,15 @@ say so in the pull request, rather than padding it with an entry nobody benefits
 - **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
   `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
   record survives reloads.
+- **A release is not finished when the installers are uploaded.** `latest.json` and
+  `latest-android.json` are written by the `manifests` job _after_ every build has uploaded,
+  because a manifest can only name bundles that already exist — and until it exists, every
+  installed copy keeps reporting itself current. Six secrets make that run:
+  `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`) for the desktop bundles, and
+  `ANDROID_KEYSTORE_BASE64` / `ANDROID_STORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
+  `ANDROID_KEY_PASSWORD` for the APK. Losing the Tauri private key means never shipping an update
+  existing installs will accept; it lives outside the repository and needs a backup that is not
+  one laptop.
 - **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
   stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one

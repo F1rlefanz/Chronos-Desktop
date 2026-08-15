@@ -6,6 +6,34 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-08-15
+
+### Added
+
+- **Chronos aktualisiert sich jetzt selbst.** Beim Start sieht es nach, ob es eine neuere Fassung
+  gibt, und zeigt sie dir mit den wichtigsten Änderungen aus diesem Changelog. Ein Knopf, fertig:
+  auf dem Rechner lädt Chronos die neue Version, installiert sie und startet sich neu; auf dem Handy
+  lädt es sie und übergibt sie an Androids eigenen Installationsdialog — den letzten Schritt musst
+  du dort antippen, das lässt Android keine App allein entscheiden.
+- **Android bekommt seine App jetzt fertig gebaut.** Zu jeder Veröffentlichung gehört ab sofort eine
+  signierte APK-Datei, statt dass sie jemand von Hand baut.
+
+### Changed
+
+- **Der Hinweis auf eine neue Version drängelt nicht.** Er erscheint als Leiste über dem Inhalt,
+  nicht als Fenster vor der App, lässt sich wegklicken und kommt in derselben Sitzung nicht wieder.
+  Gesucht wird nur beim Start — nicht auf einem Zeitgeber mitten in der Arbeit.
+
+### Fixed
+
+- **Zwei Dinge, die vorher gar nicht gingen:** Wer eine ältere Fassung installiert hatte, erfuhr nie,
+  dass es eine neue gab. Und auf dem Handy gab es überhaupt keinen Weg zu einer neuen Version außer
+  über einen Rechner mit Entwicklerwerkzeugen.
+
+> Einmalig von Hand: Eine Chronos-Version vor 1.1.0 kennt diesen Mechanismus noch nicht und kann
+> sich deshalb nicht selbst ablösen. 1.1.0 muss auf jedem Gerät ein letztes Mal von Hand installiert
+> werden — ab dann läuft es von allein.
+
 ## [1.0.0] — 2026-08-15
 
 Die erste Fassung, die nichts Halbes mehr offen hat: Chronos läuft auf Windows, macOS, Linux,
@@ -321,6 +349,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.1.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v0.6.1...v0.7.0

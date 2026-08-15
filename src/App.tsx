@@ -44,6 +44,7 @@ import {
 } from './utils/sync';
 import { buildSyncPayload, parseSyncPayload } from './utils/sync/payload';
 import { lanAvailable } from './utils/sync/lan';
+import { AvailableUpdate, checkForUpdate, updatesAvailable } from './utils/update';
 import {
   openAndroidFilesFolder,
   pickAndroidFilesFolder,
@@ -65,6 +66,7 @@ import { ExportModal } from './components/ExportModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ArchitectureModal } from './components/ArchitectureModal';
 import { LanSyncModal } from './components/LanSyncModal';
+import { UpdateBanner } from './components/UpdateBanner';
 
 interface AppProps {
   /** Read from storage in `main.tsx` before the first render. */
@@ -272,6 +274,24 @@ export default function App({ initialState }: AppProps) {
       }
     });
   }, [initialState]);
+
+  // Looked for once at startup and never again while the app runs.
+  //
+  // Deliberately not on a timer: the app is open while someone is working, and
+  // interrupting that to announce a new version is the mechanism putting itself
+  // ahead of the work. A restart is the natural moment, and there is one every
+  // day. `checkForUpdate` swallows the ordinary failures, so a machine with no
+  // network simply gets `null` and hears nothing about it.
+  const [update, setUpdate] = useState<AvailableUpdate | null>(null);
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const updateCheckedRef = useRef(false);
+
+  useEffect(() => {
+    if (updateCheckedRef.current || !updatesAvailable()) return;
+    updateCheckedRef.current = true;
+
+    void checkForUpdate().then(setUpdate);
+  }, []);
 
   // A single AudioContext is reused for every cue: browsers cap the number of
   // concurrent contexts (Chrome allows six), so creating one per cue would
@@ -910,6 +930,18 @@ export default function App({ initialState }: AppProps) {
 
       {/* Main Container */}
       <main className="app-shell flex-1 px-4 py-6 md:py-8 space-y-6">
+        {/* Below the two warnings on purpose: a save that failed or data that
+            could not be read is about the user's own work, and a new version is
+            not. It sits above the content so it is seen, and can be dismissed
+            so it is only seen once. */}
+        {update && !updateDismissed && (
+          <UpdateBanner
+            update={update}
+            handsOverToSystem={isMobilePlatform()}
+            onDismiss={() => setUpdateDismissed(true)}
+          />
+        )}
+
         {/* Failed write warning — the only copy of the data is the one that
             just failed to save, so this cannot be a console message. */}
         {persistenceError && (
