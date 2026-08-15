@@ -1,0 +1,11 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """
+Fetching the update manifest, and asking the system to install an APK. They
+belong together and are useless apart: a manifest nothing may act on tells the
+user about a version they cannot get, and an install with nothing to check
+against has no version to install. The gate is not here — it is Android's own
+installer screen, which the user has to agree to every time.
+"""
+permissions = ["allow-fetch-text", "allow-download-and-install"]

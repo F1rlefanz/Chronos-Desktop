@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile",
-  "description": "What the app may do on a phone, and only there. The chronos-saf plugin is how Android reaches the shared folder — a desktop has a path and needs none of this, so the capability is fenced off by platform rather than granted everywhere and ignored.",
+  "description": "What the app may do on a phone, and only there. chronos-saf is how Android reaches the shared folder and chronos-update is how it updates itself — a desktop has a path for the first and Tauri's updater for the second, so both are fenced off by platform rather than granted everywhere and ignored.",
   "platforms": ["android"],
   "windows": ["main"],
-  "permissions": ["chronos-saf:default"]
+  "permissions": ["chronos-saf:default", "chronos-update:default"]
 }
