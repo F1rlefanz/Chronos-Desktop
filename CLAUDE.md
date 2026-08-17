@@ -299,9 +299,9 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   installed copy keeps reporting itself current. Six secrets make that run:
   `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`) for the desktop bundles, and
   `ANDROID_KEYSTORE_BASE64` / `ANDROID_STORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
-  `ANDROID_KEY_PASSWORD` for the APK. Losing the Tauri private key means never shipping an update
-  existing installs will accept; it lives outside the repository and needs a backup that is not
-  one laptop.
+  `ANDROID_KEY_PASSWORD` for the APK. The Tauri private key lives outside the repository and is
+  backed up; do not treat it as replaceable anyway — losing it means never shipping an update that
+  existing installs will accept, and no amount of rebuilding gets that back.
 - **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
   stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one

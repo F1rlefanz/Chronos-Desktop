@@ -207,9 +207,9 @@ refuses an update signed by a different one, and switching keys would mean unins
 taking the recorded time with it.
 
 **Two things that follow from this and surprise people.** A copy installed before 0.6.0 has no
-updater in it and never will; it has to be replaced by hand once. And losing the private key means
-never being able to ship an update that existing installs accept — it is worth a backup somewhere
-that is not one laptop.
+updater in it and never will; it has to be replaced by hand once. And the private key is not
+replaceable: losing it would mean never being able to ship an update that existing installs
+accept.
 
 iOS would update through the App Store, if it were built.
 
