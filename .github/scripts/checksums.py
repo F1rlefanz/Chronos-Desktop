@@ -86,12 +86,14 @@ def main() -> int:
         assets = assets_of(tag)
 
     lines = [
-        f"# Chronos Desktop {tag.lstrip('v')} — SHA-256 der Dateien in dieser Veröffentlichung.",
+        f"# Chronos Desktop {tag.lstrip('v')} — SHA-256 der Dateien zum Herunterladen.",
         "#",
         "# Prüfen unter Linux und macOS:   sha256sum -c SHA256SUMS.txt",
         "# Prüfen unter Windows:           certutil -hashfile <Datei> SHA256",
         "#",
         "# Die Werte stammen von GitHub selbst, berechnet beim Hochladen.",
+        "# Nicht aufgeführt sind die Signaturen und die Update-Manifeste: die",
+        "# holt nur die App selbst, und sie prüft sie über die Signatur.",
         "",
     ]
 
