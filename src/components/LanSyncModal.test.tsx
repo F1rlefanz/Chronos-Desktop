@@ -146,3 +146,55 @@ describe('LanSyncModal while it waits', () => {
     expect(takeReceived.mock.calls.length).toBe(asked);
   });
 });
+
+/**
+ * A merge can now stop and ask the user before it deletes anything, so
+ * `onReceive` may take as long as reading a dialog takes. The poll must not
+ * start a second one on top of it.
+ */
+describe('LanSyncModal while a merge is waiting on the user', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    startListening.mockResolvedValue({ address: '192.168.178.43', port: 45888, code: '123456' });
+    stopListening.mockResolvedValue(undefined);
+    takeReceived.mockResolvedValue({ payload: null, exhausted: false });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('does not ask again while the last answer is still being merged', async () => {
+    let release: (summary: string) => void = () => {};
+    const onReceive = vi.fn(() => new Promise<string>((resolve) => (release = resolve)));
+
+    open(onReceive);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    takeReceived.mockResolvedValueOnce({ payload: '{"device":"b"}', exhausted: false });
+    await poll();
+    expect(onReceive).toHaveBeenCalledTimes(1);
+
+    const askedSoFar = takeReceived.mock.calls.length;
+    await poll();
+    await poll();
+
+    // Still the one merge, and the listener was not asked again meanwhile.
+    expect(onReceive).toHaveBeenCalledTimes(1);
+    expect(takeReceived.mock.calls.length).toBe(askedSoFar);
+
+    await act(async () => {
+      release('zusammengeführt');
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('zusammengeführt')).toBeInTheDocument();
+
+    // And polling resumes once the merge is done.
+    await poll();
+    expect(takeReceived.mock.calls.length).toBeGreaterThan(askedSoFar);
+  });
+});

@@ -120,12 +120,24 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
     };
   }, [isOpen]);
 
-  /** Collects what a peer pushed while this was open. */
+  /**
+   * Collects what a peer pushed while this was open.
+   *
+   * One at a time: `onReceive` merges, and a merge that would delete entries
+   * stops to ask the user, which takes as long as reading takes. The next tick
+   * would otherwise start a second merge over the same state and leave the
+   * first waiting on a question that is no longer on screen.
+   */
+  const receiving = useRef(false);
+
   useEffect(() => {
     if (!isOpen || !listening) return;
 
     const timer = setInterval(() => {
+      if (receiving.current) return;
+
       void (async () => {
+        receiving.current = true;
         try {
           const incoming = await takeReceived();
 
@@ -143,6 +155,8 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
           }
         } catch (error) {
           setStatus({ kind: 'bad', text: messageOf(error) });
+        } finally {
+          receiving.current = false;
         }
       })();
     }, 1000);

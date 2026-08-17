@@ -6,6 +6,16 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] — 2026-08-17
+
+### Added
+
+- **Ein Abgleich fragt jetzt, bevor er Einträge löscht.** Hat das andere Gerät Einträge entfernt,
+  die es hier noch gibt, erscheint eine Rückfrage mit den betroffenen Einträgen — Titel, Datum und
+  Dauer, damit man sie wiedererkennt statt nur eine Zahl zu sehen. „Übernehmen" löscht sie auch
+  hier, „Behalten" bricht den Abgleich ab und lässt dieses Gerät unverändert; beim nächsten Mal
+  wird wieder gefragt. Bisher stand erst hinterher „11 gelöscht" da, als sie schon weg waren.
+
 ## [1.3.0] — 2026-08-17
 
 ### Security
@@ -416,6 +426,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.4.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.0...v1.2.1

@@ -110,6 +110,20 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   rule itself is `src/domain/merge.ts`, a pure function over two sets, and its two load-bearing
   tests are that merging gives the same answer whichever side asks and that running it twice
   changes nothing.
+- **A merge may add and update on its own; it may not delete on its own.** Every other outcome of
+  an exchange gives the user something, and only this one takes recorded time away — reporting it
+  afterwards, as "11 gelöscht" once they were gone, is telling someone what they lost rather than
+  asking. `adopt` in `src/App.tsx` merges into a preview first, and if anything would go it
+  suspends on a promise that `DeletionPrompt` settles. Three things make that work and are easy to
+  break: the question is asked with `entriesLostBy`, **not** `summary.deleted` — that count
+  includes deletions for entries only the other device still had, and confirming the loss of
+  records you have never seen is how a warning trains people to dismiss it; declining cancels the
+  whole exchange, because keeping the entries would mean either dropping tombstones the other
+  device re-sends anyway or stamping `updatedAt` on records nobody touched, and this app derives
+  everything from those timestamps; and the state is merged **again** afterwards, since a person
+  reading a dialog takes long enough for a measurement to end behind it. Anything that calls
+  `adopt` in a loop needs an in-flight guard — `LanSyncModal` polls every second, and without one
+  the second merge orphans the first one's question.
 - **The shared folder holds one file per device, and that is the whole conflict story.** Two
   devices never write the same file, so the sync client behind the folder cannot produce a
   conflicting copy Chronos would have to resolve; reading merges every foreign file in any order,

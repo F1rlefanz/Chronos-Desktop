@@ -3,6 +3,7 @@ import { useBackupOnClose } from './hooks/useBackupOnClose';
 import {
   MergeInput,
   MergeResult,
+  entriesLostBy,
   mergeEntries,
   pruneTombstones,
   tombstoneFor,
@@ -56,6 +57,7 @@ import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { BreakList } from './components/BreakList';
 import { RecoveryPrompt } from './components/RecoveryPrompt';
+import { DeletionPrompt } from './components/DeletionPrompt';
 import { StatCards } from './components/StatCards';
 import { MonthCalendar } from './components/MonthCalendar';
 import { TimeBarChart } from './components/TimeBarChart';
@@ -138,6 +140,19 @@ export default function App({ initialState }: AppProps) {
   } | null>(null);
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ state: 'idle' });
+
+  /**
+   * A merge waiting to hear whether its deletions may be applied.
+   *
+   * The resolver is held in state next to the entries because the decision
+   * belongs to a call that is already in flight: `adopt` builds the promise and
+   * suspends on it, the dialog settles it. Anything else would mean the merge
+   * result travelling into a component and back out again.
+   */
+  const [pendingDeletions, setPendingDeletions] = useState<{
+    entries: TimeEntry[];
+    decide: (adopt: boolean) => void;
+  } | null>(null);
 
   // The just-stopped entry awaiting a title. It is already saved by the time
   // this is set, so only the id is held here.
@@ -665,7 +680,38 @@ export default function App({ initialState }: AppProps) {
    * differ in how the records arrive, in nothing about what happens to them.
    */
   const adopt = useCallback(
-    (theirs: MergeInput): MergeResult['summary'] => {
+    async (theirs: MergeInput): Promise<MergeResult['summary'] | null> => {
+      const before = liveRef.current;
+      const preview = mergeEntries(
+        { entries: before.entries, tombstones: before.tombstones },
+        theirs
+      );
+
+      const losing = entriesLostBy(before.entries, preview);
+
+      if (losing.length > 0) {
+        const keep = !(await new Promise<boolean>((decide) =>
+          setPendingDeletions({ entries: losing, decide })
+        ));
+        setPendingDeletions(null);
+
+        // Declining cancels the whole exchange rather than adopting the rest.
+        // Keeping the entries *and* the additions would mean either dropping
+        // the other device's tombstones — which it re-sends next time, so the
+        // entries die anyway — or stamping `updatedAt` on records nobody
+        // touched to outrank them. The second is a lie about when work
+        // happened, and this app derives everything from those timestamps.
+        if (keep) {
+          logInfo(`[Sync] Declined an exchange that would have removed ${losing.length} entries.`);
+          return null;
+        }
+      }
+
+      // Merged again against the state as it is *now*: the question above took
+      // as long as a person takes to read it, and a measurement may have ended
+      // in the meantime. Merging twice changes nothing, which is what makes
+      // this free — and skipping it would let the reply undo what happened
+      // while the dialog was open.
       const live = liveRef.current;
       const final = mergeEntries({ entries: live.entries, tombstones: live.tombstones }, theirs);
 
@@ -697,7 +743,9 @@ export default function App({ initialState }: AppProps) {
         return 'Abgebrochen — es konnte keine Sicherung angelegt werden.';
       }
 
-      const summary = adopt(theirs);
+      const summary = await adopt(theirs);
+      if (!summary) return 'Abgebrochen — die Einträge dieses Geräts bleiben, wie sie sind.';
+
       const changed = summary.added + summary.updated + summary.deleted;
 
       logInfo(
@@ -752,7 +800,19 @@ export default function App({ initialState }: AppProps) {
       }
 
       if (outcome.changed) {
-        adopt({ entries: outcome.entries, tombstones: outcome.tombstones });
+        const summary = await adopt({ entries: outcome.entries, tombstones: outcome.tombstones });
+
+        // The folder has already been written by the time we get here — this
+        // device's file is ours and says what it says. Declining only means
+        // the reconciled set is not taken *in*, so the status has to report
+        // that rather than the counts of a merge that never landed.
+        if (!summary) {
+          setSyncStatus({
+            state: 'done',
+            message: 'Abgebrochen — die Einträge dieses Geräts bleiben, wie sie sind.',
+          });
+          return;
+        }
       }
 
       setSyncStatus({ state: 'done', message: describeSync(outcome) });
@@ -1180,6 +1240,17 @@ export default function App({ initialState }: AppProps) {
           onContinue={() => setRecoveryEntryId(null)}
           onStopNow={handleRecoveryStopNow}
           onEdit={handleRecoveryEdit}
+        />
+      )}
+
+      {/* Above the sync dialog it interrupts, and for the same reason as the
+          one before it: a merge is about to take recorded time away, and that
+          is not something to report afterwards. */}
+      {pendingDeletions && (
+        <DeletionPrompt
+          entries={pendingDeletions.entries}
+          onAdopt={() => pendingDeletions.decide(true)}
+          onKeep={() => pendingDeletions.decide(false)}
         />
       )}
     </div>
