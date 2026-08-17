@@ -124,15 +124,10 @@ export const SessionHistory: React.FC<SessionHistoryProps> = ({
           </button>
           {entries.length > 0 && (
             <button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'Wirklich alle Einträge löschen? Vorher wird eine Sicherung angelegt.'
-                  )
-                ) {
-                  onClearAll();
-                }
-              }}
+              // Asks nothing here on purpose: the confirmation belongs to the
+              // action, and `handleClearAllHistory` owns it along with the
+              // snapshot it takes first.
+              onClick={onClearAll}
               className="text-xs text-rose-500 hover:text-rose-600 px-2.5 py-1 whitespace-nowrap transition-colors cursor-pointer"
             >
               Alle löschen

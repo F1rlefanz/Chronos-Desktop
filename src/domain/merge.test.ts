@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeEntries, pruneTombstones, tombstoneFor } from './merge';
+import { entriesLostBy, mergeEntries, pruneTombstones, tombstoneFor } from './merge';
 import { TimeEntry, Tombstone } from '../types';
 
 function entry(id: string, updatedAt: number, overrides: Partial<TimeEntry> = {}): TimeEntry {
@@ -205,5 +205,47 @@ describe('pruneTombstones', () => {
     const stones: Tombstone[] = [tombstoneFor('a', 10), tombstoneFor('a', 30)];
 
     expect(pruneTombstones(stones, [])).toEqual([{ id: 'a', deletedAt: 30 }]);
+  });
+});
+
+describe('entriesLostBy', () => {
+  it('names the entries this device would give up', () => {
+    const mine = { entries: [entry('a', 10), entry('b', 10)], tombstones: [] };
+    const theirs = { entries: [], tombstones: [tombstoneFor('b', 20)] };
+
+    const lost = entriesLostBy(mine.entries, mergeEntries(mine, theirs));
+
+    expect(lost.map((e) => e.id)).toEqual(['b']);
+  });
+
+  /**
+   * The distinction the dialog is built on. A deletion the other side settled
+   * for an entry that was never here still counts in `summary.deleted`, and
+   * asking someone to confirm losing a record they have never seen is how a
+   * warning teaches people to click it away.
+   */
+  it('ignores deletions for entries this device never had', () => {
+    const mine = { entries: [entry('a', 10)], tombstones: [] };
+    const theirs = { entries: [entry('c', 10)], tombstones: [tombstoneFor('c', 20)] };
+
+    const result = mergeEntries(mine, theirs);
+
+    expect(result.summary.deleted).toBe(1);
+    expect(entriesLostBy(mine.entries, result)).toEqual([]);
+  });
+
+  /** An edit newer than the deletion wins, so nothing is lost and nothing asked. */
+  it('says nothing is lost when the entry outlived the deletion', () => {
+    const mine = { entries: [entry('a', 30)], tombstones: [] };
+    const theirs = { entries: [], tombstones: [tombstoneFor('a', 20)] };
+
+    expect(entriesLostBy(mine.entries, mergeEntries(mine, theirs))).toEqual([]);
+  });
+
+  it('is empty when a merge only adds', () => {
+    const mine = { entries: [entry('a', 10)], tombstones: [] };
+    const theirs = { entries: [entry('b', 20)], tombstones: [] };
+
+    expect(entriesLostBy(mine.entries, mergeEntries(mine, theirs))).toEqual([]);
   });
 });

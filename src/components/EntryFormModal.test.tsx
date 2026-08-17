@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntryFormModal, EntryDraft } from './EntryFormModal';
 import { netMs } from '../domain/timeEntry';
@@ -145,8 +145,29 @@ describe('EntryFormModal', () => {
     expect(keepRunning).toBeChecked();
     expect(end()).toBeDisabled();
 
+    // An entry running since January is longer than anyone plausibly worked,
+    // so saving asks first — through the app's own dialog, because
+    // `window.confirm` draws nothing at all on Android.
     await user.click(submit());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Speichern' })
+    );
+
     expect(onSave.mock.calls[0][0].endTime).toBeNull();
+  });
+
+  it('does not save when the warning is declined', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderForm({ entry: entry({ endTime: null }) });
+
+    await user.click(submit());
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Abbrechen' })
+    );
+
+    expect(onSave).not.toHaveBeenCalled();
+    // The form is still there to correct, not closed out from under the user.
+    expect(submit()).toBeInTheDocument();
   });
 
   it('warns before stopping a running entry through the form', async () => {

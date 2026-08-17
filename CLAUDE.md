@@ -110,6 +110,32 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   rule itself is `src/domain/merge.ts`, a pure function over two sets, and its two load-bearing
   tests are that merging gives the same answer whichever side asks and that running it twice
   changes nothing.
+- **Never `window.confirm`, `alert` or `prompt`. They do not work here.** In the Android WebView
+  `confirm` returns `true` **without drawing anything**, so every guard written with it silently
+  answered yes: discarding a running measurement, clearing the whole history, saving over a
+  validation warning, and continuing after a backup had failed. Verified on a Fairphone 6 — the
+  running measurement was gone 500 ms after the tap, no dialog in between, and it had been that way
+  since Android shipped. Ask through `ConfirmPrompt` and the `ask()` helper in `src/App.tsx`, which
+  returns a promise the dialog settles. Two things it gets right on purpose: the **cancelling**
+  button comes first and carries the visual weight, because someone tapping past a dialog on a
+  phone should land on the side that changes nothing; and the reason a backup failed is shown in
+  the question, since "something went wrong" cannot inform a decision. Note that a React modal is
+  fine on Android — `RecoveryPrompt` and the settings have always rendered there. It is the
+  _browser's own_ dialogs that are absent.
+- **A merge may add and update on its own; it may not delete on its own.** Every other outcome of
+  an exchange gives the user something, and only this one takes recorded time away — reporting it
+  afterwards, as "11 gelöscht" once they were gone, is telling someone what they lost rather than
+  asking. `adopt` in `src/App.tsx` merges into a preview first, and if anything would go it
+  suspends on a promise that `DeletionPrompt` settles. Three things make that work and are easy to
+  break: the question is asked with `entriesLostBy`, **not** `summary.deleted` — that count
+  includes deletions for entries only the other device still had, and confirming the loss of
+  records you have never seen is how a warning trains people to dismiss it; declining cancels the
+  whole exchange, because keeping the entries would mean either dropping tombstones the other
+  device re-sends anyway or stamping `updatedAt` on records nobody touched, and this app derives
+  everything from those timestamps; and the state is merged **again** afterwards, since a person
+  reading a dialog takes long enough for a measurement to end behind it. Anything that calls
+  `adopt` in a loop needs an in-flight guard — `LanSyncModal` polls every second, and without one
+  the second merge orphans the first one's question.
 - **The shared folder holds one file per device, and that is the whole conflict story.** Two
   devices never write the same file, so the sync client behind the folder cannot produce a
   conflicting copy Chronos would have to resolve; reading merges every foreign file in any order,

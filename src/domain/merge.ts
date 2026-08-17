@@ -105,6 +105,23 @@ export function mergeEntries(mine: MergeInput, theirs: MergeInput): MergeResult 
   return { entries, tombstones, summary };
 }
 
+/**
+ * The entries a device gives up by adopting a merge.
+ *
+ * Deliberately not `summary.deleted`, which is the count of every deletion the
+ * merge settled — including entries only the *other* side still had, and which
+ * were therefore never on this screen. Asking someone to confirm losing records
+ * they have never seen is how a warning teaches people to click it away.
+ *
+ * Derived by comparing rather than collected during the merge, because that is
+ * the question being asked: not "what did the rule decide" but "what is on this
+ * device now and would not be afterwards".
+ */
+export function entriesLostBy(mine: TimeEntry[], result: MergeResult): TimeEntry[] {
+  const surviving = new Set(result.entries.map((entry) => entry.id));
+  return mine.filter((entry) => !surviving.has(entry.id));
+}
+
 /** Records a deletion so the other side learns about it. */
 export function tombstoneFor(id: string, at: number = Date.now()): Tombstone {
   return { id, deletedAt: at };
