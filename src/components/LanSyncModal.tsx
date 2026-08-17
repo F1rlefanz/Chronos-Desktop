@@ -50,6 +50,16 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: 'ok' | 'bad'; text: string } | null>(null);
 
+  /**
+   * Set when the listener closed itself after ten wrong codes.
+   *
+   * Kept apart from `status`, which reports exchanges: this says something about
+   * the waiting half of the dialog and belongs where the address used to be. If
+   * it shared the one line, a merge that had just succeeded would be overwritten
+   * by it, or it by the merge — and both of those are things the user needs.
+   */
+  const [exhausted, setExhausted] = useState(false);
+
   useBodyScrollLock(isOpen);
 
   // Kept in refs so the polling effect can be set up once and still call the
@@ -105,6 +115,7 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
       live = false;
       setListening(null);
       setStatus(null);
+      setExhausted(false);
       void stopListening();
     };
   }, [isOpen]);
@@ -116,11 +127,20 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
     const timer = setInterval(() => {
       void (async () => {
         try {
-          const payload = await takeReceived();
-          if (!payload) return;
+          const incoming = await takeReceived();
 
-          const summary = await receiveRef.current(payload);
-          setStatus({ kind: 'ok', text: summary });
+          if (incoming.payload) {
+            const summary = await receiveRef.current(incoming.payload);
+            setStatus({ kind: 'ok', text: summary });
+          }
+
+          // The listener gave up on its own. Dropping `listening` stops this
+          // poll with it — there is nothing left to ask — and takes the address
+          // off the screen, which is the point: it answers nobody now.
+          if (incoming.exhausted) {
+            setExhausted(true);
+            setListening(null);
+          }
         } catch (error) {
           setStatus({ kind: 'bad', text: messageOf(error) });
         }
@@ -199,6 +219,11 @@ export const LanSyncModal: React.FC<LanSyncModalProps> = ({
                   </span>
                 </div>
               </>
+            ) : exhausted ? (
+              <p className="text-[0.6875rem] text-rose-600">
+                Zehnmal wurde ein falscher Code geschickt — dieses Gerät wartet nicht mehr. Schließe
+                den Dialog und öffne ihn neu, dann gibt es eine neue Adresse und einen neuen Code.
+              </p>
             ) : (
               <p className="text-[0.6875rem] text-gray-400">
                 {status?.kind === 'bad' ? 'Warten nicht möglich.' : 'Wird gestartet…'}

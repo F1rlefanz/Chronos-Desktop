@@ -433,6 +433,22 @@ build` check gates. Worth knowing if this was ever private — **rulesets only t
 repositories**, so the rule can sit there configured and unenforced, and then start rejecting
 direct pushes with `GH013` the moment the repository is published.
 
+## Reporting something
+
+`SECURITY.md` is the way in for anything with a security bearing: a private advisory rather than an
+issue, so the finding is not public while it is still open. It also says what is in scope and,
+plainly, that this is a hobby project with no promised response time.
+
+The repository's own four switches — Dependabot alerts, Dependabot security updates, secret
+scanning and its push protection — are on. They cost nothing on a public repository and were off
+only because they did not exist on a private one. Dependabot watches `bun`, `github-actions` and
+`cargo`; the last of those was missing until 1.3.0, which left the half of the app that opens
+sockets and writes files unwatched.
+
+Deliberately **not** a CI step: `bun audit` or `cargo audit`. An advisory in a transitive dependency
+would then block a release that has nothing to do with it, and Dependabot reports the same thing
+without stopping the shipping.
+
 ## License
 
 Proprietary — copyright the repository owner, all rights reserved. No license to use, copy or

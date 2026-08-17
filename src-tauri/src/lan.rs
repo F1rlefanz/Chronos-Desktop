@@ -16,7 +16,7 @@
 
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream, UdpSocket};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -37,13 +37,52 @@ const MAX_BODY: usize = 8 * 1024 * 1024;
 /// must not leave a thread waiting for it.
 const TIMEOUT: Duration = Duration::from_secs(5);
 
+/// How many wrong codes the listener answers before it gives up entirely.
+///
+/// Six digits is a million possibilities, which sounds like a lot and is not:
+/// connections are answered one after another with no pause between them, so a
+/// machine on the same network could work through the space in well under an
+/// hour — and a guessed code is not only a way in, it is a copy of every hour
+/// the user has recorded, because the answer carries the whole payload.
+///
+/// Ten is far above mistyping and far below a search. Once it is reached the
+/// listener stops, so each further guess costs the attacker a person walking
+/// over and reopening the dialog. That is what turns the code from a delay into
+/// a barrier — not its length.
+const MAX_REFUSALS: u32 = 10;
+
 /// What the listener knows: what to hand out, who may ask, and when to stop.
 struct Serving {
     code: String,
     payload: String,
     /// Set by the last device that talked to us, for the front end to collect.
     received: Mutex<Option<String>>,
+    /// Wrong codes so far. See [`MAX_REFUSALS`].
+    refused: AtomicU32,
+    /// Set when the listener gave up rather than being closed by the user, so
+    /// the dialog can say which of the two happened.
+    exhausted: AtomicBool,
     stop: AtomicBool,
+}
+
+/// Compares two secrets without letting the time taken say how far they matched.
+///
+/// A network round trip buries a few nanoseconds of difference, so this is
+/// defence in depth rather than a fix for something measurable — but it costs
+/// four lines and no dependency, and the alternative is `==` on a secret, which
+/// is the habit worth not having. The length is allowed to leak: everyone knows
+/// the code is six digits.
+fn same_secret(given: &str, expected: &str) -> bool {
+    let (given, expected) = (given.as_bytes(), expected.as_bytes());
+    if given.len() != expected.len() {
+        return false;
+    }
+
+    given
+        .iter()
+        .zip(expected)
+        .fold(0u8, |differing, (a, b)| differing | (a ^ b))
+        == 0
 }
 
 #[derive(Default)]
@@ -113,9 +152,21 @@ fn answer(stream: TcpStream, serving: &Serving) -> std::io::Result<()> {
     }
 
     // A wrong code is answered, not ignored: the person typing it needs to know
-    // they mistyped. Six digits over a local network, only while this dialog is
-    // open — brute force would have to be quick, loud and in the same room.
-    if read_line(&mut reader)? != serving.code {
+    // they mistyped. But answering forever is what makes a six-digit code
+    // guessable, so the tenth wrong one closes the listener — see MAX_REFUSALS.
+    if !same_secret(&read_line(&mut reader)?, &serving.code) {
+        let wrong = serving.refused.fetch_add(1, Ordering::Relaxed) + 1;
+
+        if wrong >= MAX_REFUSALS {
+            serving.exhausted.store(true, Ordering::Relaxed);
+            serving.stop.store(true, Ordering::Relaxed);
+            return write_message(
+                &mut out,
+                "ERR",
+                "Zu viele Fehlversuche — der Abgleich wurde beendet.",
+            );
+        }
+
         return write_message(&mut out, "ERR", "Der Code stimmt nicht.");
     }
 
@@ -185,6 +236,8 @@ pub fn lan_start(
         code,
         payload,
         received: Mutex::new(None),
+        refused: AtomicU32::new(0),
+        exhausted: AtomicBool::new(false),
         stop: AtomicBool::new(false),
     });
 
@@ -203,13 +256,26 @@ pub fn lan_stop(state: tauri::State<LanState>) -> Result<(), StorageError> {
     Ok(())
 }
 
+/// What the last second brought, if anything.
+///
+/// `exhausted` is separate from "nothing arrived" on purpose: a listener that
+/// gave up looks exactly like a quiet one from the front end, and a dialog that
+/// goes on displaying an address nobody answers on is worse than one that says
+/// what happened.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Incoming {
+    pub payload: Option<String>,
+    pub exhausted: bool,
+}
+
 /// Hands over what a peer sent, once. The front end asks every second while the
 /// dialog is open; an event would need a listener that outlives the dialog.
 #[tauri::command]
-pub fn lan_received(state: tauri::State<LanState>) -> Result<Option<String>, StorageError> {
+pub fn lan_received(state: tauri::State<LanState>) -> Result<Incoming, StorageError> {
     let guard = locked(&state)?;
     let Some(serving) = guard.as_ref() else {
-        return Ok(None);
+        return Ok(Incoming::default());
     };
 
     let mut received = serving
@@ -217,7 +283,10 @@ pub fn lan_received(state: tauri::State<LanState>) -> Result<Option<String>, Sto
         .lock()
         .map_err(|_| StorageError::rejected("Das Empfangene ist nicht lesbar.".into()))?;
 
-    Ok(received.take())
+    Ok(Incoming {
+        payload: received.take(),
+        exhausted: serving.exhausted.load(Ordering::Relaxed),
+    })
 }
 
 /// The other half: connect, send ours, take theirs.
@@ -289,6 +358,8 @@ mod tests {
             code: code.to_string(),
             payload: payload.to_string(),
             received: Mutex::new(None),
+            refused: AtomicU32::new(0),
+            exhausted: AtomicBool::new(false),
             stop: AtomicBool::new(false),
         });
 
@@ -367,6 +438,66 @@ mod tests {
         let mut reader = BufReader::new(&peer);
         assert_eq!(read_line(&mut reader).expect("greeting"), PROTOCOL);
         assert_eq!(read_line(&mut reader).expect("header"), "ERR");
+
+        serving.stop.store(true, Ordering::Relaxed);
+    }
+
+    #[test]
+    fn a_secret_is_compared_by_value_not_by_prefix() {
+        assert!(same_secret("123456", "123456"));
+        assert!(!same_secret("123457", "123456"));
+        // The first digit differing must be no different from the last.
+        assert!(!same_secret("923456", "123456"));
+        assert!(!same_secret("12345", "123456"));
+        assert!(!same_secret("", "123456"));
+    }
+
+    /// The whole point of the limit: a million codes cannot be walked through,
+    /// because the listener stops answering long before the walk gets anywhere.
+    #[test]
+    fn guessing_is_over_after_the_tenth_wrong_code() {
+        let (port, serving) = serve("123456", "geheim");
+
+        for attempt in 1..MAX_REFUSALS {
+            let error = lan_exchange("127.0.0.1".into(), port, "000000".into(), "x".into())
+                .expect_err("wrong code");
+            assert!(error.message.contains("Code"), "attempt {attempt}");
+            assert!(
+                !serving.exhausted.load(Ordering::Relaxed),
+                "attempt {attempt}"
+            );
+        }
+
+        // The tenth is answered, and is the last thing this listener ever says.
+        let last = lan_exchange("127.0.0.1".into(), port, "000000".into(), "x".into())
+            .expect_err("wrong code");
+        assert!(last.message.contains("Fehlversuche"), "{}", last.message);
+        assert!(serving.exhausted.load(Ordering::Relaxed));
+
+        thread::sleep(Duration::from_millis(250));
+
+        // And the correct code no longer helps — which is what makes the limit
+        // worth anything: an attacker cannot simply carry on where they were.
+        assert!(
+            lan_exchange("127.0.0.1".into(), port, "123456".into(), "x".into()).is_err(),
+            "the listener kept serving after giving up"
+        );
+    }
+
+    /// Mistyping a few times must not cost the user their exchange.
+    #[test]
+    fn nine_wrong_codes_still_leave_the_right_one_working() {
+        let (port, serving) = serve("123456", "geheim");
+
+        for _ in 1..MAX_REFUSALS {
+            let _ = lan_exchange("127.0.0.1".into(), port, "000000".into(), "x".into());
+        }
+
+        let theirs = lan_exchange("127.0.0.1".into(), port, "123456".into(), "meins".into())
+            .expect("the right code after nine wrong ones");
+
+        assert_eq!(theirs, "geheim");
+        assert_eq!(serving.received.lock().unwrap().as_deref(), Some("meins"));
 
         serving.stop.store(true, Ordering::Relaxed);
     }
