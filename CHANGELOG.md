@@ -6,6 +6,17 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] — 2026-08-17
+
+### Changed
+
+- **Der Abgleich im selben Netz gibt nach zehn falschen Codes auf.** Bisher hat das wartende Gerät
+  jeden falschen Code beantwortet, so oft wie jemand es versuchte — bei sechs Ziffern ist das für
+  ein Programm im selben WLAN eine Frage von Minuten, und wer den Code errät, bekommt alle erfassten
+  Zeiten. Nach dem zehnten Fehlversuch hört das Gerät auf zu warten und sagt das auch: der Dialog
+  zeigt dann keine Adresse mehr. Einmal schließen und neu öffnen, und es gibt eine neue Adresse und
+  einen neuen Code. Wer sich nur vertippt hat, merkt davon nichts.
+
 ## [1.2.2] — 2026-08-15
 
 ### Fixed

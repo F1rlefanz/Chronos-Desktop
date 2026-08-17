@@ -103,14 +103,28 @@ export async function stopListening(): Promise<void> {
 }
 
 /**
+ * What the last ask brought back.
+ *
+ * `exhausted` is not a kind of "nothing arrived", which is why it is a second
+ * field rather than a special payload: a listener that gave up after ten wrong
+ * codes is silent in exactly the same way as one nobody has tried yet, and a
+ * dialog that cannot tell them apart goes on showing an address that no longer
+ * answers.
+ */
+export interface Incoming {
+  payload: string | null;
+  exhausted: boolean;
+}
+
+/**
  * What a peer sent us since the last ask, if anything.
  *
  * Polled while the dialog is open rather than pushed as an event: the exchange
  * only happens during those few seconds, and a listener that outlives the
  * dialog is a listener somebody has to remember to remove.
  */
-export function takeReceived(): Promise<string | null> {
-  return invoke<string | null>('lan_received');
+export function takeReceived(): Promise<Incoming> {
+  return invoke<Incoming>('lan_received');
 }
 
 /** The other half: hand ours over, take theirs. */

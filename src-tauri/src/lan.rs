@@ -462,7 +462,10 @@ mod tests {
             let error = lan_exchange("127.0.0.1".into(), port, "000000".into(), "x".into())
                 .expect_err("wrong code");
             assert!(error.message.contains("Code"), "attempt {attempt}");
-            assert!(!serving.exhausted.load(Ordering::Relaxed), "attempt {attempt}");
+            assert!(
+                !serving.exhausted.load(Ordering::Relaxed),
+                "attempt {attempt}"
+            );
         }
 
         // The tenth is answered, and is the last thing this listener ever says.

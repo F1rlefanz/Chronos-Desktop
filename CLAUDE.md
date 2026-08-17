@@ -153,10 +153,14 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   without Tauri's state — `answer` and `lan_exchange` are plain functions — so a change to the
   framing does not need two devices and a WiFi to check.
 - **The network listener lives exactly as long as its dialog.** Opening starts it, closing stops it,
-  and nothing on the machine is reachable while nobody is looking. Six digits are not a password
-  and the comment in `lan.rs` says so: they keep a neighbour already on the WiFi from pushing their
-  hours in, for the minute the dialog is open. Do not "improve" this into a background service —
-  the whole safety argument is that it is not one.
+  and nothing on the machine is reachable while nobody is looking. Do not "improve" this into a
+  background service — the whole safety argument is that it is not one. Six digits are not a
+  password, and what makes them a barrier is not their length but `MAX_REFUSALS`: answering a wrong
+  code forever turns a million possibilities into a few minutes of guessing for a machine on the
+  same WiFi, and a guessed code hands over every recorded hour. The tenth refusal closes the
+  listener, so a further guess costs a person walking over and reopening the dialog. It is not
+  silent about it — `lan_received` answers with `Incoming { payload, exhausted }` so the dialog can
+  take the address off the screen; a listener that gave up otherwise looks exactly like a quiet one.
 - **Syncing happens at the two moments something is already written, and on request.** Startup and
   window close, next to `ensureDailyBackup` and `useBackupOnClose`, plus the button. No timer and
   no file watcher: both write into a user's folder at moments nobody asked for. Closing only
