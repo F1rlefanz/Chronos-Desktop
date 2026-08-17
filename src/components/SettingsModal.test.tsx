@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsModal, SyncControls } from './SettingsModal';
 import { DEFAULT_APP_SETTINGS } from '../constants/defaultConfig';
+import { importFromJsonFile } from '../utils/dataExporter';
+
+vi.mock('../utils/dataExporter', () => ({ importFromJsonFile: vi.fn() }));
+const importFile = vi.mocked(importFromJsonFile);
 import { AppSettings, Project } from '../types';
 
 const projects: Project[] = [
@@ -147,5 +151,96 @@ describe('SettingsModal syncing', () => {
     renderModal({}, controls({ folder: 'D:/Chronos', status: { state: 'running' } }));
 
     expect(screen.getByRole('button', { name: /Jetzt abgleichen/ })).toBeDisabled();
+  });
+});
+
+/**
+ * These two messages used to be `alert`, which draws nothing at all in the
+ * Android WebView. On a phone the delete button therefore looked broken, and an
+ * import gave no sign of having succeeded or failed — the second one on the app's
+ * most destructive operation.
+ */
+describe('SettingsModal says what happened, on every platform', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('explains why the last project cannot be deleted', async () => {
+    const user = userEvent.setup();
+    render(
+      <SettingsModal
+        isOpen
+        onClose={() => {}}
+        settings={DEFAULT_APP_SETTINGS}
+        onUpdateSettings={onUpdateSettings}
+        projects={[projects[0]]}
+        onUpdateProjects={onUpdateProjects}
+        onImportData={() => {}}
+      />
+    );
+
+    await user.click(screen.getByTitle('Projekt löschen'));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Es muss mindestens ein Projekt übrig bleiben.'
+    );
+    expect(onUpdateProjects).not.toHaveBeenCalled();
+  });
+
+  it('says nothing until something has happened', () => {
+    renderModal();
+
+    expect(screen.queryByText(/mindestens ein Projekt/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/eingelesen/)).not.toBeInTheDocument();
+  });
+
+  it('deletes without complaint when there is more than one project', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.click(screen.getAllByTitle('Projekt löschen')[0]);
+
+    expect(onUpdateProjects).toHaveBeenCalled();
+    expect(screen.queryByText(/mindestens ein Projekt/)).not.toBeInTheDocument();
+  });
+});
+
+describe('SettingsModal reports what an import did', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** Picks a file the way the hidden input receives one. */
+  async function choose(container: HTMLElement) {
+    const user = userEvent.setup();
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, new File(['{}'], 'sicherung.json', { type: 'application/json' }));
+  }
+
+  it('names how much came in, in the singular where it belongs', async () => {
+    importFile.mockResolvedValue({ entries: [{}], projects: [{}, {}] } as never);
+    const { container } = renderModal();
+
+    await choose(container);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 Eintrag und 2 Projekte eingelesen.'
+    );
+  });
+
+  /**
+   * The one that matters: an import replaces the data set. Failing silently
+   * looks exactly like never having started, which is why this is not a toast
+   * that disappears either.
+   */
+  it('says why an import failed instead of swallowing it', async () => {
+    importFile.mockRejectedValue(new Error('In dieser Datei stehen keine lesbaren Einträge.'));
+    const { container } = renderModal();
+
+    await choose(container);
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Import fehlgeschlagen: In dieser Datei stehen keine lesbaren Einträge.'
+    );
   });
 });

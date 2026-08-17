@@ -18,6 +18,11 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { describeSyncFolder } from '../utils/sync/folderLabel';
 import type { SyncStatus } from '../App';
 
+/** "1 Eintrag" rather than "1 Einträge" — the same care the update banner takes. */
+function count(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 /**
  * Everything the sync section needs — absent in a build that cannot sync, which
  * hides the section rather than showing a switch that fails when it is used.
@@ -82,6 +87,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   files,
 }) => {
   const [newProjectName, setNewProjectName] = useState('');
+
+  /**
+   * What the last import did, and why a project could not be deleted.
+   *
+   * Both used to be `alert`, which shows nothing in the Android WebView: an
+   * import that failed was indistinguishable from one that never started, and
+   * the delete button looked broken rather than refused. Rendered next to the
+   * control they belong to, in the shape the sync status already uses.
+   */
+  const [importResult, setImportResult] = useState<{ kind: 'ok' | 'bad'; text: string } | null>(
+    null
+  );
+  const [projectNotice, setProjectNotice] = useState<string | null>(null);
   const [newProjectColor, setNewProjectColor] = useState('#3b82f6');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,10 +123,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleDeleteProject = (id: string) => {
     if (projects.length <= 1) {
-      alert('Es muss mindestens ein Projekt übrig bleiben.');
+      // Shown next to the list rather than through `alert`, which draws
+      // nothing at all in the Android WebView — the button simply appeared
+      // broken there, with no way to find out why.
+      setProjectNotice('Es muss mindestens ein Projekt übrig bleiben.');
       return;
     }
 
+    setProjectNotice(null);
     const remaining = projects.filter((p) => p.id !== id);
     onUpdateProjects(remaining);
 
@@ -127,10 +149,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     try {
       const data = await importFromJsonFile(file);
       onImportData(data);
-      alert(`Imported ${data.entries.length} session(s) and ${data.projects.length} project(s).`);
+      setImportResult({
+        kind: 'ok',
+        text: `${count(data.entries.length, 'Eintrag', 'Einträge')} und ${count(
+          data.projects.length,
+          'Projekt',
+          'Projekte'
+        )} eingelesen.`,
+      });
     } catch (err: unknown) {
-      const reason = err instanceof Error ? err.message : 'Invalid file format';
-      alert(`Import failed: ${reason}`);
+      const reason = err instanceof Error ? err.message : 'Die Datei hat ein unbekanntes Format.';
+      setImportResult({ kind: 'bad', text: `Import fehlgeschlagen: ${reason}` });
     } finally {
       // Clear the input so picking the same file again fires another change event.
       input.value = '';
@@ -267,6 +296,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
 
+            {projectNotice && (
+              <p role="status" className="text-[0.6875rem] text-rose-600 px-1">
+                {projectNotice}
+              </p>
+            )}
+
             {/* Add Project Form */}
             <form onSubmit={handleAddProject} className="flex gap-2 pt-1">
               <input
@@ -322,6 +357,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 className="hidden"
               />
             </div>
+
+            {importResult && (
+              <p
+                role="status"
+                className={`text-[0.6875rem] px-1 ${
+                  importResult.kind === 'bad' ? 'text-rose-600' : 'text-emerald-700'
+                }`}
+              >
+                {importResult.text}
+              </p>
+            )}
 
             {/* Only the desktop build keeps snapshots; the browser has no room
                 for a second copy, so the row is absent rather than disabled. */}
