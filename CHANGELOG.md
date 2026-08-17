@@ -6,6 +6,18 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] — 2026-08-17
+
+### Fixed
+
+- **Der Import sagt jetzt, ob er geklappt hat — auch auf dem Handy.** Bisher erschien die Meldung
+  über einen Browser-Dialog, den Android einfach nicht anzeigt: eine misslungene Wiederherstellung
+  sah dort exakt so aus wie eine, die nie gestartet ist. Ausgerechnet bei dem Vorgang, der den
+  ganzen Datenbestand ersetzt. Ergebnis und Grund stehen jetzt als Zeile unter dem Knopf.
+- **Der Hinweis, dass ein letztes Projekt übrig bleiben muss, ist wieder sichtbar.** Auf dem Handy
+  tat der Löschknopf beim letzten Projekt scheinbar nichts, ohne zu sagen warum.
+- Die Import-Meldungen waren auf Englisch und sind jetzt auf Deutsch, wie der Rest der App.
+
 ## [1.4.0] — 2026-08-17
 
 ### Added
@@ -436,6 +448,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.4.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.1...v1.2.2

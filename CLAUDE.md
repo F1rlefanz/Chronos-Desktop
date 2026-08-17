@@ -111,7 +111,7 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   tests are that merging gives the same answer whichever side asks and that running it twice
   changes nothing.
 - **Never `window.confirm`, `alert` or `prompt`. They do not work here.** In the Android WebView
-  `confirm` returns `true` **without drawing anything**, so every guard written with it silently
+  they draw **nothing at all**, and `confirm` returns `true` on top of that, so every guard written with it silently
   answered yes: discarding a running measurement, clearing the whole history, saving over a
   validation warning, and continuing after a backup had failed. Verified on a Fairphone 6 — the
   running measurement was gone 500 ms after the tap, no dialog in between, and it had been that way
@@ -121,7 +121,10 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   phone should land on the side that changes nothing; and the reason a backup failed is shown in
   the question, since "something went wrong" cannot inform a decision. Note that a React modal is
   fine on Android — `RecoveryPrompt` and the settings have always rendered there. It is the
-  _browser's own_ dialogs that are absent.
+  _browser's own_ dialogs that are absent. `alert` cost three messages the same way: an import that
+  failed looked exactly like one that never started, on the app's most destructive operation. A
+  message rather than a question belongs next to the control it is about, as a `<p role="status">`
+  — the shape the sync status already had — not in a modal.
 - **A merge may add and update on its own; it may not delete on its own.** Every other outcome of
   an exchange gives the user something, and only this one takes recorded time away — reporting it
   afterwards, as "11 gelöscht" once they were gone, is telling someone what they lost rather than

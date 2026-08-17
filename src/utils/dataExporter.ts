@@ -262,7 +262,9 @@ function normalizeImportPayload(
   const entries = rawEntries.map(normalizeTimeEntry).filter((e): e is TimeEntry => e !== null);
 
   if (rawEntries.length > 0 && entries.length === 0) {
-    throw new Error('No readable time entries found in this file');
+    // German, because this one reaches the user: it is shown under the import
+    // button when a file turns out to hold nothing Chronos can read.
+    throw new Error('In dieser Datei stehen keine lesbaren Einträge.');
   }
 
   return {

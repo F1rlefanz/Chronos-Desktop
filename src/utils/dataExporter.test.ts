@@ -190,9 +190,12 @@ describe('importFromJsonFile', () => {
     expect(result.projects).toEqual([]);
   });
 
-  it('rejects a file whose entries are all unreadable', async () => {
+  // The message is asserted rather than just the rejection, because it is
+  // shown to the user under the import button — and it is German for the same
+  // reason the rest of the interface is.
+  it('rejects a file whose entries are all unreadable, and says so in German', async () => {
     await expect(importFromJsonFile(jsonFile({ entries: [1, 'two', null] }))).rejects.toThrow(
-      /no readable time entries/i
+      /keine lesbaren Einträge/i
     );
   });
 
