@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { DEFAULT_APP_SETTINGS, DEFAULT_PROJECTS } from './constants/defaultConfig';
@@ -196,13 +196,28 @@ describe('App backups before destructive actions', () => {
     vi.restoreAllMocks();
   });
 
+  /**
+   * Answers the app's own confirmation, which replaced `window.confirm` — that
+   * one returns true in the Android WebView without drawing anything, so every
+   * guard written with it was answering yes on a phone.
+   *
+   * Scoped to the dialog because the button that opens it and the one that
+   * confirms it deliberately share a label: "Alle löschen" asks for the same
+   * thing twice, and the second one has to be the one inside the question.
+   */
+  async function answerDialog(name: RegExp | string) {
+    const user = userEvent.setup();
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name }));
+  }
+
   async function clearHistory() {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Alle löschen' }));
+    await answerDialog('Alle löschen');
   }
 
   it('snapshots the history before clearing it', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderApp(withOneEntry);
 
     await clearHistory();
@@ -212,7 +227,6 @@ describe('App backups before destructive actions', () => {
   });
 
   it('takes the snapshot before the entries are gone, not after', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderApp(withOneEntry);
 
     await clearHistory();
@@ -224,40 +238,42 @@ describe('App backups before destructive actions', () => {
   });
 
   it('asks before clearing when the snapshot could not be written', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     writeBackup.mockResolvedValue(rejected);
     renderApp(withOneEntry);
 
     await clearHistory();
 
-    // Two dialogs: the existing "are you sure", then the warning that there is
-    // no safety net this time.
-    expect(confirm).toHaveBeenCalledTimes(2);
-    expect(confirm.mock.calls[1][0]).toMatch(/Storage is full\./);
+    // Two questions: the "are you sure", then the warning that there is no
+    // safety net this time — and the second one names the reason, because
+    // "something went wrong" cannot inform a decision.
+    const second = await screen.findByRole('dialog');
+    expect(within(second).getByText(/Storage is full\./)).toBeInTheDocument();
+
+    await answerDialog('Trotzdem fortsetzen');
+    expect(saveTimeEntries).toHaveBeenCalled();
   });
 
   it('leaves the history alone when the user declines after a failed snapshot', async () => {
-    vi.spyOn(window, 'confirm')
-      .mockReturnValueOnce(true) // yes, clear the history
-      .mockReturnValueOnce(false); // no, not without a backup
     writeBackup.mockResolvedValue(rejected);
     renderApp(withOneEntry);
 
     await clearHistory();
+    await answerDialog('Abbrechen');
 
     expect(saveTimeEntries).not.toHaveBeenCalled();
     expect(screen.getByText('Recorded Time Session')).toBeInTheDocument();
   });
 
   it('does not ask twice on a backend that keeps no snapshots', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     backupsAvailable.mockReturnValue(false);
     renderApp(withOneEntry);
 
     await clearHistory();
 
     expect(writeBackup).not.toHaveBeenCalled();
-    expect(confirm).toHaveBeenCalledTimes(1);
+    // Nothing left to answer: a warning about a snapshot that was never going
+    // to be taken is a question with no information in it.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(saveTimeEntries).toHaveBeenCalled();
   });
 });
@@ -269,7 +285,6 @@ describe('App deletions leave a record', () => {
     saveTombstones.mockResolvedValue(ok);
     writeBackup.mockResolvedValue(ok);
     backupsAvailable.mockReturnValue(true);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -294,6 +309,9 @@ describe('App deletions leave a record', () => {
     renderApp(withOneEntry);
 
     await user.click(screen.getByRole('button', { name: 'Alle löschen' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Alle löschen' })
+    );
 
     expect(saveTombstones).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry-1' })]);
   });

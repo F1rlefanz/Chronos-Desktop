@@ -58,6 +58,7 @@ import { ControlPanel } from './components/ControlPanel';
 import { BreakList } from './components/BreakList';
 import { RecoveryPrompt } from './components/RecoveryPrompt';
 import { DeletionPrompt } from './components/DeletionPrompt';
+import { ConfirmPrompt, ConfirmRequest } from './components/ConfirmPrompt';
 import { StatCards } from './components/StatCards';
 import { MonthCalendar } from './components/MonthCalendar';
 import { TimeBarChart } from './components/TimeBarChart';
@@ -153,6 +154,24 @@ export default function App({ initialState }: AppProps) {
     entries: TimeEntry[];
     decide: (adopt: boolean) => void;
   } | null>(null);
+
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    request: ConfirmRequest;
+    decide: (confirmed: boolean) => void;
+  } | null>(null);
+
+  /**
+   * Asks a yes-or-no question and waits for the answer.
+   *
+   * Replaces `window.confirm`, which returns `true` in the Android WebView
+   * without drawing anything — every guard written with it was answering yes on
+   * a phone. See `ConfirmPrompt`.
+   */
+  const ask = useCallback(async (request: ConfirmRequest): Promise<boolean> => {
+    const answer = await new Promise<boolean>((decide) => setPendingConfirm({ request, decide }));
+    setPendingConfirm(null);
+    return answer;
+  }, []);
 
   // The just-stopped entry awaiting a title. It is already saved by the time
   // this is set, so only the id is held here.
@@ -586,8 +605,13 @@ export default function App({ initialState }: AppProps) {
   };
 
   /** Deletes the entry the dialog is about — an explicit "that was not work". */
-  const handleDiscardPendingEntry = () => {
-    if (!window.confirm('Diesen Eintrag löschen? Die erfasste Zeit geht verloren.')) return;
+  const handleDiscardPendingEntry = async () => {
+    const confirmed = await ask({
+      title: 'Diesen Eintrag löschen?',
+      lines: ['Die erfasste Zeit geht verloren.'],
+      confirmLabel: 'Löschen',
+    });
+    if (!confirmed) return;
 
     const updated = timeEntries.filter((entry) => entry.id !== pendingSaveEntryId);
     setTimeEntries(updated);
@@ -622,10 +646,12 @@ export default function App({ initialState }: AppProps) {
   };
 
   /** Throws away the running measurement — the only destructive timer action. */
-  const handleDiscardRunning = useCallback(() => {
-    const confirmed = window.confirm(
-      'Laufende Erfassung verwerfen? Die bisher erfasste Zeit wird gelöscht.'
-    );
+  const handleDiscardRunning = useCallback(async () => {
+    const confirmed = await ask({
+      title: 'Laufende Erfassung verwerfen?',
+      lines: ['Die bisher erfasste Zeit wird gelöscht.'],
+      confirmLabel: 'Verwerfen',
+    });
     if (!confirmed) return;
 
     setTimeEntries((current) => {
@@ -633,7 +659,7 @@ export default function App({ initialState }: AppProps) {
       void persist(saveTimeEntries(updated), 'das Verwerfen');
       return updated;
     });
-  }, [persist]);
+  }, [persist, ask]);
 
   /**
    * Snapshots the current state before something that replaces or destroys it.
@@ -657,11 +683,13 @@ export default function App({ initialState }: AppProps) {
         return true;
       }
 
-      return window.confirm(
-        `Es konnte keine Sicherung angelegt werden: ${result.message}\n\n${action} trotzdem fortsetzen?`
-      );
+      return ask({
+        title: 'Es konnte keine Sicherung angelegt werden',
+        lines: [result.message, `${action} trotzdem fortsetzen?`],
+        confirmLabel: 'Trotzdem fortsetzen',
+      });
     },
-    []
+    [ask]
   );
 
   /* ---------------------------------------------------------------------- */
@@ -866,6 +894,18 @@ export default function App({ initialState }: AppProps) {
   };
 
   const handleClearAllHistory = async () => {
+    // Asked before the snapshot, not after: a backup written for a deletion
+    // that was then called off is a file nobody asked for.
+    const confirmed = await ask({
+      title: 'Wirklich alle Einträge löschen?',
+      lines: [
+        `${timeEntries.length === 1 ? 'Ein Eintrag' : `${timeEntries.length} Einträge`} verschwinden aus der Liste.`,
+        'Vorher wird eine Sicherung angelegt.',
+      ],
+      confirmLabel: 'Alle löschen',
+    });
+    if (!confirmed) return;
+
     if (!(await backupBefore('before-clear', 'Das Löschen aller Einträge'))) return;
 
     removeEntries(timeEntries, 'das Leeren der Liste');
@@ -1251,6 +1291,15 @@ export default function App({ initialState }: AppProps) {
           entries={pendingDeletions.entries}
           onAdopt={() => pendingDeletions.decide(true)}
           onKeep={() => pendingDeletions.decide(false)}
+        />
+      )}
+
+      {/* Last, so a question is never drawn under the thing it is about. */}
+      {pendingConfirm && (
+        <ConfirmPrompt
+          request={pendingConfirm.request}
+          onConfirm={() => pendingConfirm.decide(true)}
+          onCancel={() => pendingConfirm.decide(false)}
         />
       )}
     </div>

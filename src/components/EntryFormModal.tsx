@@ -8,6 +8,7 @@ import {
 } from '../utils/timeFormatters';
 import { Clock, Folder, FileText, Plus, Save, Tag, Trash2, X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ConfirmPrompt } from './ConfirmPrompt';
 
 /**
  * What the form hands back; the caller supplies id, createdAt, updatedAt and
@@ -72,6 +73,19 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
   const validation = useMemo(() => validateEntryInput(draft), [draft]);
   const preview = validation.errors.length === 0 ? netMs(draft) : null;
 
+  /**
+   * The warnings a save is waiting to have confirmed.
+   *
+   * Above the early return with the other hooks, not next to the submit handler
+   * where it reads better: this component returns `null` when closed, and a
+   * hook after that runs in some renders and not others.
+   *
+   * Held at all rather than asked inline because asking is a render now — the
+   * browser dialog this used to use draws nothing in the Android WebView and
+   * answers yes, so every warning here was waved through on a phone.
+   */
+  const [warningsToConfirm, setWarningsToConfirm] = useState<string[] | null>(null);
+
   useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
@@ -91,15 +105,7 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
     setBreaks(breaks.filter((b) => b.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validation.errors.length > 0) return;
-
-    if (validation.warnings.length > 0) {
-      const proceed = window.confirm(`${validation.warnings.join('\n')}\n\nTrotzdem speichern?`);
-      if (!proceed) return;
-    }
-
+  const save = () => {
     onSave({
       title: title.trim() || 'Ohne Titel',
       project: projectId,
@@ -114,6 +120,18 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
     });
 
     onClose();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validation.errors.length > 0) return;
+
+    if (validation.warnings.length > 0) {
+      setWarningsToConfirm(validation.warnings);
+      return;
+    }
+
+    save();
   };
 
   return (
@@ -362,6 +380,22 @@ export const EntryFormModal: React.FC<EntryFormModalProps> = ({
           </div>
         </form>
       </div>
+
+      {warningsToConfirm && (
+        <ConfirmPrompt
+          request={{
+            title: 'Trotzdem speichern?',
+            lines: warningsToConfirm,
+            confirmLabel: 'Speichern',
+            tone: 'neutral',
+          }}
+          onConfirm={() => {
+            setWarningsToConfirm(null);
+            save();
+          }}
+          onCancel={() => setWarningsToConfirm(null)}
+        />
+      )}
     </div>
   );
 };

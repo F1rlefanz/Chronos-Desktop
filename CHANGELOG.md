@@ -16,6 +16,16 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   hier, „Behalten" bricht den Abgleich ab und lässt dieses Gerät unverändert; beim nächsten Mal
   wird wieder gefragt. Bisher stand erst hinterher „11 gelöscht" da, als sie schon weg waren.
 
+### Fixed
+
+- **Auf dem Handy fragte Chronos nie nach — es machte einfach.** „Laufende Erfassung verwerfen?",
+  „Wirklich alle Einträge löschen?", die Warnung vor einem unplausibel langen Eintrag und die
+  Rückfrage, wenn keine Sicherung angelegt werden konnte: alle vier haben auf Android **keine
+  Rückfrage angezeigt und sich selbst mit „ja" beantwortet**. Ein Tipper auf „Verwerfen" hat die
+  laufende Messung gelöscht, ein Tipper auf „Alle löschen" die ganze Liste. Alle Rückfragen laufen
+  jetzt über einen eigenen Dialog, der auf allen Geräten wirklich erscheint — und die harmlose
+  Antwort steht dabei oben, damit man beim schnellen Wegtippen auf der sicheren Seite landet.
+
 ## [1.3.0] — 2026-08-17
 
 ### Security
