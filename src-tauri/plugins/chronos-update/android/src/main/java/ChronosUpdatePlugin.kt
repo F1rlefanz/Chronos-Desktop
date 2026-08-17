@@ -63,14 +63,42 @@ class ChronosUpdatePlugin(private val activity: Activity) : Plugin(activity) {
     }
   }
 
+  /**
+   * Where an update may come from, at every step of the way.
+   *
+   * The same rule `readManifest` applies to the URL in the manifest — https, and
+   * GitHub or its asset host. It is repeated here because that check covers the
+   * address we start from and nothing after it: following redirects by hand
+   * means every hop is a fresh address, and a redirect chain that ends somewhere
+   * else is how a checked URL turns into an unchecked download.
+   *
+   * Not the last line of defence and not meant to be — Android refuses to
+   * install an APK signed by another key, which is what actually stops a foreign
+   * package. This stops it being fetched at all.
+   */
+  private fun allowed(url: URL): Boolean {
+    val host = url.host.lowercase()
+    return url.protocol == "https" &&
+      (host == "github.com" || host.endsWith(".githubusercontent.com"))
+  }
+
   /** Follows redirects itself: GitHub answers `releases/latest/download/…`
    *  with a 302 to a different host, and HttpURLConnection refuses to follow a
    *  redirect that changes protocol or host on its own. */
   private fun open(url: String, redirectsLeft: Int = 5): HttpURLConnection {
-    val connection = URL(url).openConnection() as HttpURLConnection
+    val target = URL(url)
+    if (!allowed(target)) {
+      throw IllegalStateException("Diese Adresse gehört nicht zu Chronos: $url")
+    }
+
+    val connection = target.openConnection() as HttpURLConnection
     connection.connectTimeout = 15_000
     connection.readTimeout = 30_000
-    connection.instanceFollowRedirects = true
+    // Off, so that every hop comes back here and through `allowed`. Left on,
+    // HttpURLConnection follows a redirect to another host by itself as long as
+    // the protocol does not change — which is precisely the hop that has to be
+    // checked, and the one we would never see.
+    connection.instanceFollowRedirects = false
     connection.setRequestProperty("Accept", "*/*")
 
     val status = connection.responseCode
@@ -83,7 +111,9 @@ class ChronosUpdatePlugin(private val activity: Activity) : Plugin(activity) {
     if (redirected && redirectsLeft > 0) {
       val next = connection.getHeaderField("Location")
       connection.disconnect()
-      if (next != null) return open(next, redirectsLeft - 1)
+      // Resolved against where we are: a `Location` is allowed to be a path
+      // rather than a whole address, and `URL(String)` alone would reject it.
+      if (next != null) return open(URL(target, next).toString(), redirectsLeft - 1)
     }
 
     if (status !in 200..299) {

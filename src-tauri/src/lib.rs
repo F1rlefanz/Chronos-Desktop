@@ -419,6 +419,23 @@ const LOG_MAX_BYTES: u64 = 1024 * 1024;
 const LOG_FILE: &str = "chronos.log";
 const LOG_PREVIOUS: &str = "chronos.log.1";
 
+/// Makes one line out of what was handed over, whatever was in it.
+///
+/// A log line carries text the user typed — an entry title goes into it — and a
+/// title with a newline in it would end the line and start another one that
+/// looks exactly like something Chronos wrote itself. That is the whole trick:
+/// nothing is executed, but a reader of the log can no longer tell which lines
+/// are the app's. Control characters go the same way, because a terminal shown
+/// the file gives some of them a meaning of their own.
+///
+/// It happens here rather than in the logger because here is where the boundary
+/// is: this command is reachable from the front end and must not trust it.
+fn one_line(line: &str) -> String {
+    line.chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect()
+}
+
 /// Appends one line to the log, rolling the file over when it grows too large.
 ///
 /// Appending rather than the atomic write used elsewhere is deliberate: a log
@@ -446,7 +463,7 @@ fn log_append(app: tauri::AppHandle, line: String) -> Result<(), StorageError> {
         .open(&path)
         .map_err(|error| StorageError::from_io(&error, &path))?;
 
-    writeln!(file, "{line}").map_err(|error| StorageError::from_io(&error, &path))
+    writeln!(file, "{}", one_line(&line)).map_err(|error| StorageError::from_io(&error, &path))
 }
 
 /* -------------------------------------------------------------------------- */
@@ -566,4 +583,38 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Chronos Desktop");
+}
+
+/// The parts of this file that decide something, rather than touching a disk.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A log line is one line. An entry title is user text and travels into it,
+    /// so a newline there could forge a line that reads as the app's own.
+    #[test]
+    fn a_title_cannot_write_a_second_log_line() {
+        let forged = one_line("Meeting\n2026-08-17 09:00 ERROR Alle Daten gelöscht");
+
+        assert!(!forged.contains('\n'));
+        assert_eq!(forged, "Meeting 2026-08-17 09:00 ERROR Alle Daten gelöscht");
+    }
+
+    /// A terminal shown the file gives some control characters a meaning of
+    /// their own — a carriage return overwrites what came before it, and an
+    /// escape starts a sequence. Taking the escape out is enough: what follows
+    /// it is ordinary text once nothing introduces it.
+    #[test]
+    fn control_characters_lose_their_meaning() {
+        assert_eq!(one_line("a\r\tb\u{1b}[2Kc"), "a  b [2Kc");
+    }
+
+    /// Everything else survives untouched: German text is what this log is in.
+    #[test]
+    fn ordinary_text_is_left_alone() {
+        assert_eq!(
+            one_line("Büro — Größe 5 · „Test\""),
+            "Büro — Größe 5 · „Test\""
+        );
+    }
 }

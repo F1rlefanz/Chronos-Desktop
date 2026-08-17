@@ -6,9 +6,9 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.3] — 2026-08-17
+## [1.3.0] — 2026-08-17
 
-### Changed
+### Security
 
 - **Der Abgleich im selben Netz gibt nach zehn falschen Codes auf.** Bisher hat das wartende Gerät
   jeden falschen Code beantwortet, so oft wie jemand es versuchte — bei sechs Ziffern ist das für
@@ -16,6 +16,13 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
   Zeiten. Nach dem zehnten Fehlversuch hört das Gerät auf zu warten und sagt das auch: der Dialog
   zeigt dann keine Adresse mehr. Einmal schließen und neu öffnen, und es gibt eine neue Adresse und
   einen neuen Code. Wer sich nur vertippt hat, merkt davon nichts.
+- **Das Update auf dem Handy lädt nur noch von GitHub.** Der Weg zur neuen Version folgte
+  Weiterleitungen bisher überallhin; jetzt wird bei jedem Schritt geprüft, dass es `https` bleibt und
+  auf einem GitHub-Server landet. Installieren ließ sich schon vorher nichts Fremdes — dafür sorgt
+  Androids Signaturprüfung —, aber jetzt wird es auch gar nicht erst geladen.
+- **Ein Eintragstitel kann keine Logzeilen mehr erfinden.** Wer einen Zeilenumbruch in einen Titel
+  schreibt, konnte damit im Protokoll Zeilen erzeugen, die aussahen, als kämen sie von Chronos
+  selbst. Solche Zeichen werden beim Schreiben ersetzt.
 
 ## [1.2.2] — 2026-08-15
 
@@ -409,6 +416,7 @@ The first version worth naming: a precision stopwatch that runs in the browser.
   silent failure means the entry is gone after a reload.
 - A recovery screen instead of a blank page when something in the interface breaks.
 
+[1.3.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/F1rlefanz/Chronos-Desktop/compare/v1.1.2...v1.2.0

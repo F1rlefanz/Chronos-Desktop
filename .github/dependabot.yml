@@ -17,3 +17,16 @@ updates:
     directory: /
     schedule:
       interval: monthly
+
+  # The Rust side went unwatched until 1.3.0, which is the half of the app that
+  # opens sockets and writes files. One entry covers both plugins as well: they
+  # are workspace members, so their dependencies are in the same lockfile.
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
