@@ -79,277 +79,40 @@ say so in the pull request, rather than padding it with an entry nobody benefits
   config that builds and tests perfectly well. Two traps come with it — bun keeps the old
   resolution until `bun install --force`, and `@vitejs/plugin-react` imports `vite/internal`, so it
   and Vite can only be bumped together.
-- **A setting must have a writer, not only a reader.** `defaultProject` was read from the first
-  version and set by nothing, so it stayed on its generated value forever — the same dead switch as
-  a setting nobody reads, just from the other side. When adding a field to `AppSettings`, wire up
-  both ends.
-- **A setting must have a reader.** Adding a field to `AppSettings` without wiring it up recreates
-  the dead-switch problem that `theme`, `timeFormat` and `autoSaveSession` used to be. If you
-  remove a field, extend `migrateSettings` in `src/utils/storage/index.ts` so old stored states are
-  cleaned up. The same holds for `STORAGE_KEYS`: a key nothing reads is dead weight.
-- **Persistence goes through the adapter, never through `localStorage` directly.** The web and
-  desktop builds share `src/utils/storage/index.ts`; only an adapter under `src/utils/storage/`
-  may touch a concrete backend, and `main.tsx` is the only place that picks one. Writes return a
-  `WriteResult` (`{ ok: true } | { ok: false; reason; message }`) instead of throwing, because a
-  rejected write is an expected outcome the UI has to show — `persist()` in `src/App.tsx` turns it
-  into a banner. Adapters deal in strings so that JSON encoding and the corrupt-data fallback live
-  in one place.
-- **Reading reports failure the same way, and for one reason more.** `read` returns a `ReadResult`
-  (`{ ok: true; value: string | null } | { ok: false; message }`), because "the key is not there"
-  and "the backend could not answer" are different facts and used to arrive as the same `null`.
-  That conflation was a data-loss bug, not an inelegance: `loadPersistedState` saw "nothing
-  stored", wrote its defaults back over settings it had merely failed to open, and said nothing.
-  A start that cannot read now writes **nothing** and reports what it could not read through
-  `PersistedState.unreadable`, which `src/App.tsx` turns into a banner that cannot be dismissed —
-  the screen is not the truth, and the next thing recorded would overwrite the truth.
-- **Two devices can only be reconciled because every entry says when it changed.** `updatedAt` is
-  stamped where entries are created and edited; `patchRunningEntry` is the single place every
-  change to a running measurement passes through, which is what keeps a new handler from silently
-  forgetting. Deleting writes a tombstone under its own storage key — without one, "deleted here"
-  and "never seen here" are indistinguishable and a merge resurrects everything ever deleted. The
-  rule itself is `src/domain/merge.ts`, a pure function over two sets, and its two load-bearing
-  tests are that merging gives the same answer whichever side asks and that running it twice
-  changes nothing.
-- **Never `window.confirm`, `alert` or `prompt`. They do not work here.** In the Android WebView
-  they draw **nothing at all**, and `confirm` returns `true` on top of that, so every guard written with it silently
-  answered yes: discarding a running measurement, clearing the whole history, saving over a
-  validation warning, and continuing after a backup had failed. Verified on a Fairphone 6 — the
-  running measurement was gone 500 ms after the tap, no dialog in between, and it had been that way
-  since Android shipped. Ask through `ConfirmPrompt` and the `ask()` helper in `src/App.tsx`, which
-  returns a promise the dialog settles. Two things it gets right on purpose: the **cancelling**
-  button comes first and carries the visual weight, because someone tapping past a dialog on a
-  phone should land on the side that changes nothing; and the reason a backup failed is shown in
-  the question, since "something went wrong" cannot inform a decision. Note that a React modal is
-  fine on Android — `RecoveryPrompt` and the settings have always rendered there. It is the
-  _browser's own_ dialogs that are absent. `alert` cost three messages the same way: an import that
-  failed looked exactly like one that never started, on the app's most destructive operation. A
-  message rather than a question belongs next to the control it is about, as a `<p role="status">`
-  — the shape the sync status already had — not in a modal.
-- **A merge may add and update on its own; it may not delete on its own.** Every other outcome of
-  an exchange gives the user something, and only this one takes recorded time away — reporting it
-  afterwards, as "11 gelöscht" once they were gone, is telling someone what they lost rather than
-  asking. `adopt` in `src/App.tsx` merges into a preview first, and if anything would go it
-  suspends on a promise that `DeletionPrompt` settles. Three things make that work and are easy to
-  break: the question is asked with `entriesLostBy`, **not** `summary.deleted` — that count
-  includes deletions for entries only the other device still had, and confirming the loss of
-  records you have never seen is how a warning trains people to dismiss it; declining cancels the
-  whole exchange, because keeping the entries would mean either dropping tombstones the other
-  device re-sends anyway or stamping `updatedAt` on records nobody touched, and this app derives
-  everything from those timestamps; and the state is merged **again** afterwards, since a person
-  reading a dialog takes long enough for a measurement to end behind it. Anything that calls
-  `adopt` in a loop needs an in-flight guard — `LanSyncModal` polls every second, and without one
-  the second merge orphans the first one's question.
-- **The shared folder holds one file per device, and that is the whole conflict story.** Two
-  devices never write the same file, so the sync client behind the folder cannot produce a
-  conflicting copy Chronos would have to resolve; reading merges every foreign file in any order,
-  which is safe only because `mergeEntries` is idempotent and symmetric. The device id lives under
-  its own storage key, never in `AppSettings`: settings travel in a backup, and an import that gave
-  this machine another one's id would make two devices write one file. `syncFolder` is a setting,
-  but `handleImportData` keeps the local one for the same reason — a path from another machine
-  points nowhere here. Only finished entries are shared; a running measurement belongs to the
-  device it runs on, or two devices show the same stopwatch and neither knows when work ended.
-- **Exactly one command takes a path from the front end.** `sync_configure` validates it and keeps
-  it; `sync_list`/`sync_read`/`sync_write` name a file that is resolved against that and nothing
-  else. Every other command in `src-tauri/src/lib.rs` builds its own path and only validates a key
-  or a file name — do not add a second command that accepts a directory. `ChronosSafPlugin` on
-  Android follows the same shape with `configure` and its `roots` map.
-- **Android reaches a folder through `src-tauri/plugins/chronos-saf/`, not through `std::fs`.**
-  There is no path to be had: the picker grants a permission on a document tree and everything
-  inside goes through a content provider. The plugin is a workspace member and an Android-only
-  dependency, so a desktop build compiles none of it while `cargo clippy --workspace` still lints
-  its desktop half. Two things there are not like a filesystem and must stay commented as such:
-  SAF cannot replace a file in one move (write to `…-part.json`, delete, rename — and the
-  temporary name keeps the real extension, or the provider appends one), and a grant can be
-  withdrawn between two calls, which is why `configure` runs before every operation rather than
-  once. Registering a new command means adding it in four places: `build.rs`, `commands.rs`,
-  `mobile.rs`/`desktop.rs`, and `permissions/default.toml`.
-- **No file operation in that plugin runs on the thread it arrived on.** Everything goes through
-  `background()` onto one worker. A content provider is not a disk — answering can mean waiting on
-  another app, and on a cloud provider on a network — and a folder deleted underneath the app froze
-  the interface for seven seconds before this existed. Only `pickFolder` and the `startActivity` in
-  `openDocument` stay on the main thread, because that is where a launcher belongs.
-- **A phone's own files need a folder before anyone can reach them.** `deviceFilesFolder` is where
-  exports and backups go on Android; with it empty they stay in app-private storage exactly as
-  before, and `androidFileSink`/`androidBackupSupport` wrap the app-private originals rather than
-  replacing them. A snapshot is never dropped because a folder went away — it falls back. The
-  twenty-snapshot limit is written twice on purpose (Rust for the desktop, `androidFiles.ts` for
-  the phone), because the Rust side cannot open that folder at all.
-- **There are two transports and exactly one merge.** A folder and a direct network connection
-  differ in how records arrive and in nothing about what happens to them: both build the same
-  payload, both take a backup before adopting anything foreign, both go through `adopt` in
-  `src/App.tsx`, which merges against `liveRef` and persists. A second copy of that sequence is how
-  the two transports start disagreeing about what a sync means. `lan.rs` is reachable from a test
-  without Tauri's state — `answer` and `lan_exchange` are plain functions — so a change to the
-  framing does not need two devices and a WiFi to check.
-- **The network listener lives exactly as long as its dialog.** Opening starts it, closing stops it,
-  and nothing on the machine is reachable while nobody is looking. Do not "improve" this into a
-  background service — the whole safety argument is that it is not one. Six digits are not a
-  password, and what makes them a barrier is not their length but `MAX_REFUSALS`: answering a wrong
-  code forever turns a million possibilities into a few minutes of guessing for a machine on the
-  same WiFi, and a guessed code hands over every recorded hour. The tenth refusal closes the
-  listener, so a further guess costs a person walking over and reopening the dialog. It is not
-  silent about it — `lan_received` answers with `Incoming { payload, exhausted }` so the dialog can
-  take the address off the screen; a listener that gave up otherwise looks exactly like a quiet one.
-- **Syncing happens at the two moments something is already written, and on request.** Startup and
-  window close, next to `ensureDailyBackup` and `useBackupOnClose`, plus the button. No timer and
-  no file watcher: both write into a user's folder at moments nobody asked for. Closing only
-  _pushes_ — a merge as the app disappears changes data nobody can see, and the incoming half is
-  worthless with no UI left to show it.
-- **A sync applies its result against the state as it is when the answer arrives**, not against the
-  copy it started from (`liveRef` in `src/App.tsx`). A sync is not instant, and an entry created
-  while it ran must not be dropped by the reply; the second merge is free because merging twice
-  changes nothing.
-- **The updater is the third pair of backends behind one interface, and the only one Tauri does
-  not cover.** `UpdateChannel` in `src/utils/update/` is the seam; the desktop half is
-  `tauri-plugin-updater`, the phone half is `src-tauri/plugins/chronos-update/`, and `main.tsx`
-  picks. Tauri's documentation site shows Android with a tick in the updater's platform table —
-  the plugin's own README says `Android: x` and its install snippet excludes mobile by target, and
-  the README is right. Do not "simplify" the Android half away on the strength of that table.
-  Nothing about the Android path can be made silent: installing a package is Android's to
-  authorise, and the plugin ends at the system installer on purpose.
-- **What is fetched over the network is input, and a signature is the only thing that says it is
-  ours.** The updater sends no credentials — that is what lets a public release be a feed — so the
-  pubkey in `tauri.conf.json` is the whole trust story on the desktop, and the APK signature is on
-  Android. `readManifest` still validates shape, scheme, host and extension before a URL reaches
-  the installer, for the same reason imported JSON goes through the normalisers: a mangled file
-  must be refused, not followed. That check covers the address it is given and nothing after it,
-  so `open()` in `ChronosUpdatePlugin.kt` applies the same host rule to **every** redirect hop —
-  which is only possible with `instanceFollowRedirects` off, because the JDK otherwise follows a
-  redirect to another host itself as long as the protocol holds, and that hop is exactly the one
-  worth seeing. **CI signs Android with the same key every earlier build used** —
-  Android refuses an update signed by a different one, and switching means uninstalling, which
-  takes the user's recorded time with it.
-- **The update check runs on a timer; syncing still must not.** They look like the same rule and
-  are not. A sync writes into a user's folder, so doing it at a moment nobody asked for is the
-  thing to avoid; an update check reads one small file and changes nothing. `useUpdateCheck` asks
-  at startup, every six hours, and when the window comes back — the last of those because a laptop
-  that was asleep ran no timers, and the copy opened on Monday would otherwise still believe what
-  it learned on Friday. Nothing pushes to this app and nothing should: a server to push from is
-  exactly what "no account, no server" rules out.
-- **Dismissal is remembered by version, not for the session.** With a single check at startup the
-  two were the same thing. With several they are not, and getting it wrong means dismissing 1.2.0
-  silently hides 1.3.0 as well.
-- **The update banner reads `CHANGELOG.md`, and that file wraps at a hundred characters.** A bullet
-  in it is not a line: most entries run over two or three, with the rest indented underneath, so
-  `bulletsFrom` joins continuations onto the entry above. Filtering for lines starting with `- `
-  cut every entry off mid-sentence, and no test caught it because every fixture was one line long
-  — the fixtures now include a real release's notes verbatim.
-- **A version comparison is `isNewer`, never a string comparison.** `1.10.0` sorts before `1.9.0`
-  as text, which would make a tenth minor release look like a downgrade and silently strand
-  everyone on it. Anything that is not three integers counts as _not newer_, so a broken manifest
-  fails towards "no update" rather than towards offering one.
-- **`isMobilePlatform()` picks a backend in `main.tsx`, and hides doors that lead nowhere.** It may
-  not decide anything about how data is kept: storage, backups, the log and the sync rules are
-  identical everywhere, and only the way a folder is reached differs. A door is hidden by asking
-  whether there is something behind it — `onRevealBackups` is absent when no folder has been
-  chosen, not because this is a phone — and `reveal_folder` in Rust still refuses on Android as a
-  second line of defence.
-- **A phone draws the webview edge to edge.** `index.html` carries `viewport-fit=cover` and the
-  header and footer pad themselves with `env(safe-area-inset-*)`; without both, the status bar sits
-  on top of the tab bar. A row of label-plus-control needs a stacked fallback below `sm`, or the
-  description text wraps around the control and interleaves with it.
-- **A phone is narrower than the emulator, and a row that cannot fit must wrap, not overflow.** The
-  emulator reports 360 CSS px; a Fairphone 6 reports **320** (1116 physical pixels at density 558),
-  and at that width the header ran its two right-hand buttons off the screen — including the one
-  that opens the settings, which is to say the whole app was unreachable from there. It had been
-  like that since Android shipped, and no test could have seen it: jsdom does not lay anything out.
-  Any row of fixed-size controls gets `flex-wrap` so the worst case is a second line, never a
-  missing button — and check a change at 320 px, not at the emulator's 360.
-- **`shrink-0` next to `min-w-0` is how text ends up underneath other text.** This bit three
-  separate rows before anyone named it: the header, the history's three buttons, and every entry in
-  the list. The shape is always the same — a fixed group that refuses to shrink beside a flexible
-  one that shrinks past its content — and the flexible side then overflows _sideways_, sliding its
-  second line under the fixed group. Truncating the first line hides it: `truncate` on a heading
-  does nothing for the `project • date` row below it. On a phone the answer is not a cleverer
-  single line but **two**: stack with `flex-col`, and go back to `sm:flex-row` where the width
-  exists. Anything staying on one line needs `flex-wrap` or `truncate` on _every_ line, not the
-  first.
-- **The width scale and the type scale are each one lever, in `src/index.css`.** `.app-shell` is
-  how wide the app may get, in four steps, and the header and `main` both use it — if they drift
-  apart the header stops lining up with the content. The root font size ramps above 1600 px, which
-  moves type, padding, gaps and corners together because every Tailwind size is in `rem`; setting
-  those individually at four breakpoints is the version that drifts. Breakpoints are unaffected —
-  `rem` inside a media query resolves against the browser's initial 16 px, not against this. Do not
-  reintroduce a `max-w-*` on a page container, and do not write a font size in `px`: a `text-[11px]`
-  is a size that refuses to grow on the one screen that needed it to.
-- **A component sized against the viewport is wrong as soon as it shares a row.** The readout in
-  `StopwatchDisplay` uses `cqi` against its own card, not `vw`, because from `xl` up that card is a
-  column beside the history rather than the width of the screen. Its `clamp()` slope is set so the
-  widest thing it can ever show — `HH:MM:SS` with hundredths — still fits at 320 px; the fixed
-  `text-7xl` it replaced needed 303 px of a 224 px card, and nobody saw it because the readout only
-  gets that wide after an hour.
-- **Check a layout at a real viewport, not a window size.** Chrome's `--window-size` is clamped to a
-  platform minimum and the screenshot is then a crop of a wider layout — which is exactly how you
-  convince yourself a 320 px bug is fixed when it is not. Drive
-  `Emulation.setDeviceMetricsOverride` over the DevTools protocol instead, and assert
-  `document.documentElement.scrollWidth === clientWidth` rather than judging by eye.
-- **Log through `src/utils/logging/logger.ts`, not `console.*` directly.** The console does not
-  exist in a shipped desktop build, so a bare `console.warn` about a failed save reaches nobody.
-  `logInfo/logWarn/logError` write to the console _and_, on the desktop, to a log file. Anything
-  worth a `console.warn` is worth a log line; anything the user is expected to act on needs the
-  persistence banner as well, because nobody reads a log they have not been told about.
-- **A generated file goes through `src/utils/fileTarget.ts`, never through a download link.** The
-  `<a download>` click a browser understands is ignored by the Tauri WebView, so every export
-  button did nothing at all on the desktop until 0.5.0 — and nothing said so, because the click
-  itself does not fail. `deliverFile` is the one place that knows which build it is in: the browser
-  downloads, the desktop writes into `exports/` and opens the folder. Calling `doc.save()` or
-  building a link in an exporter brings the bug straight back.
-- **A snapshot is taken at both ends of a session.** `ensureDailyBackup` runs at startup over the
-  state found on disk; `useBackupOnClose` runs as the window closes, over the state the session
-  produced. Without the second one a whole day of work sits in no snapshot until the next launch.
-  Closing is intercepted to write it, which is why `core:window:allow-destroy` is in the capability
-  list — the app has to close the window itself afterwards, and the first build silently refused to
-  close without it.
-- **A backup must be taken before the thing it protects against.** `backupBefore` in `src/App.tsx`
-  runs ahead of clearing the history and ahead of an import, over the state that is about to be
-  replaced — a snapshot of the already-cleared state is worthless. When the snapshot fails it asks
-  rather than proceeding quietly, because that is the one moment where knowing there is no safety
-  net can change the user's decision. Snapshots use `buildBackupPayload`, the same shape the JSON
-  import reads, so there is no second restore path to keep correct.
-- **Anything crossing the IPC boundary is input.** The commands in `src-tauri/src/lib.rs` validate
-  their arguments even though the only caller is our own front end — an unvalidated storage key
-  turns a save into an arbitrary file write. Writes go through a temporary file and a rename;
-  do not "simplify" that into a direct `fs::write`, which can truncate the only copy of the data.
-  A log line is input too, and `one_line` is where that is dealt with: an entry title travels into
-  it, and a newline in one forges a line that reads as the app's own. Nothing is executed — the
-  damage is that a reader can no longer tell which lines Chronos wrote.
-- **Imported JSON is untrusted.** Anything read from a file goes through the normalizers in
-  `src/utils/dataExporter.ts` before it reaches state — it is persisted immediately, so a bad
-  record survives reloads.
-- **Bumping `package.json` on `main` _is_ the release.** `release.yml` watches the branch, reads the
-  version, and if that tag has no release yet it creates the tag, the release and everything under
-  it. Do not tag by hand any more — the same release simply builds twice. A merge that leaves the
-  version alone stops in `prepare` and costs nothing. This exists because forgetting the tag is the
-  failure that looks exactly like success: merged, CI green, and the change reachable by nobody. It
-  happened twice in one afternoon.
-- **A release is not finished when the installers are uploaded.** `latest.json` and
-  `latest-android.json` are written by the `manifests` job _after_ every build has uploaded,
-  because a manifest can only name bundles that already exist — and until it exists, every
-  installed copy keeps reporting itself current. Six secrets make that run:
-  `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`) for the desktop bundles, and
-  `ANDROID_KEYSTORE_BASE64` / `ANDROID_STORE_PASSWORD` / `ANDROID_KEY_ALIAS` /
-  `ANDROID_KEY_PASSWORD` for the APK. The Tauri private key lives outside the repository and is
-  backed up; do not treat it as replaceable anyway — losing it means never shipping an update that
-  existing installs will accept, and no amount of rebuilding gets that back.
-- **The version lives in `package.json` and nowhere else.** `tauri.conf.json` points at it, Vite
-  stamps it into `__APP_VERSION__` for the header badge, and `src-tauri/Cargo.toml` is pinned to
-  `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
-  line. The badge used to be a hardcoded `v1.2.0` that had drifted three minor versions from the
-  real number — do not reintroduce a second copy.
-- **A duration is derived, never stored.** A `TimeEntry` records `startTime`, `endTime` (`null`
-  while it runs) and `breaks`; every length comes from `src/domain/timeEntry.ts`. Do not add a
-  `durationMs` field back. The old model stored one next to the timestamps, filled from an
-  animation-frame accumulator that stopped advancing while the window was minimised, so the same
-  entry carried two disagreeing answers and the JSON import had to guess between them.
-- **Frames set the repaint rate; the wall clock sets the number.** `useLiveDuration` runs a
-  `requestAnimationFrame` loop because a `setInterval` stutters against the refresh rate — but it
-  reads `Date.now()` each time rather than accumulating frame deltas, which are not a measure of
-  elapsed time. `intervalMs` throttles the state push only. Anything that needs a shared "now"
-  across a render takes it from `useNow`, never by calling `Date.now()` during render.
-- **A setting must have a reader** — and so must an entry field. `migrateEntries` in
-  `src/utils/storage/index.ts` is the counterpart to `migrateSettings`: stored entries were written
-  by older builds and go through the same normaliser as an imported file, so a shape change needs a
-  conversion there and a test against a real old record.
+
+### Where the rest lives
+
+Every other convention — the rule **and** the bug or measurement that forced it — lives in
+`docs/conventions/`, one file per area. **Read the file for an area before changing code in it**;
+without the reason, the same trap gets rebuilt in a new shape.
+
+| Area                           | File                                          | Covers, among other things                                                                                                              |
+| ------------------------------ | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Data model and storage         | `docs/conventions/data-and-storage.md`        | settings need a writer and a reader, the storage adapter, `ReadResult`, `updatedAt`, derived durations, migrations                      |
+| Sync between devices           | `docs/conventions/sync.md`                    | a merge never deletes on its own, one file per device, the single path command, the Android folder plugin, transports, when a sync runs |
+| Updates and releases           | `docs/conventions/updates-and-releases.md`    | the updater seam, signatures, update timer, dismissal, `isNewer`, bumping `package.json` is the release, `latest.json`                  |
+| Platforms and layout           | `docs/conventions/platforms-and-layout.md`    | no `window.confirm`, `isMobilePlatform()`, edge-to-edge, wrapping rows, `shrink-0` vs `min-w-0`, width and type scales, real viewports  |
+| Files, logging, backups, input | `docs/conventions/files-backups-and-input.md` | the logger, `fileTarget.ts`, daily snapshots, `backupBefore`, IPC and imported JSON are input                                           |
+
+The short form of the rules whose breach costs a user's data or a working build:
+
+- **Never `window.confirm`, `alert` or `prompt`** — they do not work in the Android WebView.
+- **Persistence goes through the storage adapter**, never `localStorage` directly.
+- **A merge may add and update on its own; it may not delete on its own.**
+- **Anything crossing the IPC boundary, and any imported JSON, is untrusted input.**
+- **The version lives in `package.json` and nowhere else**, and bumping it on `main` is the release.
+- **A duration is derived, never stored.**
+
+## Keeping this file small
+
+This file is loaded in full in every session, so it stays a signpost.
+
+- A new convention goes into the matching file under `docs/conventions/`, with the reason that
+  forced it. Here, at most a line — and only if breaking it costs data or a working build.
+- A new area gets a new file **and** a row in the table above.
+- `src/claudeMd.test.ts` caps this file's size and checks that every file under
+  `docs/conventions/` is linked here and every link resolves. If it gets tight, move text out
+  rather than raising the limit.
 
 ## Tests
 
