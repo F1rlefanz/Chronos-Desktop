@@ -70,3 +70,42 @@ Moved out of `CLAUDE.md` verbatim. Read before touching `AppSettings`, `TimeEntr
   `src/utils/storage/index.ts` is the counterpart to `migrateSettings`: stored entries were written
   by older builds and go through the same normaliser as an imported file, so a shape change needs a
   conversion there and a test against a real old record.
+
+## A work rhythm is derived from the entry, never kept beside it
+
+- **A work rhythm is derived from the entry, never kept beside it.** A focus block is the stretch
+  of a running entry between two pauses, so which block the user is in and whether a pause is due
+  are read out of `startTime` and `breaks` by `derivePhase` in `src/domain/focus.ts` on every tick.
+  There is no `phase` or `blockCount` field and no timer state to keep in step with the entry —
+  the same mistake the old `durationMs` made, a second copy that disagrees after a crash, a
+  sleeping laptop or Android freezing the WebView. Nothing about the rhythm is stored on an entry,
+  which is also why merge, export and sync did not change.
+- **A pause ends a block however short it was.** Pausing and resuming is the user telling Chronos
+  something, and a minimum length would be a threshold nobody can predict. Block numbers follow
+  from that and nothing is built on them except the label; there is no "long pause every fourth
+  block" for exactly that reason.
+- **Block and pause lengths are the user's, saved as their default.** `focusMinutes` and
+  `breakMinutes` take any whole number within `FOCUS_LIMITS`; the presets are shortcuts. They are
+  changed in `FocusPanel` before a start and in `FocusLengths` from inside a pause, which is when
+  "thirty minutes are left" is known, and what is entered stays the default. `breakMinutes` is read
+  in every mode: it is the pause in `fixed` and `flex` and the suggested one in `open`.
+- **Extra time ("+5 min", "im Fluss") is the one thing that is not derived.** It lives in memory,
+  keyed by the phase it was given in, and is worked out **from now**, not added to the old target —
+  "+10 minutes" on a block that overran by an hour would otherwise still lie in the past and change
+  nothing but the sound (`extendPhase`). After a restart the original target applies again. In
+  `flex` and `open` that costs one more question; in `fixed` the pause is dated back to the original
+  target, so minutes worked on the extension count as pause. That is the price of not storing it.
+- **The pause in `fixed` mode starts when the block ended, not when the app noticed.** After a
+  window was closed or the machine slept, the two moments differ, and counting the gap as work
+  would invent time — an entry left running overnight is mostly not work, and the user chose
+  "Weiterlaufen lassen" knowing that the time they were away is counted as pause. `useFocusRhythm`
+  passes `phaseStart + target` to `startBreakAt`.
+- **The rhythm is silent while the user is being asked about the running entry.** While
+  `RecoveryPrompt` is open, and while the running entry is open in the form: the phase is still
+  shown, but nothing is started and nothing is announced. Saving the form writes the form's copy of
+  the entry over the stored one, so a pause the rhythm had added underneath it would be lost.
+- **`focusMode`, `focusMinutes` and `breakMinutes` go through `normalizeFocusSettings` in
+  `migrateSettings`.** The type check there only compares `typeof`, which lets `focusMode: "x"` or
+  a block of zero minutes through; a block of 0 ends the moment it starts and one of -5 never ends.
+  Writers: `FocusPanel` and `FocusLengths` through `handleUpdateSettings`. Reader:
+  `planFromSettings` (in `src/domain/focus.ts`, called in `App.tsx`).

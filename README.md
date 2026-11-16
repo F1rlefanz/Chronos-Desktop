@@ -44,8 +44,15 @@ with the totals, the calendar and the charts.
 - Exports: PDF and CSV for a chosen period — a specific month or year, a free from–to range, or
   everything — plus a JSON backup for moving between machines. A measurement still running is left
   out and reported, so the same report is reproducible.
-- Keyboard shortcuts: `Space` start/pause, `S` stop, `R` discard. Modified combinations such as
-  `Cmd/Ctrl+R` are left to the browser.
+- A work rhythm over the stopwatch, in three strengths: _fixed_ (when the block is over, the pause
+  starts itself), _flexible_ (the block's length is a suggestion and Chronos asks whether to stay
+  in it) and _open_ (the stopwatch as it was, with a pause suggested after 90 minutes). Block and
+  pause are any length the user chooses, saved as their default and adjustable from inside a pause.
+  The pauses between blocks are ordinary pauses of the same entry, so nothing about the rhythm is
+  stored — see [`docs/conventions/data-and-storage.md`](docs/conventions/data-and-storage.md).
+  A calm view reduces the card to the readout and the controls.
+- Keyboard shortcuts: `Space` start/pause, `S` stop, `R` discard, `F` calm view. Modified
+  combinations such as `Cmd/Ctrl+R` are left to the browser.
 - Configurable display refresh rate, which changes how often the readout is redrawn and not what
   is recorded.
 - Automatic backups (app builds only): a snapshot at startup (at most once a day), one when the

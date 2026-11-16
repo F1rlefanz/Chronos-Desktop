@@ -9,6 +9,11 @@ interface ControlPanelProps {
   onResume: () => void;
   onStop: () => void;
   onDiscard: () => void;
+  /** Gives the current block or pause more time. Absent where there is no
+      target to extend, which hides the button instead of leaving it inert. */
+  onExtend?: () => void;
+  /** In the calm view only the way forward and the way out remain. */
+  calm?: boolean;
   shortcutsEnabled?: boolean;
 }
 
@@ -19,6 +24,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onResume,
   onStop,
   onDiscard,
+  onExtend,
+  calm = false,
   shortcutsEnabled = true,
 }) => {
   return (
@@ -72,6 +79,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           </button>
         )}
 
+        {/* EXTEND — five more minutes on the block or the pause being run. */}
+        {onExtend && !calm && (timerState === 'RUNNING' || timerState === 'PAUSED') && (
+          <button
+            onClick={onExtend}
+            className="flex items-center justify-center gap-2 px-5 py-4 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 transition-all cursor-pointer text-sm font-semibold"
+            title={
+              timerState === 'RUNNING'
+                ? 'Block um 5 Minuten verlängern'
+                : 'Pause um 5 Minuten verlängern'
+            }
+          >
+            <span>+5 MIN.</span>
+          </button>
+        )}
+
         {/* STOP & SAVE Session Button */}
         {(timerState === 'RUNNING' || timerState === 'PAUSED') && (
           <button
@@ -90,7 +112,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
         {/* DISCARD Button — deletes the measurement rather than "resetting" it,
             because the entry is already stored the moment it starts. */}
-        {(timerState === 'RUNNING' || timerState === 'PAUSED') && (
+        {!calm && (timerState === 'RUNNING' || timerState === 'PAUSED') && (
           <button
             onClick={onDiscard}
             className="flex items-center justify-center gap-2 px-5 py-4 rounded-full bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 border border-gray-200 transition-all cursor-pointer text-sm font-semibold"

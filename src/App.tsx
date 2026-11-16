@@ -10,6 +10,13 @@ import {
 } from './domain/merge';
 import { useLiveDuration } from './hooks/useLiveDuration';
 import { useNow } from './hooks/useNow';
+import { useFocusRhythm } from './hooks/useFocusRhythm';
+import {
+  FLOW_EXTENSION_MS,
+  NUDGE_EXTENSION_MS,
+  OPEN_SNOOZE_MS,
+  planFromSettings,
+} from './domain/focus';
 import { AppSettings, Project, TimeEntry, TimerState, Tombstone } from './types';
 import { closeOpenBreak, hasRunningBreak, isRunning } from './domain/timeEntry';
 import {
@@ -55,6 +62,10 @@ import {
 import { DesktopHeader, MainTab } from './components/DesktopHeader';
 import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
+import { FocusRing } from './components/FocusRing';
+import { FocusPanel } from './components/FocusPanel';
+import { FocusLengths } from './components/FocusLengths';
+import { FocusNotice } from './components/FocusNotice';
 import { BreakList } from './components/BreakList';
 import { RecoveryPrompt } from './components/RecoveryPrompt';
 import { DeletionPrompt } from './components/DeletionPrompt';
@@ -349,7 +360,7 @@ export default function App({ initialState }: AppProps) {
 
   // Synthesized Web Audio API sound cue generator
   const playAudioCue = useCallback(
-    (type: 'start' | 'pause' | 'stop') => {
+    (type: 'start' | 'pause' | 'stop' | 'chime') => {
       if (!settings.soundEnabled) return;
       try {
         const audioCtx = getAudioContext();
@@ -374,6 +385,15 @@ export default function App({ initialState }: AppProps) {
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
           osc.start();
           osc.stop(audioCtx.currentTime + 0.15);
+        } else if (type === 'chime') {
+          // Two rising notes, longer than the cues above: it announces the end
+          // of a block or a pause, which someone may be looking away from.
+          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+          osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.18); // E5
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.6);
         } else if (type === 'stop') {
           osc.frequency.setValueAtTime(349.23, audioCtx.currentTime); // F4
           gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
@@ -528,23 +548,37 @@ export default function App({ initialState }: AppProps) {
     });
   }, [playAudioCue, persist, activeProjectId]);
 
+  /**
+   * Opens a pause at a given moment.
+   *
+   * `handlePause` is "now"; the focus rhythm needs "when the block ended", which
+   * after a long absence is not the same instant, and counting the gap as work
+   * would be inventing time.
+   */
+  const startBreakAt = useCallback(
+    (at: number) => {
+      patchRunningEntry(
+        (entry) => ({
+          ...entry,
+          breaks: [
+            ...entry.breaks,
+            {
+              id: `break-${at}-${Math.random().toString(36).substring(2, 7)}`,
+              startTime: at,
+              endTime: null,
+            },
+          ],
+        }),
+        'die Pause'
+      );
+    },
+    [patchRunningEntry]
+  );
+
   const handlePause = useCallback(() => {
     playAudioCue('pause');
-    patchRunningEntry(
-      (entry) => ({
-        ...entry,
-        breaks: [
-          ...entry.breaks,
-          {
-            id: `break-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            startTime: Date.now(),
-            endTime: null,
-          },
-        ],
-      }),
-      'die Pause'
-    );
-  }, [playAudioCue, patchRunningEntry]);
+    startBreakAt(Date.now());
+  }, [playAudioCue, startBreakAt]);
 
   const handleResume = useCallback(() => {
     playAudioCue('start');
@@ -627,6 +661,31 @@ export default function App({ initialState }: AppProps) {
     () => timeEntries.find((entry) => entry.id === recoveryEntryId && isRunning(entry)) ?? null,
     [timeEntries, recoveryEntryId]
   );
+
+  // The work rhythm. Silent while the user is being asked about the running
+  // entry — the recovery question, or its times open in the form. An entry that
+  // was running when the app closed must not start pausing itself before the
+  // user has said what it is, and one being corrected must not change under the
+  // form: saving it would overwrite whatever the rhythm had written.
+  const runningEntryIsBeingEdited =
+    isEntryFormOpen && entryUnderEdit !== null && entryUnderEdit.id === runningEntry?.id;
+  const focusPlan = useMemo(
+    () => planFromSettings(settings),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only these three fields make up the plan
+    [settings.focusMode, settings.focusMinutes, settings.breakMinutes]
+  );
+  const playChime = useCallback(() => playAudioCue('chime'), [playAudioCue]);
+  const focus = useFocusRhythm({
+    entry: runningEntry,
+    plan: focusPlan,
+    now,
+    active: !recoveryEntry && !runningEntryIsBeingEdited,
+    onAutoBreak: startBreakAt,
+    onChime: playChime,
+  });
+
+  // The calm view is a way of looking, not data: it is gone with the window.
+  const [calm, setCalm] = useState(false);
 
   const handleRecoveryStopNow = () => {
     const stoppedAt = Date.now();
@@ -978,7 +1037,15 @@ export default function App({ initialState }: AppProps) {
         return;
       }
 
+      const target = e.target as HTMLElement | null;
+      // A dialog is the user's whole attention; keys meant for the page behind
+      // it are not for the page.
+      const dialogOpen = document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+
       if (e.code === 'Space') {
+        // On a focused button Space is that button's own press — "Weiter im
+        // Fluss" must not turn into "Pause" because it had the focus.
+        if (target?.closest('button, a[href], summary, [role="button"]')) return;
         e.preventDefault();
         if (timerState === 'IDLE') handleStart();
         else if (timerState === 'RUNNING') handlePause();
@@ -989,6 +1056,12 @@ export default function App({ initialState }: AppProps) {
       } else if (e.code === 'KeyR') {
         e.preventDefault();
         if (timerState === 'RUNNING' || timerState === 'PAUSED') handleDiscardRunning();
+      } else if (e.code === 'KeyF') {
+        // Only where the card is on screen: toggling a view the user cannot see
+        // would greet them with a dark card when they come back to the tab.
+        if (activeTab === 'tracking' && !dialogOpen) setCalm((current) => !current);
+      } else if (e.code === 'Escape') {
+        if (!dialogOpen) setCalm(false);
       }
     };
 
@@ -996,6 +1069,7 @@ export default function App({ initialState }: AppProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     timerState,
+    activeTab,
     settings.keyShortcutsEnabled,
     handleStart,
     handlePause,
@@ -1118,7 +1192,39 @@ export default function App({ initialState }: AppProps) {
                 projects={projects}
                 activeProjectId={activeProjectId}
                 onSelectProject={setSelectedProjectId}
+                // `open` is the stopwatch as it always was: no ring, a count-up.
+                ring={
+                  settings.focusMode === 'open' ? undefined : (
+                    <FocusRing plan={focusPlan} phase={focus.phase} calm={calm} />
+                  )
+                }
+                calm={calm}
+                onToggleCalm={() => setCalm((current) => !current)}
               >
+                <FocusNotice
+                  signal={focus.signal}
+                  phase={focus.phase}
+                  calm={calm}
+                  onFlow={() => focus.extend(FLOW_EXTENSION_MS)}
+                  onBreak={handlePause}
+                  onResume={handleResume}
+                  onNotYet={() => focus.extend(OPEN_SNOOZE_MS)}
+                />
+                {timerState === 'IDLE' && !calm && (
+                  <FocusPanel settings={settings} onChange={handleUpdateSettings} />
+                )}
+                {/* Coming back from a pause is when the next block's length is
+                    decided: thirty minutes left is not the 45 chosen this morning. */}
+                {focus.phase?.kind === 'break' && settings.focusMode !== 'open' && !calm && (
+                  <div className="mt-6 text-left">
+                    <FocusLengths
+                      settings={settings}
+                      onChange={handleUpdateSettings}
+                      only="block"
+                      blockLabel="Nächster Block"
+                    />
+                  </div>
+                )}
                 <ControlPanel
                   timerState={timerState}
                   onStart={handleStart}
@@ -1126,6 +1232,12 @@ export default function App({ initialState }: AppProps) {
                   onResume={handleResume}
                   onStop={handleStopAndOpenSaver}
                   onDiscard={handleDiscardRunning}
+                  onExtend={
+                    settings.focusMode === 'open'
+                      ? undefined
+                      : () => focus.extend(NUDGE_EXTENSION_MS)
+                  }
+                  calm={calm}
                   shortcutsEnabled={settings.keyShortcutsEnabled}
                 />
               </StopwatchDisplay>

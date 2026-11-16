@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import { Project, TimerState } from '../types';
 import {
   formatDurationHuman,
@@ -17,6 +17,12 @@ interface StopwatchDisplayProps {
   projects: Project[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
+  /** The focus ring, in place of the big clock — passed in so this component
+      stays ignorant of rhythms, like it is of the timer's handlers. */
+  ring?: ReactNode;
+  /** The calm view: only the readout and the controls, on a dark card. */
+  calm?: boolean;
+  onToggleCalm?: () => void;
   /** The start/pause/stop controls, rendered inside the card rather than
       below it — they operate on this readout and belong with it. Passed as
       children so this component stays presentational and knows nothing about
@@ -32,6 +38,9 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
   projects,
   activeProjectId,
   onSelectProject,
+  ring,
+  calm = false,
+  onToggleCalm,
   children,
 }) => {
   const { mainTime, subTime } = formatTimeDisplay(elapsedTimeMs, {
@@ -41,6 +50,18 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
   const { hours } = parseMsToComponents(elapsedTimeMs);
 
+  // The button that opens the calm view and the one that closes it are two
+  // elements, and the one that was clicked is gone a moment later. Without this
+  // the focus falls to the page and the next Tab starts from its top.
+  const enterRef = useRef<HTMLButtonElement>(null);
+  const exitRef = useRef<HTMLButtonElement>(null);
+  const wasCalm = useRef(calm);
+  useEffect(() => {
+    if (wasCalm.current === calm) return;
+    wasCalm.current = calm;
+    (calm ? exitRef : enterRef).current?.focus();
+  }, [calm]);
+
   const activeProject = projects.find((project) => project.id === activeProjectId);
 
   return (
@@ -49,15 +70,36 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
     // against a screen it no longer spans. `cqi` asks the card itself.
     <section
       aria-label="Zeiterfassung"
-      className="@container relative bg-white rounded-3xl border border-gray-200/90 shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden"
+      className={`@container relative rounded-3xl border shadow-sm p-8 md:p-12 transition-all duration-300 overflow-hidden ${
+        calm
+          ? 'bg-[#10131B] border-[#272D3D] text-[#E9ECF5] md:py-16'
+          : 'bg-white border-gray-200/90'
+      }`}
     >
       {/* Decorative Minimalist Circle Rings. In `rem` so they follow the root
           scale on a very large screen instead of staying laptop-sized. */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[21.25rem] h-[21.25rem] sm:w-[28.75rem] sm:h-[28.75rem] border border-gray-100 rounded-full pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[26.25rem] h-[26.25rem] sm:w-[35rem] sm:h-[35rem] border border-gray-100/60 rounded-full pointer-events-none"></div>
+      {!calm && !ring && (
+        <>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[21.25rem] h-[21.25rem] sm:w-[28.75rem] sm:h-[28.75rem] border border-gray-100 rounded-full pointer-events-none"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[26.25rem] h-[26.25rem] sm:w-[35rem] sm:h-[35rem] border border-gray-100/60 rounded-full pointer-events-none"></div>
+        </>
+      )}
+
+      {calm && onToggleCalm && (
+        <button
+          ref={exitRef}
+          type="button"
+          onClick={onToggleCalm}
+          className="absolute top-4 right-4 z-20 rounded-full border border-[#272D3D] bg-white/5 px-4 py-1.5 text-xs font-semibold text-[#E9ECF5] hover:bg-white/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C97FF]"
+        >
+          Ruhe-Ansicht beenden
+        </button>
+      )}
 
       {/* Top Bar inside Display Card */}
-      <div className="relative z-10 flex items-center justify-between mb-8">
+      <div
+        className={`relative z-10 flex flex-wrap items-center justify-between gap-2 mb-8 ${calm ? 'hidden' : ''}`}
+      >
         {/* Project picker */}
         <div className="flex items-center gap-2 bg-gray-50 pl-3.5 pr-1.5 py-1 rounded-full border border-gray-200/80 shadow-2xs">
           <span
@@ -102,32 +144,51 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
       {/* Main Digital Clock Display */}
       <div className="relative z-10 text-center py-2 my-2">
-        <div className="inline-flex items-baseline justify-center font-extralight tracking-tighter text-[#1A1C1E] select-none">
-          {/* One curve instead of four steps. The upper bound is the old
+        {ring ?? (
+          <>
+            <div
+              className={`inline-flex items-baseline justify-center font-extralight tracking-tighter select-none ${
+                calm ? 'text-[#E9ECF5]' : 'text-[#1A1C1E]'
+              }`}
+            >
+              {/* One curve instead of four steps. The upper bound is the old
               `130px`; the slope is set so the widest thing this ever shows —
               `HH:MM:SS` with hundredths beside it — still fits the card at 320
               pixels, where the fixed sizes ran past the edge once a measurement
               passed an hour. */}
-          <span className="text-[clamp(2.5rem,23cqi,8rem)] leading-none font-extralight">
-            {mainTime}
-          </span>
-          {showMilliseconds && (
-            <span className="text-[clamp(1rem,8cqi,3.75rem)] text-[#2D5BFF] font-light ml-1.5 w-[2.4em] text-left font-mono">
-              {subTime}
-            </span>
-          )}
-        </div>
+              <span className="text-[clamp(2.5rem,23cqi,8rem)] leading-none font-extralight">
+                {mainTime}
+              </span>
+              {showMilliseconds && (
+                <span className="text-[clamp(1rem,8cqi,3.75rem)] text-[#2D5BFF] font-light ml-1.5 w-[2.4em] text-left font-mono">
+                  {subTime}
+                </span>
+              )}
+            </div>
 
-        {/* Labels below time */}
-        <div className="mt-3 text-gray-400 uppercase tracking-[0.25em] text-[0.6875rem] font-semibold">
-          {mainTime.split(':').length > 2 ? 'Stunden : Minuten : Sekunden' : 'Minuten : Sekunden'}
-          {showMilliseconds && <span className="text-[#2D5BFF] font-bold"> : MS</span>}
-        </div>
+            {/* Labels below time */}
+            <div className="mt-3 text-gray-400 uppercase tracking-[0.25em] text-[0.6875rem] font-semibold">
+              {mainTime.split(':').length > 2
+                ? 'Stunden : Minuten : Sekunden'
+                : 'Minuten : Sekunden'}
+              {showMilliseconds && <span className="text-[#2D5BFF] font-bold"> : MS</span>}
+            </div>
+          </>
+        )}
 
         {/* Secondary Detailed Readouts */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6">
+        <div
+          className={`flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6 ${calm ? 'hidden' : ''}`}
+        >
           <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-            Gesamt: <strong className="text-gray-900">{formatDurationHuman(elapsedTimeMs)}</strong>
+            Gesamt:{' '}
+            <strong className="text-gray-900">
+              {/* The ring replaces the big clock, which is where the seconds and
+                  hundredths used to be; the setting for them has to land somewhere. */}
+              {ring && showMilliseconds
+                ? `${mainTime}${subTime}`
+                : formatDurationHuman(elapsedTimeMs)}
+            </strong>
           </span>
           {hours > 0 && (
             <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
@@ -144,6 +205,20 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
             </span>
           )}
         </div>
+
+        {/* The way into the calm view for anyone without a keyboard — on a
+            phone `F` does not exist. Quiet on purpose: it is an option, not an
+            action. */}
+        {!calm && onToggleCalm && (
+          <button
+            ref={enterRef}
+            type="button"
+            onClick={onToggleCalm}
+            className="mt-4 text-xs font-medium text-gray-400 hover:text-gray-600 underline underline-offset-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2D5BFF] rounded"
+          >
+            Ruhe-Ansicht
+          </button>
+        )}
       </div>
 
       {children && <div className="relative z-10">{children}</div>}
