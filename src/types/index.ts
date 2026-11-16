@@ -1,6 +1,16 @@
 export type TimerState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'STOPPED';
 
 /**
+ * How strictly the stopwatch keeps a work rhythm.
+ *
+ * `fixed` ends a block on the minute and starts the pause by itself; `flex`
+ * treats the block's length as a suggestion and asks; `open` has no block at
+ * all and is the stopwatch as it always was, with a pause suggested after a
+ * long stretch.
+ */
+export type FocusMode = 'fixed' | 'flex' | 'open';
+
+/**
  * A pause inside an entry, as two points on the wall clock.
  *
  * Stored as events rather than as one summed `pauseDurationMs`, because the
@@ -96,6 +106,16 @@ export interface AppSettings {
    * Like `syncFolder`, it is never carried over by an import.
    */
   deviceFilesFolder: string;
+  /**
+   * The work rhythm — see `FocusMode`. A choice about how the stopwatch behaves,
+   * not data: nothing about it is stored on an entry, the phase is worked out
+   * from the entry's start and pauses.
+   */
+  focusMode: FocusMode;
+  /** Length of a focus block in minutes; used by `fixed` and `flex`. */
+  focusMinutes: number;
+  /** Length of the pause after a block in minutes; used by `fixed`. */
+  breakMinutes: number;
 }
 
 /**

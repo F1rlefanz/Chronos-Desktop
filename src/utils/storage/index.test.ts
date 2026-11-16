@@ -34,6 +34,16 @@ describe('migrateSettings', () => {
     expect(migrated.keyShortcutsEnabled).toBe(DEFAULT_APP_SETTINGS.keyShortcutsEnabled);
   });
 
+  it('gives settings written before the focus rhythm existed the flexible default', () => {
+    const migrated = migrateSettings({ soundEnabled: true });
+    expect(migrated).toMatchObject({ focusMode: 'flex', focusMinutes: 25, breakMinutes: 5 });
+  });
+
+  it('does not let a hand-edited rhythm reach the stopwatch', () => {
+    const migrated = migrateSettings({ focusMode: 'banana', focusMinutes: 0, breakMinutes: 9999 });
+    expect(migrated).toMatchObject({ focusMode: 'flex', focusMinutes: 10, breakMinutes: 30 });
+  });
+
   it('drops settings that no longer exist', () => {
     // A state written by an older build, carrying the three dead settings.
     const migrated = migrateSettings({

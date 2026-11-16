@@ -70,3 +70,25 @@ Moved out of `CLAUDE.md` verbatim. Read before touching `AppSettings`, `TimeEntr
   `src/utils/storage/index.ts` is the counterpart to `migrateSettings`: stored entries were written
   by older builds and go through the same normaliser as an imported file, so a shape change needs a
   conversion there and a test against a real old record.
+
+## A work rhythm is derived from the entry, never kept beside it
+
+- **A work rhythm is derived from the entry, never kept beside it.** A focus block is the stretch
+  of a running entry between two pauses, so which block the user is in and whether a pause is due
+  are read out of `startTime` and `breaks` by `derivePhase` in `src/domain/focus.ts` on every tick.
+  There is no `phase` or `blockCount` field and no timer state to keep in step with the entry —
+  the same mistake the old `durationMs` made, a second copy that disagrees after a crash, a
+  sleeping laptop or Android freezing the WebView. Nothing about the rhythm is stored on an entry,
+  which is also why merge, export and sync did not change. The one thing that cannot be derived is
+  extra time the user granted ("+5 min", "im Fluss"); it lives in memory, keyed by the phase it was
+  given in, and after a restart the original target applies again — the worst outcome is being
+  asked once more.
+- **The pause in `fixed` mode starts when the block ended, not when the app noticed.** After a
+  window was closed or the machine slept, the two moments differ, and counting the gap as work
+  would invent time. `useFocusRhythm` therefore passes `phaseStart + target` to `startBreakAt`,
+  and it stays off while `RecoveryPrompt` is open, because an entry left running must not start
+  pausing itself before the user has said what it is.
+- **`focusMode`, `focusMinutes` and `breakMinutes` go through `normalizeFocusSettings` in
+  `migrateSettings`.** The type check there only compares `typeof`, which lets `focusMode: "x"` or
+  a block of zero minutes through; a block of 0 ends the moment it starts and one of -5 never ends.
+  Writer: `FocusPanel` through `handleUpdateSettings`. Reader: `planFromSettings` in `App.tsx`.

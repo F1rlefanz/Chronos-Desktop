@@ -1,4 +1,4 @@
-import { AppSettings, Project } from '../types';
+import { AppSettings, FocusMode, Project } from '../types';
 
 export const TIME_CONSTANTS = {
   MS_PER_SECOND: 1000,
@@ -39,7 +39,26 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   // Nothing is lost by leaving this empty — exports and backups then stay where
   // they have always been, in the app's own storage.
   deviceFilesFolder: '',
+  // Flexible, 25 / 5: the rhythm that asks instead of insisting, so a first
+  // measurement feels like the stopwatch it always was and still shows what the
+  // mode does. `open` remains one click away for anyone who wants no rhythm.
+  focusMode: 'flex',
+  focusMinutes: 25,
+  breakMinutes: 5,
 };
+
+/** What the rhythm settings may be, in minutes. Anything else is clamped on load. */
+export const FOCUS_LIMITS = {
+  focusMinutes: { min: 10, max: 120 },
+  breakMinutes: { min: 3, max: 30 },
+} as const;
+
+/** The block / pause pairs offered as one-tap choices; anything else is "Eigene". */
+export const FOCUS_PRESETS = [
+  { focusMinutes: 25, breakMinutes: 5 },
+  { focusMinutes: 50, breakMinutes: 10 },
+  { focusMinutes: 90, breakMinutes: 20 },
+] as const;
 
 /** Update intervals offered in the settings UI, in milliseconds. */
 export const TIMER_INTERVAL_OPTIONS = [
@@ -77,3 +96,9 @@ export const LEGACY_STORAGE_KEYS = {
   TIME_ENTRIES: 'stopwatch_app_entries_v1',
   PROJECTS: 'stopwatch_app_projects_v1',
 } as const;
+
+export const FOCUS_MODE_LABELS: Record<FocusMode, string> = {
+  fixed: 'Fest',
+  flex: 'Flexibel',
+  open: 'Offen',
+};

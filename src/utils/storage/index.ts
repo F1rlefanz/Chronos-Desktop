@@ -6,6 +6,7 @@ import {
 } from '../../constants/defaultConfig';
 import { AppSettings, Project, TimeEntry, Tombstone } from '../../types';
 import { normalizeTimeEntry } from '../dataExporter';
+import { normalizeFocusSettings } from '../../domain/focus';
 import { logInfo, logWarn } from '../logging/logger';
 import { isDeviceId, newDeviceId } from '../sync/deviceId';
 import { localStorageAdapter } from './localStorageAdapter';
@@ -181,6 +182,10 @@ export function migrateSettings(stored: unknown): AppSettings {
       migrated[key] = value as never;
     }
   }
+
+  // The rhythm settings have a type check above and nothing else, which lets
+  // `focusMode: "banana"` or a block of zero minutes through to the stopwatch.
+  Object.assign(migrated, normalizeFocusSettings(migrated, DEFAULT_APP_SETTINGS));
 
   return migrated;
 }

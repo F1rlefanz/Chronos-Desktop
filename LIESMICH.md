@@ -67,6 +67,22 @@ der nächsten wieder.
 deshalb nicht selbst ablösen. Wer noch älter unterwegs ist, installiert einmal von Hand — ab dann
 läuft es allein.
 
+## Arbeitsrhythmus (Fokusmodus)
+
+Unter der Stoppuhr wählst du, wie streng Chronos deinen Arbeitstag in Blöcke teilt:
+
+- **Fest** — ein Block endet zur Minute, die Pause beginnt von selbst. Nach jedem vierten Block ist
+  sie dreimal so lang. Den nächsten Block startest du selbst.
+- **Flexibel** — die Blocklänge ist ein Vorschlag. Ist sie erreicht, fragt Chronos, ob du im Fluss
+  bleiben (+10 Minuten) oder Pause machen willst. Die vorgeschlagene Pause ist ein Fünftel des
+  Blocks, mindestens 3 und höchstens 20 Minuten.
+- **Offen** — die Stoppuhr wie immer, ohne Ziel. Nach 90 Minuten am Stück schlägt Chronos eine
+  Pause vor.
+
+Es bleibt **ein** Eintrag; die Pausen zwischen den Blöcken stehen darin als ganz normale Pausen.
+Mit „+5 Min." verlängerst du einen Block oder eine Pause. Die **Ruhe-Ansicht** (Taste `F`, oder
+der Knopf unter der Stoppuhr) blendet alles aus bis auf Uhr und Knöpfe.
+
 ## Wo liegen meine Daten?
 
 | System      | Ort                                                         |

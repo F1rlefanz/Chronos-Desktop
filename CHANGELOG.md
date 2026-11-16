@@ -6,6 +6,25 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] — 2026-11-16
+
+### Added
+
+- **Fokusmodus: ein Arbeitsrhythmus über der Stoppuhr.** Unter der Uhr wählst du, wie streng
+  Chronos deine Zeit in Blöcke teilt. **Fest**: ein Block endet zur Minute, die Pause beginnt von
+  selbst. **Flexibel**: die Blocklänge ist nur ein Vorschlag — ist sie erreicht, fragt Chronos, ob
+  du im Fluss bleiben (+10 Minuten) oder Pause machen willst. **Offen**: die Stoppuhr wie bisher,
+  mit einem Pausenvorschlag nach 90 Minuten am Stück. Dazu gibt es 25 / 5, 50 / 10, 90 / 20 und
+  eigene Längen. Es bleibt ein einziger Eintrag, die Pausen stehen darin wie jede andere Pause.
+  Ein Ring zeigt, wie weit der Block oder die Pause ist; mit „+5 Min." gibst du beiden mehr Zeit.
+- **Ruhe-Ansicht.** Ein Knopf unter der Stoppuhr (am Computer auch die Taste `F`) blendet alles
+  aus bis auf Uhr und Knöpfe. Mit der Taste `Esc` oder dem Knopf oben rechts geht es zurück.
+
+### Changed
+
+- **Neu eingerichtet startet Chronos im Rhythmus „Flexibel" mit 25 / 5.** Wer die Stoppuhr wie
+  bisher haben möchte — eine Uhr, die hochzählt —, wählt unter der Uhr „Offen".
+
 ## [1.4.1] — 2026-08-17
 
 ### Fixed
