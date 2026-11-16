@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "de.f1rlefanz.chronos.update"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // The app itself is 24. Nothing here needs more: FileProvider and the
@@ -35,5 +35,5 @@ dependencies {
     // for FileProvider — handing a file to another app needs a content URI, and
     // a file:// one has been refused since Android 7.
     implementation(project(":tauri-android"))
-    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.core:core-ktx:1.19.1")
 }

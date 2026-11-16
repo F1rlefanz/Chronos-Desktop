@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "de.f1rlefanz.chronos.saf"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // The app itself is 24; the Storage Access Framework has been there

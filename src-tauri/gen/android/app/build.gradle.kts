@@ -25,7 +25,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     namespace = "de.f1rlefanz.chronos"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -68,6 +68,10 @@ android {
                     .toList().toTypedArray()
             )
         }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     buildFeatures {
         buildConfig = true
