@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -5,7 +7,7 @@ plugins {
 
 android {
     namespace = "de.f1rlefanz.chronos.saf"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         // The app itself is 24; the Storage Access Framework has been there
@@ -18,12 +20,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+}
 
-    kotlinOptions {
-        // Matches app/build.gradle.kts. The newer compilerOptions DSL would
-        // work as well, but two spellings of one setting in one build is how
-        // they drift apart.
-        jvmTarget = "1.8"
+kotlin {
+    // Kotlin and Java must target the same JVM level, or the build refuses to run.
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_1_8)
     }
 }
 

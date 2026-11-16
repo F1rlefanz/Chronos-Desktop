@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -24,7 +25,7 @@ val keystoreProperties = Properties().apply {
 }
 
 android {
-    compileSdk = 36
+    compileSdk = 37
     namespace = "de.f1rlefanz.chronos"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -68,8 +69,9 @@ android {
             )
         }
     }
-    kotlinOptions {
-        jvmTarget = "1.8"
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     buildFeatures {
         buildConfig = true
@@ -78,6 +80,13 @@ android {
 
 rust {
     rootDirRel = "../../../"
+}
+
+kotlin {
+    // Kotlin and Java must target the same JVM level, or the build refuses to run.
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_1_8)
+    }
 }
 
 dependencies {
