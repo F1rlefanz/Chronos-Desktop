@@ -6,6 +6,16 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] — 2026-11-16
+
+### Fixed
+
+- **Die Fassung 1.5.0 kam am Computer nicht an.** Beim Bauen der Installer für Windows, macOS und
+  Linux blieb ein Formatierungsfehler in der Handy-Erweiterung hängen, deshalb gab es keine
+  Update-Meldung. 1.5.1 enthält alles aus 1.5.0, den Fokusmodus mit freien Block- und
+  Pausenlängen und der Ruhe-Ansicht, und ist die erste Fassung, die sich auch am Computer
+  aktualisiert. 1.5.0 selbst wird übersprungen.
+
 ## [1.5.0] — 2026-11-16
 
 ### Added
