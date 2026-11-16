@@ -23,15 +23,16 @@ bun run desktop:build   # installer for the system you are on
 bun run android:dev     # on a connected device or a running emulator
 bun run android:build   # signed APK
 
-cargo fmt --manifest-path src-tauri/Cargo.toml
+cargo fmt --manifest-path src-tauri/Cargo.toml --all
 cargo clippy --manifest-path src-tauri/Cargo.toml --workspace --all-targets -- -D warnings
 ```
 
-`--workspace` matters: the Android plugin under `src-tauri/plugins/` is a member but not a
-dependency on the desktop, so without it a broken plugin lints clean. Touching `src-tauri/` means
-running those two cargo commands as well. `release.yml` runs them on
-all three desktop systems, but only on a tag or a manual dispatch, so a broken Rust side does not
-show up in a pull request.
+`--all` and `--workspace` matter: the Android plugin under `src-tauri/plugins/` is a member but not
+a dependency on the desktop, so without them a badly formatted or broken plugin passes locally —
+and fails the release, which is what happened to 1.5.0 (no update reached anyone). Touching
+`src-tauri/` means running those two cargo commands as well. `release.yml` runs them on all three
+desktop systems, but only on a release (a tag, a version bump on `main`, or a manual dispatch), so a
+broken Rust side does not show up in a pull request.
 
 **Android needs `JAVA_HOME` on a JDK that Gradle can read.** Android Studio ships its own Java 25,
 and if `JAVA_HOME` points there the build dies with `Unsupported class file major version 69` —
