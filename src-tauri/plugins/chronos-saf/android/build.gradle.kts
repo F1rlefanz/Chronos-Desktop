@@ -33,5 +33,5 @@ dependencies {
     // the folder picker comes back with. The Storage Access Framework itself is
     // in the platform — no androidx.documentfile.
     implementation(project(":tauri-android"))
-    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.activity:activity-ktx:1.13.0")
 }

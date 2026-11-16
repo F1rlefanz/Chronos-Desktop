@@ -32,5 +32,5 @@ dependencies {
     // for FileProvider — handing a file to another app needs a content URI, and
     // a file:// one has been refused since Android 7.
     implementation(project(":tauri-android"))
-    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core-ktx:1.18.0")
 }
