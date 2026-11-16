@@ -87,3 +87,19 @@ Moved out of `CLAUDE.md` verbatim. Read before touching the updater, the update 
   `0.0.0` because Cargo demands a value but Tauri ignores it. Bumping a release means editing one
   line. The badge used to be a hardcoded `v1.2.0` that had drifted three minor versions from the
   real number — do not reintroduce a second copy.
+
+## The Rust checks run only on a release, and `cargo fmt` needs `--all` to see the Android plugin
+
+- **The Rust checks run only on a release, and `cargo fmt` needs `--all` to see the Android
+  plugin.** `release.yml` formats and lints the Rust side on all three desktop systems, but only on
+  a tag or a merge that bumps the version, so a pull request never shows it. 1.5.0 found out the
+  hard way: one over-long line in `src-tauri/plugins/chronos-update/src/mobile.rs` failed
+  `cargo fmt --check` on Windows, macOS and Linux, while the Android job built and attached its APK
+  — and because `manifests` waits for every build, **no `latest.json` was written and no installed
+  copy was offered the update**. Locally, plain `cargo fmt --manifest-path src-tauri/Cargo.toml`
+  passes on that file; only `--all` reaches the plugin, which is a workspace member and not a
+  dependency of the desktop build. It is the same trap as `clippy` needing `--workspace`: run
+  `cargo fmt --manifest-path src-tauri/Cargo.toml --all --check` whenever `src-tauri/` was touched,
+  and after a dependency update, which can re-wrap a line. A version whose release failed after its
+  tag was created cannot be rebuilt by merging again — the run sees the release exists and stops —
+  and a manual run on the tag builds the broken commit; the way out is the next patch version.
