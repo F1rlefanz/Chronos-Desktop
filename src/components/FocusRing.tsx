@@ -101,7 +101,7 @@ export const FocusRing: React.FC<FocusRingProps> = ({ plan, phase, calm = false 
   const arcStroke =
     reading.tone === 'break' ? 'stroke-amber-500' : calm ? 'stroke-[#7C97FF]' : 'stroke-[#2D5BFF]';
   const trackStroke = calm ? 'stroke-[#272D3D]' : 'stroke-gray-100';
-  const muted = calm ? 'text-[#8E97AD]' : 'text-gray-400';
+  const muted = calm ? 'text-[#8E97AD]' : 'text-gray-500';
   const overrun = phase?.kind === 'focus' && reading.overrun > 0;
 
   return (
@@ -139,13 +139,23 @@ export const FocusRing: React.FC<FocusRingProps> = ({ plan, phase, calm = false 
         />
       </svg>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center">
+      {/* The timer's label already says all of this; read twice it is noise. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center"
+      >
         <span className={`text-[0.6875rem] font-semibold uppercase tracking-[0.2em] ${muted}`}>
           {reading.label}
         </span>
         <span
           className={`text-[clamp(2.25rem,16cqi,3.75rem)] leading-none font-extralight tracking-tighter tabular-nums ${
-            overrun ? 'text-emerald-500' : calm ? 'text-[#E9ECF5]' : 'text-[#1A1C1E]'
+            overrun
+              ? calm
+                ? 'text-emerald-400'
+                : 'text-emerald-700'
+              : calm
+                ? 'text-[#E9ECF5]'
+                : 'text-[#1A1C1E]'
           }`}
         >
           {reading.time}

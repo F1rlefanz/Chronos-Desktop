@@ -85,3 +85,14 @@ Moved out of `CLAUDE.md` verbatim. Read before touching dialogs, platform detect
   convince yourself a 320 px bug is fixed when it is not. Drive
   `Emulation.setDeviceMetricsOverride` over the DevTools protocol instead, and assert
   `document.documentElement.scrollWidth === clientWidth` rather than judging by eye.
+
+## A global key must leave a focused button alone, and stand down behind a dialog
+
+- **A global key must leave a focused button alone, and stand down behind a dialog.** The shortcut
+  handler in `src/App.tsx` filtered inputs but not buttons, which was harmless while the page had
+  two of them. With the focus rhythm there are a dozen next to the stopwatch, and Space on "Weiter im
+  Fluss" paused the measurement instead of pressing the button — the opposite of its label. Space is
+  now the focused button's own press; `F` and `Escape` (the calm view) ignore the page while a
+  `role="dialog"` with `aria-modal` is open, because a key pressed in a dialog is not meant for what
+  is behind it. When one button replaces another (the two calm-view buttons), move the focus to its
+  successor, or the next Tab starts from the top of the page.

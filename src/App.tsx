@@ -64,6 +64,7 @@ import { StopwatchDisplay } from './components/StopwatchDisplay';
 import { ControlPanel } from './components/ControlPanel';
 import { FocusRing } from './components/FocusRing';
 import { FocusPanel } from './components/FocusPanel';
+import { FocusLengths } from './components/FocusLengths';
 import { FocusNotice } from './components/FocusNotice';
 import { BreakList } from './components/BreakList';
 import { RecoveryPrompt } from './components/RecoveryPrompt';
@@ -661,9 +662,13 @@ export default function App({ initialState }: AppProps) {
     [timeEntries, recoveryEntryId]
   );
 
-  // The work rhythm. Switched off while the recovery question is open: an entry
-  // that was running when the app closed must not start pausing itself before
-  // the user has said what it is.
+  // The work rhythm. Silent while the user is being asked about the running
+  // entry — the recovery question, or its times open in the form. An entry that
+  // was running when the app closed must not start pausing itself before the
+  // user has said what it is, and one being corrected must not change under the
+  // form: saving it would overwrite whatever the rhythm had written.
+  const runningEntryIsBeingEdited =
+    isEntryFormOpen && entryUnderEdit !== null && entryUnderEdit.id === runningEntry?.id;
   const focusPlan = useMemo(
     () => planFromSettings(settings),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only these three fields make up the plan
@@ -674,7 +679,7 @@ export default function App({ initialState }: AppProps) {
     entry: runningEntry,
     plan: focusPlan,
     now,
-    active: !recoveryEntry,
+    active: !recoveryEntry && !runningEntryIsBeingEdited,
     onAutoBreak: startBreakAt,
     onChime: playChime,
   });
@@ -1032,7 +1037,15 @@ export default function App({ initialState }: AppProps) {
         return;
       }
 
+      const target = e.target as HTMLElement | null;
+      // A dialog is the user's whole attention; keys meant for the page behind
+      // it are not for the page.
+      const dialogOpen = document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+
       if (e.code === 'Space') {
+        // On a focused button Space is that button's own press — "Weiter im
+        // Fluss" must not turn into "Pause" because it had the focus.
+        if (target?.closest('button, a[href], summary, [role="button"]')) return;
         e.preventDefault();
         if (timerState === 'IDLE') handleStart();
         else if (timerState === 'RUNNING') handlePause();
@@ -1046,9 +1059,9 @@ export default function App({ initialState }: AppProps) {
       } else if (e.code === 'KeyF') {
         // Only where the card is on screen: toggling a view the user cannot see
         // would greet them with a dark card when they come back to the tab.
-        if (activeTab === 'tracking') setCalm((current) => !current);
+        if (activeTab === 'tracking' && !dialogOpen) setCalm((current) => !current);
       } else if (e.code === 'Escape') {
-        setCalm(false);
+        if (!dialogOpen) setCalm(false);
       }
     };
 
@@ -1199,6 +1212,18 @@ export default function App({ initialState }: AppProps) {
                 />
                 {timerState === 'IDLE' && !calm && (
                   <FocusPanel settings={settings} onChange={handleUpdateSettings} />
+                )}
+                {/* Coming back from a pause is when the next block's length is
+                    decided: thirty minutes left is not the 45 chosen this morning. */}
+                {focus.phase?.kind === 'break' && settings.focusMode !== 'open' && !calm && (
+                  <div className="mt-6 text-left">
+                    <FocusLengths
+                      settings={settings}
+                      onChange={handleUpdateSettings}
+                      only="block"
+                      blockLabel="Nächster Block"
+                    />
+                  </div>
                 )}
                 <ControlPanel
                   timerState={timerState}

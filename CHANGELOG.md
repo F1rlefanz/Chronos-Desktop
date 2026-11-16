@@ -11,19 +11,31 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 ### Added
 
 - **Fokusmodus: ein Arbeitsrhythmus über der Stoppuhr.** Unter der Uhr wählst du, wie streng
-  Chronos deine Zeit in Blöcke teilt. **Fest**: ein Block endet zur Minute, die Pause beginnt von
-  selbst. **Flexibel**: die Blocklänge ist nur ein Vorschlag — ist sie erreicht, fragt Chronos, ob
-  du im Fluss bleiben (+10 Minuten) oder Pause machen willst. **Offen**: die Stoppuhr wie bisher,
-  mit einem Pausenvorschlag nach 90 Minuten am Stück. Dazu gibt es 25 / 5, 50 / 10, 90 / 20 und
-  eigene Längen. Es bleibt ein einziger Eintrag, die Pausen stehen darin wie jede andere Pause.
-  Ein Ring zeigt, wie weit der Block oder die Pause ist; mit „+5 Min." gibst du beiden mehr Zeit.
+  Chronos deine Zeit in Blöcke teilt. **Fest**: ist der Block um, beginnt die Pause von selbst.
+  **Flexibel**: die Blocklänge ist nur ein Vorschlag — ist sie erreicht, fragt Chronos, ob du im
+  Fluss bleiben (+10 Minuten) oder Pause machen willst. **Offen**: die Stoppuhr wie bisher, mit
+  einem Pausenvorschlag nach 90 Minuten am Stück. Es bleibt ein einziger Eintrag, die Pausen
+  stehen darin wie jede andere Pause.
+- **Block und Pause sind beliebig lang.** Du tippst die Minuten ein oder stellst sie mit + und −;
+  25 / 5, 50 / 10 und 90 / 20 sind nur Abkürzungen. Was du einstellst, bleibt deine Vorgabe. Aus
+  der Pause heraus lässt sich der nächste Block neu bemessen — wer nach der Pause nur noch 30
+  Minuten hat, stellt 30 ein statt der 45 von heute früh.
+- **Ring und Hinweise.** Ein Ring zeigt, wie weit der Block oder die Pause ist; ein Block, der
+  sein Ziel überschreitet, zählt die Zeit im Fluss grün weiter. Am Ende eines Blocks oder einer
+  Pause erklingt ein Signalton (wenn Töne an sind) und ein Hinweis erscheint. „+5 Min." gibt einem
+  Block oder einer Pause mehr Zeit.
 - **Ruhe-Ansicht.** Ein Knopf unter der Stoppuhr (am Computer auch die Taste `F`) blendet alles
-  aus bis auf Uhr und Knöpfe. Mit der Taste `Esc` oder dem Knopf oben rechts geht es zurück.
+  aus bis auf Uhr und Knöpfe. Mit `Esc` oder dem Knopf oben rechts geht es zurück.
 
 ### Changed
 
-- **Neu eingerichtet startet Chronos im Rhythmus „Flexibel" mit 25 / 5.** Wer die Stoppuhr wie
-  bisher haben möchte — eine Uhr, die hochzählt —, wählt unter der Uhr „Offen".
+- **Chronos startet im Rhythmus „Flexibel".** Wer die hochzählende Uhr wie bisher möchte, wählt
+  unter der Uhr „Offen".
+
+### Fixed
+
+- **Die Leertaste drückt den Knopf, der gerade den Fokus hat.** Bisher startete oder pausierte sie
+  die Erfassung, auch wenn man mit der Tastatur auf einem anderen Knopf stand.
 
 ## [1.4.1] — 2026-08-17
 

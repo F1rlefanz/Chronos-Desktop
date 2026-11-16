@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import { Project, TimerState } from '../types';
 import {
   formatDurationHuman,
@@ -50,6 +50,18 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
   const { hours } = parseMsToComponents(elapsedTimeMs);
 
+  // The button that opens the calm view and the one that closes it are two
+  // elements, and the one that was clicked is gone a moment later. Without this
+  // the focus falls to the page and the next Tab starts from its top.
+  const enterRef = useRef<HTMLButtonElement>(null);
+  const exitRef = useRef<HTMLButtonElement>(null);
+  const wasCalm = useRef(calm);
+  useEffect(() => {
+    if (wasCalm.current === calm) return;
+    wasCalm.current = calm;
+    (calm ? exitRef : enterRef).current?.focus();
+  }, [calm]);
+
   const activeProject = projects.find((project) => project.id === activeProjectId);
 
   return (
@@ -75,6 +87,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
 
       {calm && onToggleCalm && (
         <button
+          ref={exitRef}
           type="button"
           onClick={onToggleCalm}
           className="absolute top-4 right-4 z-20 rounded-full border border-[#272D3D] bg-white/5 px-4 py-1.5 text-xs font-semibold text-[#E9ECF5] hover:bg-white/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7C97FF]"
@@ -168,7 +181,14 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
           className={`flex flex-wrap items-center justify-center gap-3 text-xs font-medium text-gray-500 mt-6 ${calm ? 'hidden' : ''}`}
         >
           <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
-            Gesamt: <strong className="text-gray-900">{formatDurationHuman(elapsedTimeMs)}</strong>
+            Gesamt:{' '}
+            <strong className="text-gray-900">
+              {/* The ring replaces the big clock, which is where the seconds and
+                  hundredths used to be; the setting for them has to land somewhere. */}
+              {ring && showMilliseconds
+                ? `${mainTime}${subTime}`
+                : formatDurationHuman(elapsedTimeMs)}
+            </strong>
           </span>
           {hours > 0 && (
             <span className="bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-200/80 text-gray-700">
@@ -191,6 +211,7 @@ export const StopwatchDisplay: React.FC<StopwatchDisplayProps> = ({
             action. */}
         {!calm && onToggleCalm && (
           <button
+            ref={enterRef}
             type="button"
             onClick={onToggleCalm}
             className="mt-4 text-xs font-medium text-gray-400 hover:text-gray-600 underline underline-offset-4 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2D5BFF] rounded"

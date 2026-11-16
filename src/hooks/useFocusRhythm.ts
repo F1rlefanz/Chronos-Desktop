@@ -6,6 +6,7 @@ import {
   FocusPlan,
   FocusSignal,
   derivePhase,
+  extendPhase,
   focusSignal,
 } from '../domain/focus';
 
@@ -15,7 +16,12 @@ interface UseFocusRhythmOptions {
   plan: FocusPlan;
   /** The shared clock from `useNow`, so this agrees with everything else on screen. */
   now: number;
-  /** Off while the user is being asked what to do with an entry left running. */
+  /**
+   * Off while the user is being asked something about the running entry — what
+   * to do with one left over from before, or its times in the form. The phase
+   * is still worked out, so the screen tells the truth; nothing is *done* or
+   * *said* until the user has answered.
+   */
   active: boolean;
   /** `fixed` mode: start the pause that should have started at `at`. */
   onAutoBreak: (at: number) => void;
@@ -54,10 +60,10 @@ export function useFocusRhythm({
   const [extension, setExtension] = useState<FocusExtension | null>(null);
 
   const phase = useMemo(
-    () => derivePhase(active ? entry : null, plan, now, extension),
-    [active, entry, plan, now, extension]
+    () => derivePhase(entry, plan, now, extension),
+    [entry, plan, now, extension]
   );
-  const signal = focusSignal(phase, plan, extension);
+  const signal = active ? focusSignal(phase, plan, extension) : null;
 
   // One occasion — this phase, this signal, this much extra time — is acted on
   // once. Without it the effect would sound again on every tick the condition
@@ -79,16 +85,14 @@ export function useFocusRhythm({
     onChime();
   }, [phase, signal, extension, onAutoBreak, onChime]);
 
-  const phaseStart = phase?.phaseStart ?? null;
+  // Read at the moment of the click: "from now" depends on how far the phase
+  // has run by then, so the extension is computed from the phase as it stands.
   const extend = useCallback(
     (ms: number) => {
-      if (phaseStart === null) return;
-      setExtension((current) => ({
-        phaseStart,
-        ms: (current && current.phaseStart === phaseStart ? current.ms : 0) + ms,
-      }));
+      if (!phase) return;
+      setExtension((current) => extendPhase(phase, current, ms));
     },
-    [phaseStart]
+    [phase]
   );
 
   return { phase, signal, extend };

@@ -47,10 +47,17 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   breakMinutes: 5,
 };
 
-/** What the rhythm settings may be, in minutes. Anything else is clamped on load. */
+/**
+ * What the rhythm settings may be, in minutes. Anything else is clamped on load.
+ *
+ * Wide on purpose: the lengths are the user's to choose, down to "I have thirty
+ * minutes left before a meeting". The bounds only keep out the values that
+ * break the rhythm — a block of zero ends the moment it starts, a negative one
+ * never ends.
+ */
 export const FOCUS_LIMITS = {
-  focusMinutes: { min: 10, max: 120 },
-  breakMinutes: { min: 3, max: 30 },
+  focusMinutes: { min: 5, max: 240 },
+  breakMinutes: { min: 1, max: 120 },
 } as const;
 
 /** The block / pause pairs offered as one-tap choices; anything else is "Eigene". */

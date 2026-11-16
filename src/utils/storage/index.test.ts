@@ -41,7 +41,7 @@ describe('migrateSettings', () => {
 
   it('does not let a hand-edited rhythm reach the stopwatch', () => {
     const migrated = migrateSettings({ focusMode: 'banana', focusMinutes: 0, breakMinutes: 9999 });
-    expect(migrated).toMatchObject({ focusMode: 'flex', focusMinutes: 10, breakMinutes: 30 });
+    expect(migrated).toMatchObject({ focusMode: 'flex', focusMinutes: 5, breakMinutes: 120 });
   });
 
   it('drops settings that no longer exist', () => {

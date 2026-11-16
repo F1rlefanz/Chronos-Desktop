@@ -71,13 +71,17 @@ läuft es allein.
 
 Unter der Stoppuhr wählst du, wie streng Chronos deinen Arbeitstag in Blöcke teilt:
 
-- **Fest** — ein Block endet zur Minute, die Pause beginnt von selbst. Nach jedem vierten Block ist
-  sie dreimal so lang. Den nächsten Block startest du selbst.
+- **Fest** — ist der Block um, beginnt die Pause von selbst. Den nächsten Block startest du selbst.
+  Warst du länger weg, zählt die Zeit nach dem Blockende als Pause.
 - **Flexibel** — die Blocklänge ist ein Vorschlag. Ist sie erreicht, fragt Chronos, ob du im Fluss
-  bleiben (+10 Minuten) oder Pause machen willst. Die vorgeschlagene Pause ist ein Fünftel des
-  Blocks, mindestens 3 und höchstens 20 Minuten.
+  bleiben (+10 Minuten) oder Pause machen willst.
 - **Offen** — die Stoppuhr wie immer, ohne Ziel. Nach 90 Minuten am Stück schlägt Chronos eine
   Pause vor.
+
+**Wie lang Block und Pause sind, bestimmst du.** Tippe die Minuten ein oder stelle sie mit + und −;
+25 / 5, 50 / 10 und 90 / 20 sind nur Abkürzungen. Was du einstellst, bleibt deine Vorgabe. Aus der
+Pause heraus kannst du den nächsten Block neu bemessen — hast du nur noch 30 Minuten, stellst du 30
+ein.
 
 Es bleibt **ein** Eintrag; die Pausen zwischen den Blöcken stehen darin als ganz normale Pausen.
 Mit „+5 Min." verlängerst du einen Block oder eine Pause. Die **Ruhe-Ansicht** (Taste `F`, oder

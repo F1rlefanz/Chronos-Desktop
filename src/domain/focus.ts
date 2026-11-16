@@ -28,15 +28,6 @@ export const OPEN_SNOOZE_MS = 30 * MINUTE;
 /** The "+5 min" button, on a block and on a pause alike. */
 export const NUDGE_EXTENSION_MS = 5 * MINUTE;
 
-/** After this many blocks the pause in `fixed` mode is the long one. */
-export const LONG_BREAK_EVERY = 4;
-export const LONG_BREAK_FACTOR = 3;
-
-/** In `flex` and `open` the pause is this share of the block just worked, within bounds. */
-const FLEX_BREAK_SHARE = 1 / 5;
-const FLEX_BREAK_MIN_MS = 3 * MINUTE;
-const FLEX_BREAK_MAX_MS = 20 * MINUTE;
-
 export interface FocusPlan {
   mode: FocusMode;
   focusMs: number;
@@ -87,15 +78,6 @@ export type FocusPhase =
       targetMs: number;
     };
 
-/** How long a pause should be after a block of the given length. */
-export function suggestBreakMs(plan: FocusPlan, focusedMs: number, block: number): number {
-  if (plan.mode === 'fixed') {
-    return block % LONG_BREAK_EVERY === 0 ? plan.breakMs * LONG_BREAK_FACTOR : plan.breakMs;
-  }
-  const share = Math.round(focusedMs * FLEX_BREAK_SHARE);
-  return Math.min(FLEX_BREAK_MAX_MS, Math.max(FLEX_BREAK_MIN_MS, share));
-}
-
 /**
  * Where a running entry stands, or `null` if there is nothing running.
  *
@@ -119,16 +101,17 @@ export function derivePhase(
 
   for (const pause of breaks) {
     if (pause.endTime === null) {
-      const focusedMs = Math.max(0, pause.startTime - blockStart);
       return {
         kind: 'break',
         block,
         phaseStart: pause.startTime,
         elapsedMs: Math.max(0, now - pause.startTime),
-        targetMs: suggestBreakMs(plan, focusedMs, block) + extra(pause.startTime),
+        targetMs: plan.breakMs + extra(pause.startTime),
       };
     }
-    blockStart = pause.endTime;
+    // `max`, because breaks may overlap in an entry that was edited by hand: a
+    // pause inside another one must not move the block start back into it.
+    blockStart = Math.max(blockStart, pause.endTime);
     block += 1;
   }
 
@@ -139,8 +122,39 @@ export function derivePhase(
     phaseStart: blockStart,
     elapsedMs,
     targetMs: plan.mode === 'open' ? null : plan.focusMs + extra(blockStart),
-    suggestedBreakMs: suggestBreakMs(plan, elapsedMs, block),
+    suggestedBreakMs: plan.breakMs,
   };
+}
+
+/**
+ * When the current phase would next speak, in time since the phase began.
+ *
+ * `open` mode has no target but does have a moment at which it suggests a pause,
+ * and extending that has to move the same moment, so both are answered here.
+ */
+export function phaseThresholdMs(phase: FocusPhase, extension: FocusExtension | null): number {
+  if (phase.kind === 'focus' && phase.targetMs === null) {
+    const extra = extension && extension.phaseStart === phase.phaseStart ? extension.ms : 0;
+    return OPEN_SUGGEST_AFTER_MS + extra;
+  }
+  return phase.targetMs ?? 0;
+}
+
+/**
+ * The extension that gives a phase `ms` more time **from now**.
+ *
+ * Added to the target as it stands, "+10 minutes" on a block that overran by an
+ * hour would still be fifty minutes in the past and change nothing but the
+ * sound. A phase that is not yet over simply gets longer by `ms`.
+ */
+export function extendPhase(
+  phase: FocusPhase,
+  current: FocusExtension | null,
+  ms: number
+): FocusExtension {
+  const granted = current && current.phaseStart === phase.phaseStart ? current.ms : 0;
+  const overrun = Math.max(0, phase.elapsedMs - phaseThresholdMs(phase, current));
+  return { phaseStart: phase.phaseStart, ms: granted + overrun + ms };
 }
 
 /**
@@ -163,6 +177,8 @@ export function focusSignal(
   if (!phase) return null;
 
   if (phase.kind === 'break') {
+    // `open` is a stopwatch: how long a pause lasts is nobody's business there.
+    if (plan.mode === 'open') return null;
     return phase.elapsedMs >= phase.targetMs ? 'break-over' : null;
   }
 

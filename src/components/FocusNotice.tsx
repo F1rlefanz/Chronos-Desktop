@@ -41,7 +41,7 @@ export const FocusNotice: React.FC<FocusNoticeProps> = ({
   let actions: { label: string; onClick: () => void; primary?: boolean }[];
 
   if (signal === 'goal-reached' && phase.kind === 'focus') {
-    text = `Ziel erreicht: ${formatDurationHuman(phase.targetMs ?? phase.elapsedMs)}. Im Fluss bleiben oder Pause machen?`;
+    text = `Ziel erreicht: ${formatDurationHuman(phase.targetMs ?? phase.elapsedMs)} Im Fluss bleiben oder Pause machen?`;
     actions = [
       { label: 'Weiter im Fluss (+10 Min.)', onClick: onFlow, primary: true },
       { label: breakLabel, onClick: onBreak },
