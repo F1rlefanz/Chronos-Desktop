@@ -6,6 +6,14 @@ refactoring, tests, tooling — is left out; that is what the commit history is 
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Das Signal am Ende eines Blocks oder einer Pause ist jetzt ein kleiner Jingle.** Statt eines
+  einzelnen leisen Tons erklingt zweimal eine aufsteigende Tonfolge, lauter und mit hellerem
+  Klang. So geht das Ende nicht mehr in Lautsprechern oder anderer Musik unter.
+
 ## [1.5.1] — 2026-11-16
 
 ### Fixed

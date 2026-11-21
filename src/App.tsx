@@ -386,14 +386,29 @@ export default function App({ initialState }: AppProps) {
           osc.start();
           osc.stop(audioCtx.currentTime + 0.15);
         } else if (type === 'chime') {
-          // Two rising notes, longer than the cues above: it announces the end
-          // of a block or a pause, which someone may be looking away from.
-          osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-          osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.18); // E5
-          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+          // A short jingle, played twice: it announces the end of a block or a
+          // pause, which someone may be looking away from — and a single soft
+          // tone is easily swallowed by speakers, a room or other audio. One
+          // oscillator steps through the notes, each with its own attack, so
+          // the cue stays a single audio node.
+          const now = audioCtx.currentTime;
+          const arpeggio = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6
+          const step = 0.15;
+          const phrase = arpeggio.length * step + 0.25;
+          osc.type = 'triangle'; // richer in overtones than a sine, so it carries
+          for (let round = 0; round < 2; round++) {
+            arpeggio.forEach((freq, i) => {
+              const t = now + round * phrase + i * step;
+              const last = i === arpeggio.length - 1;
+              osc.frequency.setValueAtTime(freq, t);
+              gain.gain.setValueAtTime(0.35, t);
+              gain.gain.exponentialRampToValueAtTime(0.02, t + (last ? 0.35 : step * 0.9));
+            });
+          }
+          const end = now + 2 * phrase;
+          gain.gain.setValueAtTime(0.001, end);
           osc.start();
-          osc.stop(audioCtx.currentTime + 0.6);
+          osc.stop(end);
         } else if (type === 'stop') {
           osc.frequency.setValueAtTime(349.23, audioCtx.currentTime); // F4
           gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
